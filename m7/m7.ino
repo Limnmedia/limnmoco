@@ -103,6 +103,54 @@ int8_t switchInput;
 int8_t switchInputCounter = 0;
 uint8_t motorsMoving = 0;
 
+/*
+ * Virtual globals
+ */
+
+struct Virtual {
+  uint32_t boomMotor;
+  uint32_t boomStepsPerUnit;
+  uint32_t boomPosition;
+  uint32_t swingMotor;
+  uint32_t swingStepsPerUnit;
+  uint32_t swingPosition;
+  uint32_t trackMotor;
+  uint32_t trackStepsPerUnit;
+  uint32_t trackPosition;
+  uint32_t panMotor;
+  uint32_t panStepsPerUnit;
+  uint32_t panPosition;
+  uint32_t tiltMotor;
+  uint32_t tiltStepsPerUnit;
+  uint32_t tiltPosition;
+  uint32_t rollMotor;
+  uint32_t rollStepsPerUnit;
+  uint32_t rollPosition;
+
+  uint32_t boomLength;
+  uint32_t boomExtension;
+  uint32_t nodalOffsetX;
+  uint32_t nodalOffsetY;
+  uint32_t nodalOffsetZ;
+
+  uint32_t boomCompensation[121];
+  uint32_t safeDistance;
+
+  uint32_t Track;
+  uint32_t EW;
+  uint32_t NS;
+  uint32_t Pan;
+  uint32_t Tilt;
+  uint32_t Roll;
+  uint32_t AimX;
+  uint32_t AimY;
+  uint32_t AimZ;
+  uint8_t  AimEnabled;
+};
+
+static Virtual _virtual;
+
+
 void initMotor(Motor *m);
 int32_t updateMotorVelocity(Motor *m, float timeSegment);
 void clearAxisMove(AxisMoveData *axis);
@@ -1086,6 +1134,85 @@ void loop()
               frameTimeStopCounter = 0;
               calculatePointToPoint(&frameTimeMotor, FRAME_TO_POSITION(dmc_msg_read_dword()), 0.0f);
             }
+          }
+          else if (cmd == DMC_MSG_VIRT_CONFIG) {
+            // read type
+            uint8_t type = dmc_msg_read_byte();
+            if (type == DMC_VIRT_TYPE_NONE) {
+              // no config data. reset virtual state
+              memset(&_virtual, 0, sizeof(Virtual));
+            }
+            else if (type == DMC_VIRT_TYPE_BOOM_SWING_TRACK) {
+              _virtual.boomMotor         = dmc_msg_read_dword();
+              _virtual.boomStepsPerUnit  = dmc_msg_read_dword();
+              _virtual.boomPosition      = dmc_msg_read_dword();
+              _virtual.swingMotor        = dmc_msg_read_dword();
+              _virtual.swingStepsPerUnit = dmc_msg_read_dword();
+              _virtual.swingPosition     = dmc_msg_read_dword();
+              _virtual.trackMotor        = dmc_msg_read_dword();
+              _virtual.trackStepsPerUnit = dmc_msg_read_dword();
+              _virtual.trackPosition     = dmc_msg_read_dword();
+              _virtual.panMotor          = dmc_msg_read_dword();
+              _virtual.panStepsPerUnit   = dmc_msg_read_dword();
+              _virtual.panPosition       = dmc_msg_read_dword();
+              _virtual.tiltMotor         = dmc_msg_read_dword();
+              _virtual.tiltStepsPerUnit  = dmc_msg_read_dword();
+              _virtual.tiltPosition      = dmc_msg_read_dword();
+              _virtual.rollMotor         = dmc_msg_read_dword();
+              _virtual.rollStepsPerUnit  = dmc_msg_read_dword();
+              _virtual.rollPosition      = dmc_msg_read_dword();
+
+              _virtual.boomLength    = dmc_msg_read_dword();
+              _virtual.boomExtension = dmc_msg_read_dword();
+
+              _virtual.nodalOffsetX = dmc_msg_read_dword();
+              _virtual.nodalOffsetY = dmc_msg_read_dword();
+              _virtual.nodalOffsetZ = dmc_msg_read_dword();
+
+              if (!dmc_msg_read_at_end()) {
+                // read boom compensation table
+                for (int i = 0; i < BOOM_COMPENSATION_ANGLES; ++i) {
+                  _virtual.boomCompensation[i] = dmc_msg_read_dword();
+                }
+              }
+
+              if (!dmc_msg_read_at_end()) {
+                // read safe distance
+                _virtual.safeDistance = dmc_msg_read_dword();
+              }
+
+              responseCode = DMC_ACK_OK;
+            } else {
+              // we don't support:
+              // DMC_VIRT_TYPE_SWING_PAN    
+              // DMC_VIRT_TYPE_Y_SWING_TRACK
+              // DMC_VIRT_TYPE_X_Y_Z        
+              responseCode = DMC_ACK_ERR_UNSUPPORTED;
+            }
+          }
+          else if (cmd == DMC_MSG_VIRT_MOVE) {
+            // #TODO:
+            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+          }
+          else if (cmd == DMC_MSG_VIRT_STOP) {
+            // #TODO:
+            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+          }
+          else if (cmd == DMC_MSG_VIRT_JOG) {
+            // #TODO:
+            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+          }
+          else if (cmd == DMC_MSG_VIRT_GET_POSITION) {
+            // #TODO:
+            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+          }
+          else if (cmd == DMC_MSG_VIRT_JOG_ON_LINE) {
+            // #TODO:
+            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+          }
+          else if (cmd == DMC_MSG_VIRT_AIM_POINT) {
+            // #TODO:
+            responseCode = DMC_ACK_ERR_UNSUPPORTED;
           }
           else // unsupported
           {

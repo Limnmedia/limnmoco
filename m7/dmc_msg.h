@@ -108,6 +108,15 @@
 #define DMC_RT_CAMERA_VIDEO       0x0010
 #define DMC_RT_CAMERA_STILLS      0x0020
 
+// virtuals support types
+#define DMC_VIRT_TYPE_NONE             0x0000
+#define DMC_VIRT_TYPE_BOOM_SWING_TRACK 0x0001
+#define DMC_VIRT_TYPE_SWING_PAN        0x0002
+#define DMC_VIRT_TYPE_Y_SWING_TRACK    0x0004
+#define DMC_VIRT_TYPE_X_Y_Z            0x0008
+
+#define BOOM_COMPENSATION_ANGLES 121 // -60, -59, ... 0, ... 59, 60
+
 // allocate internally used resources
 void dmc_msg_init();
 // free internally used resources
