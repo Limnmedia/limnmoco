@@ -136,16 +136,16 @@ struct Virtual {
   uint32_t boomCompensation[121];
   uint32_t safeDistance;
 
-  uint32_t Track;
+  uint32_t track;
   uint32_t EW;
   uint32_t NS;
-  uint32_t Pan;
-  uint32_t Tilt;
-  uint32_t Roll;
-  uint32_t AimX;
-  uint32_t AimY;
-  uint32_t AimZ;
-  uint8_t  AimEnabled;
+  uint32_t pan;
+  uint32_t tilt;
+  uint32_t roll;
+  uint32_t aimX;
+  uint32_t aimY;
+  uint32_t aimZ;
+  uint8_t  aimEnabled;
 };
 
 static Virtual _virtual;
@@ -1181,6 +1181,19 @@ void loop()
                 _virtual.safeDistance = dmc_msg_read_dword();
               }
 
+              // home the virtual motors.
+              _virtual.track = 0;
+              _virtual.EW = 0;
+              _virtual.NS = 0;
+              _virtual.pan = 0;
+              _virtual.tilt = 0;
+              _virtual.roll = 0;
+              // #TODO: support camera aim point
+              _virtual.aimX = 0;
+              _virtual.aimY = 0;
+              _virtual.aimZ = 0;
+              _virtual.aimEnabled = 0;
+
               responseCode = DMC_ACK_OK;
             } else {
               // we don't support:
@@ -1203,15 +1216,37 @@ void loop()
             responseCode = DMC_ACK_ERR_UNSUPPORTED;
           }
           else if (cmd == DMC_MSG_VIRT_GET_POSITION) {
-            // #TODO:
-            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+            dmc_msg_prepare(cmd | DMC_MSG_FLAG_ACK, msgId);
+            dmc_msg_out_dword(_virtual.track);
+            dmc_msg_out_dword(_virtual.EW);
+            dmc_msg_out_dword(_virtual.NS);
+            dmc_msg_out_dword(_virtual.pan);
+            dmc_msg_out_dword(_virtual.tilt);
+            dmc_msg_out_dword(_virtual.roll);
+            // #TODO: when we support aimPoint
+            // dmc_msg_out_dword(_virtual.aimEnabled);
+            // dmc_msg_out_dword(_virtual.aimX);
+            // dmc_msg_out_dword(_virtual.aimY);
+            // dmc_msg_out_dword(_virtual.aimZ);
+            writeOutputMessage();
           }
           else if (cmd == DMC_MSG_VIRT_JOG_ON_LINE) {
             // #TODO:
             responseCode = DMC_ACK_ERR_UNSUPPORTED;
           }
           else if (cmd == DMC_MSG_VIRT_AIM_POINT) {
-            // #TODO:
+            // #TODO: when we support aimPoint
+            // _virtual.aimEnabled = dmc_msg_read_byte();
+            // _virtual.aimX = dmc_msg_read_dword();
+            // _virtual.aimY = dmc_msg_read_dword();
+            // _virtual.aimZ = dmc_msg_read_dword();
+            //
+            // dmc_msg_prepare(cmd | DMC_MSG_FLAG_ACK, msgId);
+            // dmc_msg_out_dword(_virtual.aimEnabled);
+            // dmc_msg_out_dword(_virtual.aimX);
+            // dmc_msg_out_dword(_virtual.aimY);
+            // dmc_msg_out_dword(_virtual.aimZ);
+            // writeOutputMessage();
             responseCode = DMC_ACK_ERR_UNSUPPORTED;
           }
           else // unsupported
