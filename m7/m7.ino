@@ -24,6 +24,34 @@
 #error "Make sure to target the Main core with flash split 1.5MB M7 + 0.5MB M4"
 #endif
 
+// #TODO:
+// refactor the setup function into separate functions by responsibility.
+// refactor the loop function into separate functions by responsibility.
+//   and the large if-elseif-else chain should be a dispatch table.
+//
+// There are three main responsibilities of the m7 core:
+// 1. receive and process messages from Dragonframe and then respond to them.
+// 2. compute motor moves based on the received messages and the current state of the motors.
+// 3. send RPC messages to the m4 core to execute the computed motor moves and other actions.
+//
+// 1.
+// the serial messaging is buffered in the API layer, however the buffer is not large enough to 
+// hold the largest messages that we want to support, so we need to process messages in chunks 
+// if necessary.
+// we can set up a message processing state machine to handle this.
+// a message header is 10 bytes, then there is a variable length data section, then a 2 byte checksum at the end.
+// a header is much smaller than the buffer size, so it is most likely safe to assume that we will always be able 
+// to read a full header in one chunk, but we should still handle the case where we can't. (if the buffer was already 
+// full when the header started coming in, then we might not be able to read the full header in one chunk)
+// we thus have waiting for header, reading header, reading data, done reading, processing states.
+// when we have a complete message we can process it.
+// writing responses is simpler, as the largest response we have is small enough to fit in the outgoing buffer.
+// the outgoing messages state machine is just idle, writing message, done writing. along with a queue of messages to write.
+// the outgoing message buffer and the incoming message buffer can be statically allocated ringbuffers.
+//
+// 2. 
+// 
+
 int killSwitchState;
 
 void sendHello(uint32_t id);
@@ -109,23 +137,11 @@ uint8_t motorsMoving = 0;
 
 struct Virtual {
   uint32_t boomMotor;
-  uint32_t boomStepsPerUnit;
-  uint32_t boomPosition;
   uint32_t swingMotor;
-  uint32_t swingStepsPerUnit;
-  uint32_t swingPosition;
   uint32_t trackMotor;
-  uint32_t trackStepsPerUnit;
-  uint32_t trackPosition;
   uint32_t panMotor;
-  uint32_t panStepsPerUnit;
-  uint32_t panPosition;
   uint32_t tiltMotor;
-  uint32_t tiltStepsPerUnit;
-  uint32_t tiltPosition;
   uint32_t rollMotor;
-  uint32_t rollStepsPerUnit;
-  uint32_t rollPosition;
 
   uint32_t boomLength;
   uint32_t boomExtension;
@@ -150,6 +166,13 @@ struct Virtual {
 
 static Virtual _virtual;
 
+int32_t msg_motor_move(uint8_t motor, int32_t position);
+int32_t msg_motor_stop(uint8_t motor);
+int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest);
+
+int32_t msg_virt_move(uint8_t motor, int32_t position);
+int32_t msg_virt_stop(uint8_t motor);
+int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest);
 
 void initMotor(Motor *m);
 int32_t updateMotorVelocity(Motor *m, float timeSegment);
@@ -559,40 +582,9 @@ void loop()
             }
             else
             {
-              int32_t motor = dmc_msg_read_byte();
-
-              if (!IN_RANGE(motor, 1, MOTOR_COUNT))
-              {
-                responseCode = DMC_ACK_ERR_RANGE;
-              }
-              else
-              {
-                int32_t position = dmc_msg_read_dword();
-                --motor;
-
-                motorPtr = &motors[motor];
-                if (moveState != MOVE_STATE_JOG && motorsMoving && !(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL))
-                {
-                  responseCode = DMC_ACK_ERR_MOVING;
-                }
-                else
-                {
-                  if (position != motorPtr->position || motorPtr->moving)
-                  {
-                    calculatePointToPoint(&motors[motor], position, 0.0f);
-                    moveState = MOVE_STATE_JOG;
-                    syncTriggers = 0;
-                  }
-                  else
-                  {
-                    sendMotorPositions();
-                  }
-                  if (!(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL))
-                  {
-                    movePositionFrame = -1;
-                  }
-                }
-              }
+              int32_t motor    = dmc_msg_read_byte();
+              int32_t position = dmc_msg_read_dword();
+              responseCode = msg_motor_move(motor, position);
             }
           }
           else if (cmd == DMC_MSG_MOTOR_RESET_POSITION)
@@ -642,26 +634,8 @@ void loop()
           }
           else if (cmd == DMC_MSG_MOTOR_STOP)
           {
-            int32_t motor = dmc_msg_read_byte();
-
-            if (!IN_RANGE(motor, 1, MOTOR_COUNT))
-            {
-              responseCode = DMC_ACK_ERR_RANGE;
-            }
-            else
-            {
-              --motor;
-              if (moveState == MOVE_STATE_JOG ||
-                  (cmd == DMC_MSG_MOTOR_STOP && (motors[motor].config & DMC_MOTOR_CONFIG_LIVE_CONTROL)))
-              {
-                stopMotor(&motors[motor], motor, 0);
-                if (!(motors[motor].config & DMC_MOTOR_CONFIG_LIVE_CONTROL))
-                {
-                  moveState = MOVE_STATE_JOG;
-                  syncTriggers = 0;
-                }
-              }
-            }
+            uint8_t motor = dmc_msg_read_byte();
+            responseCode = msg_motor_stop(motor);
           }
           else if (cmd == DMC_MSG_MOTOR_STOP_ALL)
           {
@@ -677,51 +651,10 @@ void loop()
           }
           else if (cmd == DMC_MSG_MOTOR_JOG)
           {
-            int32_t motor = dmc_msg_read_byte();
-
-            if (!IN_RANGE(motor, 1, MOTOR_COUNT))
-            {
-              responseCode = DMC_ACK_ERR_RANGE;
-            }
-            else
-            {
-              --motor;
-
-              motorPtr = &motors[motor];
-              if (moveState != MOVE_STATE_JOG && motorsMoving && !(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL))
-              {
-                responseCode = DMC_ACK_ERR_MOVING;
-              }
-              else
-              {
-                uint16_t speed = dmc_msg_read_word();
-                int32_t destination = dmc_msg_read_dword();
-
-                {
-                  float maxVelocity = motorPtr->maxVelocity;
-                  float maxAcceleration = motorPtr->maxAcceleration;
-                  float accelSeconds = maxVelocity / maxAcceleration;
-
-                  float speedAdjustment = speed * 0.0001f;
-                  motorPtr->maxVelocity = fmaxf(4.0f, (motorPtr->maxVelocity * speedAdjustment));
-                  motorPtr->maxAcceleration = fmaxf(4.0f, (motorPtr->maxAcceleration * speedAdjustment));
-                  motorPtr->maxAcceleration =
-                    fmaxf((float)motorPtr->maxAcceleration, fabsf(motorPtr->currentVelocity) / accelSeconds);
-
-                  jogMotor(motorPtr, destination, motor);
-
-                  motorPtr->maxVelocity = maxVelocity;
-                  motorPtr->maxAcceleration = maxAcceleration;
-                }
-
-                if (!(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL))
-                {
-                  moveState = MOVE_STATE_JOG;
-                  movePositionFrame = -1;
-                  syncTriggers = 0;
-                }
-              }
-            }
+            uint8_t motor  = dmc_msg_read_byte();
+            uint16_t speed = dmc_msg_read_word();
+            int32_t dest   = dmc_msg_read_dword();
+            responseCode   = msg_motor_jog(motor, speed, dest);
           }
           else if (cmd == DMC_MSG_MOTOR_SET_SPEED)
           {
@@ -1143,24 +1076,41 @@ void loop()
               memset(&_virtual, 0, sizeof(Virtual));
             }
             else if (type == DMC_VIRT_TYPE_BOOM_SWING_TRACK) {
-              _virtual.boomMotor         = dmc_msg_read_dword();
-              _virtual.boomStepsPerUnit  = dmc_msg_read_dword();
-              _virtual.boomPosition      = dmc_msg_read_dword();
-              _virtual.swingMotor        = dmc_msg_read_dword();
-              _virtual.swingStepsPerUnit = dmc_msg_read_dword();
-              _virtual.swingPosition     = dmc_msg_read_dword();
-              _virtual.trackMotor        = dmc_msg_read_dword();
-              _virtual.trackStepsPerUnit = dmc_msg_read_dword();
-              _virtual.trackPosition     = dmc_msg_read_dword();
-              _virtual.panMotor          = dmc_msg_read_dword();
-              _virtual.panStepsPerUnit   = dmc_msg_read_dword();
-              _virtual.panPosition       = dmc_msg_read_dword();
-              _virtual.tiltMotor         = dmc_msg_read_dword();
-              _virtual.tiltStepsPerUnit  = dmc_msg_read_dword();
-              _virtual.tiltPosition      = dmc_msg_read_dword();
-              _virtual.rollMotor         = dmc_msg_read_dword();
-              _virtual.rollStepsPerUnit  = dmc_msg_read_dword();
-              _virtual.rollPosition      = dmc_msg_read_dword();
+              _virtual.boomMotor     = dmc_msg_read_dword();
+              Motor *motorPtr        = &motors[_virtual.boomMotor];
+              motorPtr->stepsPerUnit = dmc_msg_read_dword();
+              motorPtr->position     = dmc_msg_read_dword();
+              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
+              
+              _virtual.swingMotor    = dmc_msg_read_dword();
+              motorPtr               = &motors[_virtual.swingMotor];
+              motorPtr->stepsPerUnit = dmc_msg_read_dword();
+              motorPtr->position     = dmc_msg_read_dword();
+              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
+              
+              _virtual.trackMotor    = dmc_msg_read_dword();
+              motorPtr               = &motors[_virtual.trackMotor];
+              motorPtr->stepsPerUnit = dmc_msg_read_dword();
+              motorPtr->position     = dmc_msg_read_dword();
+              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
+              
+              _virtual.panMotor      = dmc_msg_read_dword();
+              motorPtr               = &motors[_virtual.panMotor];
+              motorPtr->stepsPerUnit = dmc_msg_read_dword();
+              motorPtr->position     = dmc_msg_read_dword();
+              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
+              
+              _virtual.tiltMotor     = dmc_msg_read_dword();
+              motorPtr               = &motors[_virtual.tiltMotor];
+              motorPtr->stepsPerUnit = dmc_msg_read_dword();
+              motorPtr->position     = dmc_msg_read_dword();
+              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
+
+              _virtual.rollMotor     = dmc_msg_read_dword();
+              motorPtr               = &motors[_virtual.rollMotor];
+              motorPtr->stepsPerUnit = dmc_msg_read_dword();
+              motorPtr->position     = dmc_msg_read_dword();
+              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
               _virtual.boomLength    = dmc_msg_read_dword();
               _virtual.boomExtension = dmc_msg_read_dword();
@@ -1204,16 +1154,26 @@ void loop()
             }
           }
           else if (cmd == DMC_MSG_VIRT_MOVE) {
-            // #TODO:
-            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+            // a virtual move is defined by the coordination 
+            // of movement of multiple motors. So the basic
+            // move motor command should be a good building 
+            // block for the implementation of virtual move.
+            // we just need to consider which motors are involved 
+            // in the virtual move, and then translate that into 
+            // motor move commands for the involved motors.
+            int32_t motor = dmc_msg_read_byte();
+            int32_t position = dmc_msg_read_dword();
+            responseCode = msg_virt_move(motor, position);
           }
           else if (cmd == DMC_MSG_VIRT_STOP) {
-            // #TODO:
-            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+            uint8_t motor = dmc_msg_read_byte();
+            responseCode = msg_virt_stop(motor);
           }
           else if (cmd == DMC_MSG_VIRT_JOG) {
-            // #TODO:
-            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+            uint8_t motor  = dmc_msg_read_byte();
+            uint16_t speed = dmc_msg_read_word();
+            int32_t dest   = dmc_msg_read_dword();
+            responseCode = msg_virt_jog(motor, speed, dest);
           }
           else if (cmd == DMC_MSG_VIRT_GET_POSITION) {
             dmc_msg_prepare(cmd | DMC_MSG_FLAG_ACK, msgId);
@@ -1229,6 +1189,7 @@ void loop()
             // dmc_msg_out_dword(_virtual.aimY);
             // dmc_msg_out_dword(_virtual.aimZ);
             writeOutputMessage();
+            responseCode = 0;
           }
           else if (cmd == DMC_MSG_VIRT_JOG_ON_LINE) {
             // #TODO:
@@ -1278,6 +1239,336 @@ void loop()
       }
     }
   }
+}
+
+int32_t msg_motor_move(uint8_t motor, int32_t position) {
+  if (!IN_RANGE(motor, 1, MOTOR_COUNT)) {
+    return DMC_ACK_ERR_RANGE;
+  }
+
+  --motor;
+  Motor *motorPtr = &motors[motor];
+  if (moveState != MOVE_STATE_JOG 
+    && motorsMoving 
+    && !(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL)) {
+    return DMC_ACK_ERR_MOVING;
+  }
+
+  if (position != motorPtr->position 
+    || motorPtr->moving) {
+    calculatePointToPoint(&motors[motor], position, 0.0f);
+    moveState = MOVE_STATE_JOG;
+    syncTriggers = 0;
+  } else {
+    sendMotorPositions();
+  }
+
+  if (!(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL)) {
+    movePositionFrame = -1;
+  }
+
+  return DMC_ACK_OK;
+}
+
+int32_t msg_motor_stop(uint8_t motor) {
+  if (!IN_RANGE(motor, 1, MOTOR_COUNT)) {
+    return DMC_ACK_ERR_RANGE;
+  }
+
+  --motor;
+  Motor *motorPtr = &motors[motor];
+  if (moveState == MOVE_STATE_JOG
+  || (motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL)) {
+    stopMotor(motorPtr, motor, 0);
+    if (!(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL)) {
+      moveState = MOVE_STATE_JOG;
+      syncTriggers = 0;
+    }
+  }
+
+  return DMC_ACK_OK;
+}
+
+int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest) {
+  if (!IN_RANGE(motor, 1, MOTOR_COUNT)) {
+    return DMC_ACK_ERR_RANGE;
+  }
+
+  --motor;
+  Motor *motorPtr = &motors[motor];
+  if (moveState != MOVE_STATE_JOG 
+    && motorsMoving 
+    && !(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL)) {
+    return DMC_ACK_ERR_MOVING;
+  }
+
+  float maxVelocity = motorPtr->maxVelocity;
+  float maxAcceleration = motorPtr->maxAcceleration;
+  float accelSeconds = maxVelocity / maxAcceleration;
+
+  float speedAdjustment = speed * 0.0001f;
+  motorPtr->maxVelocity = fmaxf(4.0f, (motorPtr->maxVelocity * speedAdjustment));
+  motorPtr->maxAcceleration = fmaxf(4.0f, (motorPtr->maxAcceleration * speedAdjustment));
+  motorPtr->maxAcceleration =
+    fmaxf((float)motorPtr->maxAcceleration, fabsf(motorPtr->currentVelocity) / accelSeconds);
+
+  jogMotor(motorPtr, dest, motor);
+
+  motorPtr->maxVelocity = maxVelocity;
+  motorPtr->maxAcceleration = maxAcceleration;
+
+  if (!(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL)) {
+    moveState = MOVE_STATE_JOG;
+    movePositionFrame = -1;
+    syncTriggers = 0;
+  }
+
+  return DMC_ACK_OK;
+}
+
+// virtual NS means we want to move NS
+// the new position of the boom will be 
+// p = <position>
+// and the track motor will have to compensate
+// by an amount given by
+// t = sqrt(L^2 - p^2)
+int32_t virt_track_offset(int32_t position) {
+  int64_t p = position, L = _virtual.boomLength;
+  int64_t d = p * p - L * L;
+  double  r = sqrt(d);
+  return (int32_t)r;
+}
+
+int32_t virt_rot_offset(int32_t position) {
+  double p = position, L = _virtual.boomLength;
+  double r = asin(p / L);
+  double d = (180.0/M_PI) * r;
+  return (int32_t)d;
+}
+
+int32_t msg_virt_move(uint8_t motor, int32_t position) {
+  if (motor == DMC_VIRT_TRACK) {
+    Motor *trackMotor = &motors[_virtual.trackMotor];
+    int32_t trackUnitPosition = _virtual.track + position;
+    int32_t trackMotorPosition = trackUnitPosition * trackMotor->stepsPerUnit;
+    int32_t result = msg_motor_move(_virtual.trackMotor, trackMotorPosition);
+    if (result != DMC_ACK_OK) {
+      msg_motor_stop(_virtual.trackMotor);
+      return result;
+    }
+    _virtual.track = trackUnitPosition;
+
+    return result;
+  }
+
+  if (motor == DMC_VIRT_EW) {
+    Motor *swingMotor = &motors[_virtual.swingMotor];
+    int32_t ew_unit_position  = _virtual.EW + virt_rot_offset(position);
+    int32_t ew_motor_position = ew_unit_position * swingMotor->stepsPerUnit;
+    int32_t result = msg_motor_move(_virtual.swingMotor, ew_motor_position);
+    if (result != DMC_ACK_OK) {
+      msg_motor_stop(_virtual.swingMotor);
+      return result;
+    }
+    _virtual.EW = ew_unit_position;
+
+    Motor *trackMotor = &motors[_virtual.trackMotor];
+    int32_t track_unit_position  = _virtual.track + virt_track_offset(_virtual.EW);
+    int32_t track_motor_position = track_unit_position * trackMotor->stepsPerUnit;
+    result = msg_motor_move(_virtual.trackMotor, track_motor_position);
+    if (result != DMC_ACK_OK) {
+      msg_motor_stop(_virtual.trackMotor);
+      return result;
+    }
+    _virtual.track = track_unit_position;
+
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_NS) {
+    Motor *boomMotor = &motors[_virtual.boomMotor];
+    int32_t ns_unit_position = _virtual.NS + virt_rot_offset(position);
+    int32_t ns_motor_position = ns_unit_position * boomMotor->stepsPerUnit;
+    int32_t result = msg_motor_move(_virtual.boomMotor, ns_motor_position);
+    if (result != DMC_ACK_OK) {
+      msg_motor_stop(_virtual.boomMotor);
+      return result;
+    }
+    _virtual.NS = ns_unit_position;
+
+    Motor *trackMotor = &motors[_virtual.trackMotor];
+    int32_t track_unit_position = _virtual.track + virt_track_offset(_virtual.NS);
+    int32_t track_motor_position = track_unit_position * trackMotor->stepsPerUnit;
+    result = msg_motor_move(_virtual.trackMotor, track_motor_position);
+    if (result != DMC_ACK_OK) {
+      msg_motor_stop(_virtual.trackMotor);
+      return result;
+    }
+    _virtual.track = track_unit_position;
+
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_PAN) {
+    Motor *panMotor = &motors[_virtual.panMotor];
+    int32_t panUnitPosition = _virtual.pan + position;
+    int32_t panMotorPosition = panUnitPosition * panMotor->stepsPerUnit;
+    int32_t result = msg_motor_move(_virtual.panMotor, panMotorPosition);
+    if (result != DMC_ACK_OK) {
+      msg_motor_stop(_virtual.panMotor);
+      return result;
+    }
+    _virtual.pan = panUnitPosition;
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_TILT) {
+    Motor *tiltMotor = &motors[_virtual.tiltMotor];
+    int32_t tiltUnitPosition = _virtual.tilt + position;
+    int32_t tiltMotorPosition = tiltUnitPosition * tiltMotor->stepsPerUnit;
+    int32_t result = msg_motor_move(_virtual.tiltMotor, tiltMotorPosition);
+    if (result != DMC_ACK_OK) {
+      msg_motor_stop(_virtual.tiltMotor);
+      return result;
+    }
+    _virtual.tilt = tiltUnitPosition;
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_ROLL) {
+    Motor *rollMotor = &motors[_virtual.rollMotor];
+    int32_t rollUnitPosition = _virtual.roll + position;
+    int32_t rollMotorPosition = rollUnitPosition * rollMotor->stepsPerUnit;
+    int32_t result = msg_motor_move(_virtual.rollMotor, rollMotorPosition);
+    if (result != DMC_ACK_OK) {
+      msg_motor_stop(_virtual.rollMotor);
+      return result;
+    }
+    _virtual.roll = rollUnitPosition;
+    return DMC_ACK_OK;
+  }
+
+  return DMC_ACK_ERR_GENERAL;
+}
+
+int32_t msg_virt_stop(uint8_t motor) {
+  if (motor == DMC_VIRT_TRACK) {
+    msg_motor_stop(_virtual.trackMotor);
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_NS) {
+    msg_motor_stop(_virtual.boomMotor);
+    msg_motor_stop(_virtual.trackMotor);
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_EW) {
+    msg_motor_stop(_virtual.swingMotor);
+    msg_motor_stop(_virtual.trackMotor);
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_PAN) {
+    msg_motor_stop(_virtual.panMotor);
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_TILT) {
+    msg_motor_stop(_virtual.tiltMotor);
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_ROLL) {
+    msg_motor_stop(_virtual.rollMotor);
+    return DMC_ACK_OK;
+  }
+
+  return DMC_ACK_ERR_GENERAL;
+}
+
+int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
+  if (motor == DMC_VIRT_TRACK) {
+    Motor *track = &motors[_virtual.trackMotor];
+    float prev   = track->position;
+    msg_motor_jog(_virtual.trackMotor, speed, dest);
+    float curr   = track->position;
+    // units traveled = steps traveled / steps per unit
+    float unit = (curr - prev) / (float)track->stepsPerUnit;
+    _virtual.track += (int32_t)unit;
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_NS) {
+    Motor *boom = &motors[_virtual.boomMotor];
+    float prev = boom->position;
+    msg_motor_jog(_virtual.boomMotor, speed, dest);
+    float curr = boom->position;
+    float unit = (curr - prev) / (float)boom->stepsPerUnit;
+    _virtual.NS += (int32_t)unit;
+
+    Motor *track = &motors[_virtual.trackMotor];
+    prev = track->position;
+    msg_motor_jog(_virtual.trackMotor, speed, dest);
+    curr = track->position;
+    unit = (curr - prev) / (float)track->stepsPerUnit;
+    _virtual.track += (int32_t)unit;
+
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_EW) {
+    Motor *swing = &motors[_virtual.swingMotor];
+    float prev = swing->position;
+    msg_motor_jog(_virtual.swingMotor, speed, dest);
+    float curr = swing->position;
+    float unit = (curr - prev) / (float)swing->stepsPerUnit;
+    _virtual.EW += (int32_t)unit;
+
+    Motor *track = &motors[_virtual.trackMotor];
+    prev = track->position;
+    msg_motor_jog(_virtual.trackMotor, speed, dest);
+    curr = track->position;
+    unit = (curr - prev) / (float)track->stepsPerUnit;
+    _virtual.track += (int32_t)unit;
+
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_PAN) {
+    Motor *pan = &motors[_virtual.panMotor];
+    float prev = pan->position;
+    msg_motor_jog(_virtual.panMotor, speed, dest);
+    float curr = pan->position;
+    float unit = (curr - prev) / (float)pan->stepsPerUnit;
+    _virtual.pan += (int32_t)unit;
+
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_TILT) {
+    Motor *tilt = &motors[_virtual.tiltMotor];
+    float prev  = tilt->position;
+    msg_motor_jog(_virtual.tiltMotor, speed, dest);
+    float curr  = tilt->position;
+    float unit  = (curr - prev) / (float)tilt->stepsPerUnit;
+    _virtual.tilt += (int32_t)unit;
+
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_ROLL) {
+    Motor *roll = &motors[_virtual.rollMotor];
+    float prev  = roll->position;
+    msg_motor_jog(_virtual.rollMotor, speed, dest);
+    float curr  = roll->position;
+    float unit  = (curr - prev) / (float)roll->stepsPerUnit;
+    _virtual.roll += (int32_t)unit;
+
+    return DMC_ACK_OK;
+  }
+
+  return DMC_ACK_ERR_GENERAL;
 }
 
 void initMotor(Motor *m)
@@ -1443,21 +1734,21 @@ void sendHello(uint32_t id)
 
   int i = 0;
 
-  dmc_msg_out_byte('d');
-  ++i;
-  dmc_msg_out_byte('m');
-  ++i;
-  dmc_msg_out_byte('c');
-  ++i;
-  dmc_msg_out_byte('-');
-  ++i;
   dmc_msg_out_byte('l');
   ++i;
   dmc_msg_out_byte('i');
   ++i;
-  dmc_msg_out_byte('t');
+  dmc_msg_out_byte('m');
   ++i;
-  dmc_msg_out_byte('e');
+  dmc_msg_out_byte('n');
+  ++i;
+  dmc_msg_out_byte('m');
+  ++i;
+  dmc_msg_out_byte('o');
+  ++i;
+  dmc_msg_out_byte('c');
+  ++i;
+  dmc_msg_out_byte('o');
   ++i;
 
   for (; i < 32; ++i)
@@ -1467,13 +1758,17 @@ void sendHello(uint32_t id)
   dmc_msg_out_byte(DMC_VERSION_MINOR);
   dmc_msg_out_byte(DMC_VERSION_REV);
   dmc_msg_out_byte(MOTOR_COUNT);
+  //dmc_msg_out_byte(32);
   dmc_msg_out_word(0);           // DMX channel count
+  //dmc_msg_out_word(512);
   dmc_msg_out_byte(GIO_OUTPUTS); // GIO OUT count
   dmc_msg_out_byte(GIO_INPUTS);  // GIO IN count
   dmc_msg_out_byte(0);           // HW LIMIT SET count
   dmc_msg_out_dword(FRAME_COUNT);
   dmc_msg_out_dword(DMC_CAP_REAL_TIME | DMC_CAP_GO_MOTION | DMC_CAP_GO_MOTION2 | DMC_CAP_COUPLE_MOTORS |
-                    DMC_CAP_REAL_TIME_LOOP | DMC_CAP_REAL_TIME_CAMERA); // capabilities
+                    DMC_CAP_REAL_TIME_LOOP | DMC_CAP_REAL_TIME_CAMERA | DMC_CAP_VIRTUAL_BOOM_SWING_TRACK |
+                    DMC_CAP_VIRTUAL_SWING_PAN | DMC_CAP_VIRTUAL_Y_SWING_TRACK | DMC_CAP_VIRTUAL_X_Y_Z); // capabilities
+  dmc_msg_out_word(2); // protocol version
 
   writeOutputMessage();
 }

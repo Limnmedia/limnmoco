@@ -18,7 +18,7 @@
 #define LOGIC_OUT_1 D41
 
 // set a pin for an e-stop switch. uses pull-up resistor, so switch needs to connect pin to ground.
-//#define KILL_SWITCH_PIN  D48
+#define KILL_SWITCH_PIN  D48
 // if you want to use a 'normally closed' switch, uncomment the following line
 //#define KILL_SWITCH_NORMALLY_CLOSED 1
 
