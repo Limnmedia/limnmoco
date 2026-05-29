@@ -25,6 +25,15 @@
 // set a pin for a logic switch input. uses pull-up resistor, so switch needs to connect pin to ground.
 //#define LOGIC_SWITCH_PIN  D49
 
+#define PIN_DBG_0 D0
+#define PIN_DBG_1 D1
+#define PIN_DBG_2 D2
+#define PIN_DBG_3 D3
+#define PIN_DBG_4 D4
+#define PIN_DBG_5 D5
+#define PIN_DBG_6 D6
+#define PIN_DBG_7 D7
+
 #elif defined(ARDUINO_ARCH_MBED_PORTENTA)
 
 
