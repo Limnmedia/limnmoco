@@ -136,32 +136,40 @@ uint8_t motorsMoving = 0;
  */
 
 struct Virtual {
-  uint32_t boomMotor;
-  uint32_t swingMotor;
-  uint32_t trackMotor;
-  uint32_t panMotor;
-  uint32_t tiltMotor;
-  uint32_t rollMotor;
+  uint8_t boomIndex;
+  uint8_t swingIndex;
+  uint8_t trackIndex;
+  uint8_t panIndex;
+  uint8_t tiltIndex;
+  uint8_t rollIndex;
+  uint8_t aimEnabled;
 
-  uint32_t boomLength;
-  uint32_t boomExtension;
-  uint32_t nodalOffsetX;
-  uint32_t nodalOffsetY;
-  uint32_t nodalOffsetZ;
+  float boomLength;
+  float boomExtension;
+  float boomDisplacement;
+  float nodalOffsetX;
+  float nodalOffsetY;
+  float nodalOffsetZ;
 
-  uint32_t boomCompensation[121];
-  uint32_t safeDistance;
+  float boomCompensation[121];
+  float safeDistance;
 
-  uint32_t track;
-  uint32_t EW;
-  uint32_t NS;
-  uint32_t pan;
-  uint32_t tilt;
-  uint32_t roll;
-  uint32_t aimX;
-  uint32_t aimY;
-  uint32_t aimZ;
-  uint8_t  aimEnabled;
+  float track;
+  float EW;
+  float NS;
+  float pan;
+  float tilt;
+  float roll;
+  float aimX;
+  float aimY;
+  float aimZ;
+
+  float T;
+  float s;
+  float b;
+  float p;
+  float t;
+  float r;
 };
 
 static Virtual _virtual;
@@ -175,6 +183,7 @@ int32_t msg_virt_stop(uint8_t motor);
 int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest);
 
 void virt_update_positions();
+void update_virtuals();
 
 void initMotor(Motor *m);
 int32_t updateMotorVelocity(Motor *m, float timeSegment);
@@ -403,6 +412,9 @@ void setup()
 
   leds = 0;
 
+  // clear virtuals
+  memset(&_virtual, 0, sizeof(Virtual));
+
   // send hello message on startup
   sendHello(0);
 
@@ -411,8 +423,9 @@ void setup()
 
 void loop()
 {
+  virt_update();
   int32_t updatedVelocities = updateMotorVelocities();
-  virt_update_positions();
+  //virt_update_positions();
   uint16_t cmd = 0;
 
   uint8_t switchToggled = 0;
@@ -1138,59 +1151,60 @@ void loop()
               memset(&_virtual, 0, sizeof(Virtual));
             }
             else if (type == DMC_VIRT_TYPE_BOOM_SWING_TRACK) {
-              _virtual.boomMotor     = dmc_msg_read_dword();
-              Motor *motorPtr        = &motors[_virtual.boomMotor];
-              motorPtr->stepsPerUnit = dmc_msg_read_dword();
-              _virtual.NS            = dmc_msg_read_dword();
+              _virtual.boomIndex     = (uint8_t)dmc_msg_read_dword();
+              Motor *motorPtr        = &motors[_virtual.boomIndex];
+              motorPtr->SPU          = (float)dmc_msg_read_dword();
+              _virtual.NS            = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
               
-              _virtual.swingMotor    = dmc_msg_read_dword();
-              motorPtr               = &motors[_virtual.swingMotor];
-              motorPtr->stepsPerUnit = dmc_msg_read_dword();
-              _virtual.EW            = dmc_msg_read_dword();
+              _virtual.swingIndex    = (uint8_t)dmc_msg_read_dword();
+              motorPtr               = &motors[_virtual.swingIndex];
+              motorPtr->SPU          = (float)dmc_msg_read_dword();
+              _virtual.EW            = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
               
-              _virtual.trackMotor    = dmc_msg_read_dword();
-              motorPtr               = &motors[_virtual.trackMotor];
-              motorPtr->stepsPerUnit = dmc_msg_read_dword();
-              _virtual.track         = dmc_msg_read_dword();
+              _virtual.trackIndex    = (uint8_t)dmc_msg_read_dword();
+              motorPtr               = &motors[_virtual.trackIndex];
+              motorPtr->SPU          = (float)dmc_msg_read_dword();
+              _virtual.track         = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
               
-              _virtual.panMotor      = dmc_msg_read_dword();
-              motorPtr               = &motors[_virtual.panMotor];
-              motorPtr->stepsPerUnit = dmc_msg_read_dword();
-              _virtual.pan           = dmc_msg_read_dword();
+              _virtual.panIndex      = (uint8_t)dmc_msg_read_dword();
+              motorPtr               = &motors[_virtual.panIndex];
+              motorPtr->SPU          = (float)dmc_msg_read_dword();
+              _virtual.pan           = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
               
-              _virtual.tiltMotor     = dmc_msg_read_dword();
-              motorPtr               = &motors[_virtual.tiltMotor];
-              motorPtr->stepsPerUnit = dmc_msg_read_dword();
-              _virtual.tilt          = dmc_msg_read_dword();
+              _virtual.tiltIndex     = (uint8_t)dmc_msg_read_dword();
+              motorPtr               = &motors[_virtual.tiltIndex];
+              motorPtr->SPU          = (float)dmc_msg_read_dword();
+              _virtual.tilt          = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
-              _virtual.rollMotor     = dmc_msg_read_dword();
-              motorPtr               = &motors[_virtual.rollMotor];
-              motorPtr->stepsPerUnit = dmc_msg_read_dword();
-              _virtual.roll          = dmc_msg_read_dword();
+              _virtual.rollIndex     = (uint8_t)dmc_msg_read_dword();
+              motorPtr               = &motors[_virtual.rollIndex];
+              motorPtr->SPU          = (float)dmc_msg_read_dword();
+              _virtual.roll          = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
-              _virtual.boomLength    = dmc_msg_read_dword();
-              _virtual.boomExtension = dmc_msg_read_dword();
+              _virtual.boomLength    = (float)dmc_msg_read_dword();
+              _virtual.boomExtension = (float)dmc_msg_read_dword();
+              _virtual.boomDisplacement = _virtual.boomLength + _virtual.boomExtension;
 
-              _virtual.nodalOffsetX = dmc_msg_read_dword();
-              _virtual.nodalOffsetY = dmc_msg_read_dword();
-              _virtual.nodalOffsetZ = dmc_msg_read_dword();
+              _virtual.nodalOffsetX = (float)dmc_msg_read_dword();
+              _virtual.nodalOffsetY = (float)dmc_msg_read_dword();
+              _virtual.nodalOffsetZ = (float)dmc_msg_read_dword();
 
               if (!dmc_msg_read_at_end()) {
                 // read boom compensation table
                 for (int i = 0; i < BOOM_COMPENSATION_ANGLES; ++i) {
-                  _virtual.boomCompensation[i] = dmc_msg_read_dword();
+                  _virtual.boomCompensation[i] = (float)dmc_msg_read_dword();
                 }
               }
 
               if (!dmc_msg_read_at_end()) {
                 // read safe distance
-                _virtual.safeDistance = dmc_msg_read_dword();
+                _virtual.safeDistance = (float)(dmc_msg_read_dword() / 1000);
               }
 
               // #TODO: support camera aim point
@@ -1233,12 +1247,12 @@ void loop()
           else if (cmd == DMC_MSG_VIRT_GET_POSITION) {
             dbg_0();
             dmc_msg_prepare(cmd | DMC_MSG_FLAG_ACK, msgId);
-            dmc_msg_out_dword(_virtual.track);
-            dmc_msg_out_dword(_virtual.EW);
-            dmc_msg_out_dword(_virtual.NS);
-            dmc_msg_out_dword(_virtual.pan);
-            dmc_msg_out_dword(_virtual.tilt);
-            dmc_msg_out_dword(_virtual.roll);
+            dmc_msg_out_dword((int32_t)(_virtual.track * VIRT_SCALE));
+            dmc_msg_out_dword((int32_t)(_virtual.EW * VIRT_SCALE));
+            dmc_msg_out_dword((int32_t)(_virtual.NS * VIRT_SCALE));
+            dmc_msg_out_dword((int32_t)(_virtual.pan * VIRT_SCALE));
+            dmc_msg_out_dword((int32_t)(_virtual.tilt * VIRT_SCALE));
+            dmc_msg_out_dword((int32_t)(_virtual.roll * VIRT_SCALE));
             // #TODO: when we support aimPoint
             // dmc_msg_out_dword(_virtual.aimEnabled);
             // dmc_msg_out_dword(_virtual.aimX);
@@ -1382,163 +1396,90 @@ int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   return DMC_ACK_OK;
 }
 
-// virtual NS means we want to move NS
-// the new position of the boom will be 
-// p = <position>
-// and the track motor will have to compensate
-// by an amount given by
-// t = sqrt(L^2 - p^2)
-int32_t virt_track_offset(int32_t position) {
-  int64_t p = position, L = _virtual.boomLength;
-  int64_t d = p * p - L * L;
-  double  r = sqrt(d);
-  return (int32_t)r;
-}
+void virt_update() {
+  _virtual.b = asinf(_virtual.NS / _virtual.boomDisplacement);
+  _virtual.s = asinf(_virtual.EW / (_virtual.boomDisplacement * cosf(_virtual.b)));
+  _virtual.T = _virtual.track - _virtual.boomDisplacement * cosf(_virtual.s) * cosf(_virtual.b);
+  _virtual.p = _virtual.pan - _virtual.s;
+  _virtual.t = _virtual.tilt;
+  _virtual.r = _virtual.roll;
 
-int32_t virt_rot_offset(int32_t position) {
-  double p = position, L = _virtual.boomLength;
-  double r = asin(p / L);
-  double d = (180.0/M_PI) * r;
-  return (int32_t)d;
-}
+  Motor *trackMotor = &motors[_virtual.trackIndex];
+  Motor *swingMotor = &motors[_virtual.swingIndex];
+  Motor *boomMotor  = &motors[_virtual.boomIndex];
+  Motor *panMotor = &motors[_virtual.panIndex];
+  Motor *tiltMotor = &motors[_virtual.tiltIndex];
+  Motor *rollMotor = &motors[_virtual.rollIndex];
 
-#define SCALE 100000
+  msg_motor_move(_virtual.trackIndex, (int32_t)(_virtual.T * trackMotor->SPU));
+  msg_motor_move(_virtual.swingIndex, (int32_t)(_virtual.s * swingMotor->SPU));
+  msg_motor_move(_virtual.boomIndex,  (int32_t)(_virtual.b * boomMotor->SPU));
+  msg_motor_move(_virtual.panIndex,   (int32_t)(_virtual.p * panMotor->SPU));
+  msg_motor_move(_virtual.tiltIndex,  (int32_t)(_virtual.t * tiltMotor->SPU));
+  msg_motor_move(_virtual.rollIndex,  (int32_t)(_virtual.r * rollMotor->SPU));
+}
 
 int32_t msg_virt_move(uint8_t motor, int32_t position) {
+  float target = ((float)position / VIRT_SCALE);
   if (motor == DMC_VIRT_TRACK) {
-    Motor *trackMotor = &motors[_virtual.trackMotor];
-    //int32_t trackUnitPosition = _virtual.track + position;
-    //int32_t trackMotorPosition = trackUnitPosition * trackMotor->stepsPerUnit;
-    int32_t target = (position / SCALE) * trackMotor->stepsPerUnit;
-    int32_t result = msg_motor_move(_virtual.trackMotor, target);
-    if (result != DMC_ACK_OK) {
-      msg_motor_stop(_virtual.trackMotor);
-      return result;
-    }
-
-    return result;
+    _virtual.track    = target;
   }
 
   if (motor == DMC_VIRT_EW) {
-    Motor *motor = &motors[_virtual.swingMotor];
-    //int32_t ew_unit_position  = _virtual.EW + virt_rot_offset(position);
-    //int32_t ew_motor_position = ew_unit_position * swingMotor->stepsPerUnit;
-    int32_t target = virt_rot_offset(position / SCALE) * motor->stepsPerUnit;
-    int32_t result = msg_motor_move(_virtual.swingMotor, target);
-    if (result != DMC_ACK_OK) {
-      msg_motor_stop(_virtual.swingMotor);
-      return result;
-    }
-
-    motor = &motors[_virtual.trackMotor];
-    //int32_t track_unit_position  = _virtual.track + virt_track_offset(_virtual.EW);
-    //int32_t track_motor_position = track_unit_position * trackMotor->stepsPerUnit;
-    target = virt_track_offset(position / SCALE) * motor->stepsPerUnit;
-    result = msg_motor_move(_virtual.trackMotor, target);
-    if (result != DMC_ACK_OK) {
-      msg_motor_stop(_virtual.trackMotor);
-      return result;
-    }
-
-    return DMC_ACK_OK;
+    _virtual.track    = target;
+    _virtual.EW       = target;
   }
 
   if (motor == DMC_VIRT_NS) {
-    Motor *motor = &motors[_virtual.boomMotor];
-    //int32_t ns_unit_position = _virtual.NS + virt_rot_offset(position);
-    //int32_t ns_motor_position = ns_unit_position * boomMotor->stepsPerUnit;
-    int32_t target = (position / SCALE) * motor->stepsPerUnit;
-    int32_t result = msg_motor_move(_virtual.boomMotor, target);
-    if (result != DMC_ACK_OK) {
-      msg_motor_stop(_virtual.boomMotor);
-      return result;
-    }
-
-    motor = &motors[_virtual.trackMotor];
-    //int32_t track_unit_position = _virtual.track + virt_track_offset(_virtual.NS);
-    //int32_t track_motor_position = track_unit_position * trackMotor->stepsPerUnit;
-    target = (position / SCALE) * motor->stepsPerUnit;
-    result = msg_motor_move(_virtual.trackMotor, target);
-    if (result != DMC_ACK_OK) {
-      msg_motor_stop(_virtual.trackMotor);
-      return result;
-    }
-
-    return DMC_ACK_OK;
+    _virtual.track    = target;
+    _virtual.NS       = target;
   }
 
   if (motor == DMC_VIRT_PAN) {
-    Motor *motor = &motors[_virtual.panMotor];
-    //int32_t panUnitPosition = _virtual.pan + position;
-    //int32_t panMotorPosition = panUnitPosition * panMotor->stepsPerUnit;
-    int32_t target = (position / SCALE) * motor->stepsPerUnit;
-    int32_t result = msg_motor_move(_virtual.panMotor, target);
-    if (result != DMC_ACK_OK) {
-      msg_motor_stop(_virtual.panMotor);
-      return result;
-    }
-    return DMC_ACK_OK;
+    _virtual.pan    = target;
   }
 
   if (motor == DMC_VIRT_TILT) {
-    Motor *motor = &motors[_virtual.tiltMotor];
-    //int32_t tiltUnitPosition = _virtual.tilt + position;
-    //int32_t tiltMotorPosition = tiltUnitPosition * tiltMotor->stepsPerUnit;
-    int32_t target = (position / SCALE) * motor->stepsPerUnit;
-    int32_t result = msg_motor_move(_virtual.tiltMotor, target);
-    if (result != DMC_ACK_OK) {
-      msg_motor_stop(_virtual.tiltMotor);
-      return result;
-    }
-    return DMC_ACK_OK;
+    _virtual.tilt    = target;
   }
 
   if (motor == DMC_VIRT_ROLL) {
-    Motor *motor = &motors[_virtual.rollMotor];
-    //int32_t rollUnitPosition = _virtual.roll + position;
-    //int32_t rollMotorPosition = rollUnitPosition * rollMotor->stepsPerUnit;
-    int32_t target = (position / SCALE) * motor->stepsPerUnit;
-    int32_t result = msg_motor_move(_virtual.rollMotor, target);
-    if (result != DMC_ACK_OK) {
-      msg_motor_stop(_virtual.rollMotor);
-      return result;
-    }
-    return DMC_ACK_OK;
+    _virtual.roll    = target;
   }
 
-  return DMC_ACK_ERR_GENERAL;
+  return DMC_ACK_OK;
 }
 
 int32_t msg_virt_stop(uint8_t motor) {
   if (motor == DMC_VIRT_TRACK) {
-    msg_motor_stop(_virtual.trackMotor);
+    msg_motor_stop(_virtual.trackIndex);
     return DMC_ACK_OK;
   }
 
   if (motor == DMC_VIRT_NS) {
-    msg_motor_stop(_virtual.boomMotor);
-    msg_motor_stop(_virtual.trackMotor);
+    msg_motor_stop(_virtual.boomIndex);
+    msg_motor_stop(_virtual.trackIndex);
     return DMC_ACK_OK;
   }
 
   if (motor == DMC_VIRT_EW) {
-    msg_motor_stop(_virtual.swingMotor);
-    msg_motor_stop(_virtual.trackMotor);
+    msg_motor_stop(_virtual.swingIndex);
+    msg_motor_stop(_virtual.trackIndex);
     return DMC_ACK_OK;
   }
 
   if (motor == DMC_VIRT_PAN) {
-    msg_motor_stop(_virtual.panMotor);
+    msg_motor_stop(_virtual.panIndex);
     return DMC_ACK_OK;
   }
 
   if (motor == DMC_VIRT_TILT) {
-    msg_motor_stop(_virtual.tiltMotor);
+    msg_motor_stop(_virtual.tiltIndex);
     return DMC_ACK_OK;
   }
 
   if (motor == DMC_VIRT_ROLL) {
-    msg_motor_stop(_virtual.rollMotor);
+    msg_motor_stop(_virtual.rollIndex);
     return DMC_ACK_OK;
   }
 
@@ -1547,34 +1488,34 @@ int32_t msg_virt_stop(uint8_t motor) {
 
 int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   if (motor == DMC_VIRT_TRACK) {
-    msg_motor_jog(_virtual.trackMotor, speed, dest);
+    msg_motor_jog(_virtual.trackIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
   if (motor == DMC_VIRT_NS) {
-    msg_motor_jog(_virtual.boomMotor, speed, dest);
-    msg_motor_jog(_virtual.trackMotor, speed, dest);
+    msg_motor_jog(_virtual.boomIndex, speed, dest);
+    msg_motor_jog(_virtual.trackIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
   if (motor == DMC_VIRT_EW) {
-    msg_motor_jog(_virtual.swingMotor, speed, dest);
-    msg_motor_jog(_virtual.trackMotor, speed, dest);
+    msg_motor_jog(_virtual.swingIndex, speed, dest);
+    msg_motor_jog(_virtual.trackIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
   if (motor == DMC_VIRT_PAN) {
-    msg_motor_jog(_virtual.panMotor, speed, dest);
+    msg_motor_jog(_virtual.panIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
   if (motor == DMC_VIRT_TILT) {
-    msg_motor_jog(_virtual.tiltMotor, speed, dest);
+    msg_motor_jog(_virtual.tiltIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
   if (motor == DMC_VIRT_ROLL) {
-    msg_motor_jog(_virtual.rollMotor, speed, dest);
+    msg_motor_jog(_virtual.rollIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
@@ -1582,19 +1523,18 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
 }
 
 void virt_update_positions() {
-  dbg_2();
-  Motor *motor = &motors[_virtual.trackMotor];
-  _virtual.track = motor->position / motor->stepsPerUnit;
-  motor = &motors[_virtual.boomMotor];
-  _virtual.NS = motor->position / motor->stepsPerUnit;
-  motor = &motors[_virtual.swingMotor];
-  _virtual.EW = motor->position / motor->stepsPerUnit;
-  motor = &motors[_virtual.panMotor];
-  _virtual.pan = motor->position / motor->stepsPerUnit;
-  motor = &motors[_virtual.tiltMotor];
-  _virtual.tilt = motor->position / motor->stepsPerUnit;
-  motor = &motors[_virtual.rollMotor];
-  _virtual.roll = motor->position / motor->stepsPerUnit;
+  Motor *motor = &motors[_virtual.trackIndex];
+  _virtual.track = (motor->position / motor->SPU);
+  motor = &motors[_virtual.boomIndex];
+  _virtual.NS = (motor->position / motor->SPU);
+  motor = &motors[_virtual.swingIndex];
+  _virtual.EW = (motor->position / motor->SPU);
+  motor = &motors[_virtual.panIndex];
+  _virtual.pan = (motor->position / motor->SPU);
+  motor = &motors[_virtual.tiltIndex];
+  _virtual.tilt = (motor->position / motor->SPU);
+  motor = &motors[_virtual.rollIndex];
+  _virtual.roll = (motor->position / motor->SPU);
 }
 
 void initMotor(Motor *m)
@@ -1815,12 +1755,12 @@ void sendMotorPositions()
 void sendVirtualPositions() {
   dbg_1();
   dmc_msg_prepare(DMC_MSG_VIRT_GET_POSITION, 0);
-  dmc_msg_out_dword(_virtual.track);
-  dmc_msg_out_dword(_virtual.EW);
-  dmc_msg_out_dword(_virtual.NS);
-  dmc_msg_out_dword(_virtual.pan);
-  dmc_msg_out_dword(_virtual.tilt);
-  dmc_msg_out_dword(_virtual.roll);
+  dmc_msg_out_dword((int32_t)(_virtual.track * VIRT_SCALE));
+  dmc_msg_out_dword((int32_t)(_virtual.EW * VIRT_SCALE));
+  dmc_msg_out_dword((int32_t)(_virtual.NS * VIRT_SCALE));
+  dmc_msg_out_dword((int32_t)(_virtual.pan * VIRT_SCALE));
+  dmc_msg_out_dword((int32_t)(_virtual.tilt * VIRT_SCALE));
+  dmc_msg_out_dword((int32_t)(_virtual.roll * VIRT_SCALE));
   writeOutputMessage();
 }
 

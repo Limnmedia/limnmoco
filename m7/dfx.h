@@ -37,6 +37,8 @@
 #define MOVE_STATE_SHOOT 12
 #define MOVE_STATE_ALL_JOG 100
 
+#define VIRT_SCALE 100000u
+
 struct MotorMove
 {
   float time;
@@ -57,7 +59,7 @@ struct Motor
   int32_t limitLow;
   uint8_t limitHighEnabled;
   int32_t limitHigh;
-  uint32_t stepsPerUnit;
+  float   SPU;
 
   uint8_t stopping;
 
