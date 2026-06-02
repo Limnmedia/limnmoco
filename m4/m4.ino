@@ -184,6 +184,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       speed[MOTOR_COUNT] = sharedDataPtr->nextSpeed[MOTOR_COUNT]; // camera
       for (int i = 0; i < MOTOR_COUNT; ++i)
       {
+        // set the direction of the motor. motorDirection is a bitset of motor directions
         digitalWriteFast(dirPins[i], ((1 << i) & sharedDataPtr->motorDirection) ? HIGH : LOW);
         int64_t prevSpeed = speed[i];
         speed[i] = sharedDataPtr->nextSpeed[i];

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // source code based on the original dmc-lite sketch by Dyami Caliri
-// at DZED Systems, Inc. (https://www.dragonframe.com) 
+// at DZED Systems, Inc. (https://www.dragonframe.com)
 // used with permission from the orginal author.
 // Copyright 2023 by DZED Systems LLC
 // Copyright 2026 by Limnmedia LLC
@@ -8,7 +8,7 @@
 /**
  * \file m7.ino
  * \brief limnmoco M7 core sketch
- * 
+ *
  * \note ensure that the Target core is the Main core
  * and the Flash split is 1.5MB M7 + 0.5MB M4
  */
@@ -35,13 +35,13 @@
 // 3. send RPC messages to the m4 core to execute the computed motor moves and other actions.
 //
 // 1.
-// the serial messaging is buffered in the API layer, however the buffer is not large enough to 
-// hold the largest messages that we want to support, so we need to process messages in chunks 
+// the serial messaging is buffered in the API layer, however the buffer is not large enough to
+// hold the largest messages that we want to support, so we need to process messages in chunks
 // if necessary.
 // we can set up a message processing state machine to handle this.
 // a message header is 10 bytes, then there is a variable length data section, then a 2 byte checksum at the end.
-// a header is much smaller than the buffer size, so it is most likely safe to assume that we will always be able 
-// to read a full header in one chunk, but we should still handle the case where we can't. (if the buffer was already 
+// a header is much smaller than the buffer size, so it is most likely safe to assume that we will always be able
+// to read a full header in one chunk, but we should still handle the case where we can't. (if the buffer was already
 // full when the header started coming in, then we might not be able to read the full header in one chunk)
 // we thus have waiting for header, reading header, reading data, done reading, processing states.
 // when we have a complete message we can process it.
@@ -49,8 +49,8 @@
 // the outgoing messages state machine is just idle, writing message, done writing. along with a queue of messages to write.
 // the outgoing message buffer and the incoming message buffer can be statically allocated ringbuffers.
 //
-// 2. 
-// 
+// 2.
+//
 
 int killSwitchState;
 
@@ -160,6 +160,13 @@ struct Virtual {
   float pan;
   float tilt;
   float roll;
+  float prevTrack;
+  float prevEW;
+  float prevNS;
+  float prevPan;
+  float prevTilt;
+  float prevRoll;
+
   float aimX;
   float aimY;
   float aimZ;
@@ -181,9 +188,11 @@ int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest);
 int32_t msg_virt_move(uint8_t motor, int32_t position);
 int32_t msg_virt_stop(uint8_t motor);
 int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest);
+int32_t msg_virt_get_position(uint32_t msg_id);
 
 void virt_update_positions();
-void update_virtuals();
+void virt_kinematics();
+void virt_inverse_kinematics();
 
 void initMotor(Motor *m);
 int32_t updateMotorVelocity(Motor *m, float timeSegment);
@@ -423,9 +432,7 @@ void setup()
 
 void loop()
 {
-  virt_update();
   int32_t updatedVelocities = updateMotorVelocities();
-  //virt_update_positions();
   uint16_t cmd = 0;
 
   uint8_t switchToggled = 0;
@@ -568,7 +575,7 @@ void loop()
     {
       sendMotorPositions();
       motorsSendPosition = 0;
-      sendVirtualPositions();
+      msg_virt_get_position(0);
     }
 
     if (moveState == MOVE_STATE_ALL_JOG && !motorsMoving && goMotionMove.state == GO_MO_PREROLL)
@@ -1156,25 +1163,25 @@ void loop()
               motorPtr->SPU          = (float)dmc_msg_read_dword();
               _virtual.NS            = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
-              
+
               _virtual.swingIndex    = (uint8_t)dmc_msg_read_dword();
               motorPtr               = &motors[_virtual.swingIndex];
               motorPtr->SPU          = (float)dmc_msg_read_dword();
               _virtual.EW            = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
-              
+
               _virtual.trackIndex    = (uint8_t)dmc_msg_read_dword();
               motorPtr               = &motors[_virtual.trackIndex];
               motorPtr->SPU          = (float)dmc_msg_read_dword();
               _virtual.track         = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
-              
+
               _virtual.panIndex      = (uint8_t)dmc_msg_read_dword();
               motorPtr               = &motors[_virtual.panIndex];
               motorPtr->SPU          = (float)dmc_msg_read_dword();
               _virtual.pan           = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
-              
+
               _virtual.tiltIndex     = (uint8_t)dmc_msg_read_dword();
               motorPtr               = &motors[_virtual.tiltIndex];
               motorPtr->SPU          = (float)dmc_msg_read_dword();
@@ -1216,19 +1223,19 @@ void loop()
               responseCode = DMC_ACK_OK;
             } else {
               // we don't support:
-              // DMC_VIRT_TYPE_SWING_PAN    
+              // DMC_VIRT_TYPE_SWING_PAN
               // DMC_VIRT_TYPE_Y_SWING_TRACK
-              // DMC_VIRT_TYPE_X_Y_Z        
+              // DMC_VIRT_TYPE_X_Y_Z
               responseCode = DMC_ACK_ERR_UNSUPPORTED;
             }
           }
           else if (cmd == DMC_MSG_VIRT_MOVE) {
-            // a virtual move is defined by the coordination 
+            // a virtual move is defined by the coordination
             // of movement of multiple motors. So the basic
-            // move motor command should be a good building 
+            // move motor command should be a good building
             // block for the implementation of virtual move.
-            // we just need to consider which motors are involved 
-            // in the virtual move, and then translate that into 
+            // we just need to consider which motors are involved
+            // in the virtual move, and then translate that into
             // motor move commands for the involved motors.
             int32_t motor = dmc_msg_read_byte();
             int32_t position = dmc_msg_read_dword();
@@ -1239,27 +1246,14 @@ void loop()
             responseCode = msg_virt_stop(motor);
           }
           else if (cmd == DMC_MSG_VIRT_JOG) {
-            uint8_t motor  = dmc_msg_read_byte();
-            uint16_t speed = dmc_msg_read_word();
-            int32_t dest   = dmc_msg_read_dword();
-            responseCode = msg_virt_jog(motor, speed, dest);
+            //uint8_t motor  = dmc_msg_read_byte();
+            //uint16_t speed = dmc_msg_read_word();
+            //int32_t dest   = dmc_msg_read_dword();
+            //responseCode = msg_virt_jog(motor, speed, dest);
+            responseCode = DMC_ACK_ERR_UNSUPPORTED;
           }
           else if (cmd == DMC_MSG_VIRT_GET_POSITION) {
-            dbg_0();
-            dmc_msg_prepare(cmd | DMC_MSG_FLAG_ACK, msgId);
-            dmc_msg_out_dword((int32_t)(_virtual.track * VIRT_SCALE));
-            dmc_msg_out_dword((int32_t)(_virtual.EW * VIRT_SCALE));
-            dmc_msg_out_dword((int32_t)(_virtual.NS * VIRT_SCALE));
-            dmc_msg_out_dword((int32_t)(_virtual.pan * VIRT_SCALE));
-            dmc_msg_out_dword((int32_t)(_virtual.tilt * VIRT_SCALE));
-            dmc_msg_out_dword((int32_t)(_virtual.roll * VIRT_SCALE));
-            // #TODO: when we support aimPoint
-            // dmc_msg_out_dword(_virtual.aimEnabled);
-            // dmc_msg_out_dword(_virtual.aimX);
-            // dmc_msg_out_dword(_virtual.aimY);
-            // dmc_msg_out_dword(_virtual.aimZ);
-            writeOutputMessage();
-            responseCode = 0;
+              responseCode = msg_virt_get_position(msgId);
           }
           else if (cmd == DMC_MSG_VIRT_JOG_ON_LINE) {
             // #TODO:
@@ -1319,7 +1313,7 @@ int32_t msg_motor_move(uint8_t motor, int32_t position) {
   --motor;
   Motor *motorPtr = &motors[motor];
   if (moveState != MOVE_STATE_JOG
-    && motorsMoving 
+    && motorsMoving
     && !(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL)) {
     return DMC_ACK_ERR_MOVING;
   }
@@ -1366,8 +1360,8 @@ int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest) {
 
   --motor;
   Motor *motorPtr = &motors[motor];
-  if (moveState != MOVE_STATE_JOG 
-    && motorsMoving 
+  if (moveState != MOVE_STATE_JOG
+    && motorsMoving
     && !(motorPtr->config & DMC_MOTOR_CONFIG_LIVE_CONTROL)) {
     return DMC_ACK_ERR_MOVING;
   }
@@ -1396,7 +1390,19 @@ int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   return DMC_ACK_OK;
 }
 
-void virt_update() {
+void virt_kinematics() {
+
+}
+
+void virt_inverse_kinematics() {
+  // we need some condition to run through the math or not.
+  // the obvious move is to check if the values have changed
+  // since the last iteration.
+  // we could store duplicates of each position and rotation.
+  // we could store a flag which gets updated on receiving a move command.
+  //
+  // and on another note, how do we keep jogging the motor in sync with
+  // the virtual position?
   _virtual.b = asinf(_virtual.NS / _virtual.boomDisplacement);
   _virtual.s = asinf(_virtual.EW / (_virtual.boomDisplacement * cosf(_virtual.b)));
   _virtual.T = _virtual.track - _virtual.boomDisplacement * cosf(_virtual.s) * cosf(_virtual.b);
@@ -1447,6 +1453,7 @@ int32_t msg_virt_move(uint8_t motor, int32_t position) {
     _virtual.roll    = target;
   }
 
+  virt_inverse_kinematics();
   return DMC_ACK_OK;
 }
 
@@ -1487,6 +1494,12 @@ int32_t msg_virt_stop(uint8_t motor) {
 }
 
 int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
+  // these functions work in so far as the physical motors are jogged
+  // when we ask to jog in a virtual direction. however we are not
+  // updating our virtual position when we jog along in a virtual
+  // direction. we could keep the virtual position in step with the
+  // physical position by solving the forward kinematics equations
+  // on each time step.
   if (motor == DMC_VIRT_TRACK) {
     msg_motor_jog(_virtual.trackIndex, speed, dest);
     return DMC_ACK_OK;
@@ -1522,20 +1535,31 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   return DMC_ACK_ERR_GENERAL;
 }
 
-void virt_update_positions() {
-  Motor *motor = &motors[_virtual.trackIndex];
-  _virtual.track = (motor->position / motor->SPU);
-  motor = &motors[_virtual.boomIndex];
-  _virtual.NS = (motor->position / motor->SPU);
-  motor = &motors[_virtual.swingIndex];
-  _virtual.EW = (motor->position / motor->SPU);
-  motor = &motors[_virtual.panIndex];
-  _virtual.pan = (motor->position / motor->SPU);
-  motor = &motors[_virtual.tiltIndex];
-  _virtual.tilt = (motor->position / motor->SPU);
-  motor = &motors[_virtual.rollIndex];
-  _virtual.roll = (motor->position / motor->SPU);
+int32_t msg_virt_get_position(uint32_t msg_id) {
+    dmc_msg_prepare(DMC_MSG_VIRT_GET_POSITION | DMC_MSG_FLAG_ACK, msg_id);
+    dmc_msg_out_dword((int32_t)(_virtual.track * VIRT_SCALE));
+    dmc_msg_out_dword((int32_t)(_virtual.EW * VIRT_SCALE));
+    dmc_msg_out_dword((int32_t)(_virtual.NS * VIRT_SCALE));
+    dmc_msg_out_dword((int32_t)(_virtual.pan * VIRT_SCALE));
+    dmc_msg_out_dword((int32_t)(_virtual.tilt * VIRT_SCALE));
+    dmc_msg_out_dword((int32_t)(_virtual.roll * VIRT_SCALE));
+    writeOutputMessage();
 }
+
+// void virt_update_positions() {
+//   Motor *motor = &motors[_virtual.trackIndex];
+//   _virtual.track = (motor->position / motor->SPU);
+//   motor = &motors[_virtual.boomIndex];
+//   _virtual.NS = (motor->position / motor->SPU);
+//   motor = &motors[_virtual.swingIndex];
+//   _virtual.EW = (motor->position / motor->SPU);
+//   motor = &motors[_virtual.panIndex];
+//   _virtual.pan = (motor->position / motor->SPU);
+//   motor = &motors[_virtual.tiltIndex];
+//   _virtual.tilt = (motor->position / motor->SPU);
+//   motor = &motors[_virtual.rollIndex];
+//   _virtual.roll = (motor->position / motor->SPU);
+// }
 
 void initMotor(Motor *m)
 {
@@ -2006,7 +2030,7 @@ int32_t updateMotorVelocities()
         float moveTime = goMotionMove.moveStartTime + goMotionMove.moveDuration * goMotionMove.moveTimeSegment;
         frameTimeMotor.position = FRAME_TO_POSITION(moveTime);
         goMotionMove.state = GO_MO_DECEL;
-        
+
         motors[MOTOR_COUNT].currentVelocity = 0; // stop camera
 
         t -= goMotionMove.moveDuration;
