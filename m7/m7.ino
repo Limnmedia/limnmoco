@@ -1841,6 +1841,8 @@ void transmitMessages()
     usbLedCounter += 20;
   }
 
+  // there is no consideration of which byte is the command byte! oh no!
+
   while (outMsgIndex--)
   {
     uint32_t c = messageBuffer.read_char();

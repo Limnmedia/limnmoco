@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
+#ifndef LIMNMOCO_DUE_CONFIG_HPP
+#define LIMNMOCO_DUE_CONFIG_HPP
+
+#define MOTOR_COUNT 8
+
+#define FRAME_COUNT 10000
+
+#endif // !LIMNMOCO_DUE_CONFIG_HPP

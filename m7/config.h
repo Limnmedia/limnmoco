@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // source code based on the original dmc-lite sketch by Dyami Caliri
-// at DZED Systems, Inc. (https://www.dragonframe.com) 
+// at DZED Systems, Inc. (https://www.dragonframe.com)
 // used with permission from the orginal author.
 // Copyright 2023 by DZED Systems LLC
 // Copyright 2026 by Limnmedia LLC
@@ -33,6 +33,20 @@
 #define PIN_DBG_5 D5
 #define PIN_DBG_6 D6
 #define PIN_DBG_7 D7
+
+#define PIN_7SEG_A  D46
+#define PIN_7SEG_B  D38
+#define PIN_7SEG_C  D43
+#define PIN_7SEG_D  D47
+#define PIN_7SEG_E  D49
+#define PIN_7SEG_F  D44
+#define PIN_7SEG_G  D41
+#define PIN_7SEG_DP D45
+
+#define PIN_7SEG_DIG1 D48
+#define PIN_7SEG_DIG2 D42
+#define PIN_7SEG_DIG3 D40
+#define PIN_7SEG_DIG4 D39
 
 #elif defined(ARDUINO_ARCH_MBED_PORTENTA)
 
