@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstring>
 
 #include <Arduino.h>
 
@@ -140,10 +141,11 @@
 #define DMC_MSG_HARD_STOP_REASON_EXCEPTION 100
 
 // rt run-move
-#define DMC_MSG_RT_RUN_MOVE_FPS_SCALE       1000
-#define DMC_MSG_RT_RUN_MOVE_FLAGS_PING_PONG 0x01
-#define DMC_MSG_RT_RUN_MOVE_FLAGS_LOOP      0x02
-#define DMC_MSG_RT_JOG_ALL_FPS_SCALE        1000
+#define DMC_MSG_RT_RUN_MOVE_FPS_SCALE             1000
+#define DMC_MSG_RT_RUN_MOVE_FLAGS_PING_PONG       0x01
+#define DMC_MSG_RT_RUN_MOVE_FLAGS_LOOP            0x02
+#define DMC_MSG_RT_SHOOT_FRAME_BLUR_PERCENT_SCALE 10
+#define DMC_MSG_RT_JOG_ALL_FPS_SCALE              1000
 
 // virtuals
 #define DMC_MSG_VIRT_CONFIG_POSITION_SCALE 100000
@@ -158,410 +160,390 @@
 
 #define DMC_MSG_MAX_LENGTH 2048
 
-typedef uint8_t   byte;
-typedef uint16_t  word;
-typedef uint32_t dword;
+#define DMC_MSG_DATA_LENGTH(T) (sizeof(T) - sizeof(DmcHeader))
 
 // ensure that these structures are defined without padding
 #pragma pack(push, 1)
 
 struct DmcHeader {
-    byte  marker[2]; // 'D', 'F'
-    dword id;
-    word  type;
-    word  length;
+    uint8_t  marker[2]; // 'D', 'F'
+    uint32_t id;
+    uint16_t type;
+    uint16_t length;
+
+    DmcHeader(uint32_t id, uint16_t type, uint16_t length)
+        : marker()
+        , id(id)
+        , type(type)
+        , length(length)
+    {
+        marker[0] = 'D';
+        marker[1] = 'F';
+    }
 };
 
 struct DmcAck {
     DmcHeader header;
-    word      response_code;
-    word      checksum;
+    uint16_t  response_code;
+
+    DmcAck(uint32_t id, uint16_t type, uint16_t response_code)
+        : header(id, type | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcAck))
+        , response_code(response_code)
+    {}
 };
 
 struct DmcHi {
     DmcHeader header;
-    word      checksum;
 };
 
-struct MsgHiResponse {
+struct DmcDevice {
     DmcHeader header;
-    byte      name[32];
-    byte      fw_major;
-    byte      fw_minor;
-    byte      fw_rev;
-    byte      motor_count;
-    word      dmx_count;
-    byte      gio_out_count;
-    byte      gio_in_count;
-    byte      hw_limit_count;
-    dword     upload_frame_count;
-    dword     capabilities;
-    word      protocol_version;
-    word      checksum;
+    uint8_t   name[32];
+    uint8_t   fw_major;
+    uint8_t   fw_minor;
+    uint8_t   fw_rev;
+    uint8_t   motor_count;
+    uint16_t  dmx_count;
+    uint8_t   gio_out_count;
+    uint8_t   gio_in_count;
+    uint8_t   hw_limit_count;
+    uint32_t  upload_frame_count;
+    uint32_t  capabilities;
+    uint16_t  protocol_version;
+
+    DmcDevice(uint8_t name[32],
+              uint8_t fw_major,
+              uint8_t fw_minor,
+              uint8_t fw_rev,
+              uint8_t motor_count,
+              uint16_t dmx_count,
+              uint8_t gio_out_count,
+              uint8_t gio_in_count,
+              uint8_t hw_limit_count,
+              uint32_t upload_frame_count,
+              uint32_t capabilities,
+              uint16_t  protocol_version)
+        : header(0, DMC_MSG_HI | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcHiResponse))
+        , name()
+        , fw_major(fw_major)
+        , fw_minor(fw_minor)
+        , fw_rev(fw_rev)
+        , motor_count(motor_count)
+        , dmx_count(dmx_count)
+        , gio_out_count(gio_out_count)
+        , gio_in_count(gio_in_count)
+        , hw_limit_count(hw_limit_count)
+        , capabilities(capabilities)
+        , protocol_version(protocol_version)
+    {
+        memcpy(this->name, name, 32);
+    }
 };
 
 struct DmcDmx {
     DmcHeader header;
-    byte      ramp;
-    word      start_channel;
-    byte      light_values[];
+    uint8_t   ramp;
+    uint16_t  start_channel;
+    uint8_t   light_values[];
 };
 
 struct DmcGioOut {
     DmcHeader header;
-    dword     triggers;
-    word      checksum;
+    uint32_t  triggers;
 };
 
 struct DmcGioIn {
     DmcHeader header;
-    dword     triggers;
-    word      checksum;
+    uint32_t  triggers;
 };
 
 struct DmcGioCam {
     DmcHeader header;
-    dword     triggers;
-    word      checksum;
+    uint32_t  triggers;
 };
 
 struct DmcMotorStatus {
     DmcHeader header;
-    dword     motor_status;
-    byte      dmx_status;
-    word      checksum;
+    uint32_t  motor_status;
+    uint8_t   dmx_status;
 };
 
 struct DmcMotorMove {
     DmcHeader header;
-    byte      motor;
-    dword     position;
-    word      checksum;
+    uint8_t   motor;
+    uint32_t  position;
 };
 
 struct DmcMotorMoveResponse {
     DmcHeader header;
-    byte      motor_status;
-    word      checksum;
+    uint8_t   motor_status;
+
+    DmcMotorMoveResponse(uint32_t id, uint8_t motor_status) 
+        : header(id, DMC_MSG_MOTOR_MOVE | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcMotorMoveResponse))
+        , motor_status(motor_status)
+    {}
 };
 
 struct DmcMotorStop {
     DmcHeader header;
-    byte      motor;
-    word      checksum;
+    uint8_t   motor;
 };
 
 struct DmcMotorStopAll {
     DmcHeader header;
-    dword     flags;
-    word      checksum;
+    uint32_t  flags;
 };
 
 struct DmcMotorGetPosition {
     DmcHeader header;
-    dword     move_time;
-    dword     motor_positions[MOTOR_COUNT];
-    word      checksum;
+    uint32_t  move_time;
+    uint32_t  motor_positions[MOTOR_COUNT];
 };
 
 struct DmcMotorResetPosition {
     DmcHeader header;
-    byte      motor;
-    dword     position;
-    word      checksum;
+    uint8_t   motor;
+    uint32_t  position;
 };
 
 struct DmcMotorJog {
     DmcHeader header;
-    byte      motor;
-    word      speed;
-    dword     destination;
-    word      checksum;
+    uint8_t   motor;
+    uint16_t  speed;
+    uint32_t  destination;
 };
 
 struct DmcMotorConfigure {
     DmcHeader header;
-    byte      motor;
-    byte      flags;
-    word      checksum;
+    uint8_t   motor;
+    uint8_t   flags;
 };
 
 struct DmcMotorSetSpeed {
     DmcHeader header;
-    byte      motor;
-    dword     max_velocity;
-    dword     max_acceleration;
-    word      checksum;
+    uint8_t   motor;
+    uint32_t  max_velocity;
+    uint32_t  max_acceleration;
 };
 
 struct DmcMotorSetLimits {
     DmcHeader header;
-    byte      motor;
-    byte      lower_enable;
-    dword     lower_limit;
-    byte      upper_enable;
-    dword     upper_limit;
-    byte      hw_set; // this one doesn't make sense, swap high/low????
-    word      checksum;
+    uint8_t   motor;
+    uint8_t   lower_enable;
+    uint32_t  lower_limit;
+    uint8_t   upper_enable;
+    uint32_t  upper_limit;
+    uint8_t   hw_set; // this one doesn't make sense, swap high/low????
 };
 
 struct DmcMotorHardStop {
     DmcHeader header;
-    byte      reason;
-    byte      motor;
-    word      checksum;
+    uint8_t   reason;
+    uint8_t   motor;
 };
 
 struct DmcRtUploadMoveBegin {
     DmcHeader header;
-    dword     start_frame;
-    dword     end_frame;
-    word      checksum;
+    uint32_t  start_frame;
+    uint32_t  end_frame;
 };
 
 struct DmcRtUploadMoveAxis {
     DmcHeader header;
-    byte      motor;
-    dword     start_index;
-    dword     positions[];
+    uint8_t   motor;
+    uint32_t  start_index;
+    uint32_t  positions[];
 };
 
 struct DmcRtUploadMoveDmx {
     DmcHeader header;
-    word      channel;
-    dword     start_index;
-    byte      light_levels[];
+    uint16_t  channel;
+    uint32_t  start_index;
+    uint8_t   light_levels[];
 };
 
 struct MoveFrameValue {
-    dword frame;
-    dword values;
+    uint32_t frame;
+    uint32_t values;
 };
 
 struct DmcRtUploadMoveTriggers {
     DmcHeader      header;
-    dword          mask;
+    uint32_t       mask;
     MoveFrameValue move_frame_values[];
 };
 
 struct DmcRtUploadMoveEnd {
     DmcHeader header;
-    word      checksum;
 };
 
 struct DmcRtPositionFrame {
     DmcHeader header;
-    dword     frame;
-    word      checksum;
+    uint32_t  frame;
 };
 
 struct DmcRtRunMove {
     DmcHeader header;
-    dword     fps;
-    dword     start_frame;
-    dword     end_frame;
-    dword     pre_roll_time;
-    dword     post_roll_time;
-    byte      sync_dmx;
-    dword     bloop_location;
-    word      bloop_dmx_channel;
-    word      bloop_time;
-    word      flags;
-    word      checksum;
+    uint32_t  fps;
+    uint32_t  start_frame;
+    uint32_t  end_frame;
+    uint32_t  pre_roll_time;
+    uint32_t  post_roll_time;
+    uint8_t   sync_dmx;
+    uint32_t  bloop_location;
+    uint16_t  bloop_dmx_channel;
+    uint16_t  bloop_time;
+    uint16_t  flags;
 };
 
 struct ShootFrameMotorBlur {
-    byte  motor;
-    dword position_A;
-    dword position_B;
+    uint8_t  motor;
+    uint32_t position_A;
+    uint32_t position_B;
 };
 
 struct DmcRtShootFrame {
     DmcHeader           header;
-    dword               frame;
-    byte                direction;
-    dword               exposure_time;
+    uint32_t            frame;
+    uint8_t             direction;
+    uint32_t            exposure_time;
+    uint16_t            blur_percent;
     ShootFrameMotorBlur motor_blur[MOTOR_COUNT];
-    word                checksum;
 };
 
 struct DmcRtShootFrame2 {
     DmcHeader           header;
-    dword               frame;
-    dword               exposure_time;
-    word                open_angle;
-    word                close_angle;
+    uint32_t            frame;
+    uint32_t            exposure_time;
+    uint16_t            open_angle;
+    uint16_t            close_angle;
     ShootFrameMotorBlur motor_blur[MOTOR_COUNT];
-    word                checksum;
 };
 
 struct DmcRtGo {
     DmcHeader header;
-    word      checksum;
 };
 
 struct DmcRtEnd {
     DmcHeader header;
-    word      checksum;
 };
 
 struct DmcRtJogAll {
     DmcHeader header;
-    dword     fps;
-    dword     destination;
-    word      checksum;
+    uint32_t  fps;
+    uint32_t  destination;
 };
 
 struct DmcRtStopLoop {
     DmcHeader header;
-    word      checksum;
 };
 
 struct DmcVirtConfig {
     DmcHeader header;
-    byte      type;
-    byte      data[];
+    uint8_t   type;
+    uint8_t   data[];
 };
 
 struct DmcVirtConfigBoomSwingTrack {
     DmcHeader header;
-    byte      type;
-    dword     boom_motor;
-    dword     boom_spu;
-    dword     boom_position;
-    dword     swing_motor;
-    dword     swing_spu;
-    dword     swing_position;
-    dword     track_motor;
-    dword     track_spu;
-    dword     track_position;
-    dword     pan_motor;
-    dword     pan_spu;
-    dword     pan_position;
-    dword     tilt_motor;
-    dword     tilt_spu;
-    dword     tilt_position;
-    dword     roll_motor;
-    dword     roll_spu;
-    dword     roll_position;
-    dword     boom_length;
-    dword     boom_extension;
-    dword     nodal_offset_x;
-    dword     nodal_offset_y;
-    dword     nodal_offset_z;
-    dword     boom_compensation[DMC_BOOM_COMPENSATION_ANGLES];
-    dword     safe_distance;
-    word      checksum;
+    uint8_t      type;
+    uint32_t     boom_motor;
+    uint32_t     boom_spu;
+    uint32_t     boom_position;
+    uint32_t     swing_motor;
+    uint32_t     swing_spu;
+    uint32_t     swing_position;
+    uint32_t     track_motor;
+    uint32_t     track_spu;
+    uint32_t     track_position;
+    uint32_t     pan_motor;
+    uint32_t     pan_spu;
+    uint32_t     pan_position;
+    uint32_t     tilt_motor;
+    uint32_t     tilt_spu;
+    uint32_t     tilt_position;
+    uint32_t     roll_motor;
+    uint32_t     roll_spu;
+    uint32_t     roll_position;
+    uint32_t     boom_length;
+    uint32_t     boom_extension;
+    uint32_t     nodal_offset_x;
+    uint32_t     nodal_offset_y;
+    uint32_t     nodal_offset_z;
+    uint32_t     boom_compensation[DMC_BOOM_COMPENSATION_ANGLES];
+    uint32_t     safe_distance;
+
+    bool have_compensation() {
+        // if the compensation table exists in the packet, then 
+        // the length of the packet will include it.
+        size_t total_length = sizeof(DmcVirtConfig);
+        size_t reported_length = header.length;
+        return reported_length == total_length;
+    }
 };
 
 struct DmcVirtConfigSwingPan {
     DmcHeader header;
-    byte      data;
-    dword     swing_motor;
-    dword     swing_spu;
-    dword     pan_motor;
-    dword     pan_spu;
-    word      checksum;
+    uint8_t   type;
+    uint32_t  swing_motor;
+    uint32_t  swing_spu;
+    uint32_t  pan_motor;
+    uint32_t  pan_spu;
 };
 
 struct DmcVirtMove {
     DmcHeader header;
-    byte      motor;
-    dword     position;
-    word      checksum;
+    uint8_t   motor;
+    uint32_t  position;
 };
 
 struct DmcVirtStop {
     DmcHeader header;
-    byte      motor;
-    word      checksum;
+    uint8_t   motor;
 };
 
 struct DmcVirtJog {
     DmcHeader header;
-    byte      motor;
-    word      speed;
-    dword     destination;
-    word      checksum;
+    uint8_t   motor;
+    uint16_t  speed;
+    uint32_t  destination;
 };
 
 struct DmcVirtJogOnLine {
     DmcHeader header;
-    byte      axis;
-    word      speed;
-    word      checksum;
+    uint8_t   axis;
+    uint16_t  speed;
 };
 
 struct DmcVirtGetPosition {
     DmcHeader header;
-    dword     track;
-    dword     EW;
-    dword     NS;
-    dword     pan;
-    dword     tilt;
-    dword     roll;
-    byte      aim_point;
-    dword     aim_x;
-    dword     aim_y;
-    dword     aim_z;
-    word      checksum;
+    uint32_t  track;
+    uint32_t  EW;
+    uint32_t  NS;
+    uint32_t  pan;
+    uint32_t  tilt;
+    uint32_t  roll;
+    uint8_t   aim_point;
+    uint32_t  aim_x;
+    uint32_t  aim_y;
+    uint32_t  aim_z;
+
+    bool have_aim_point() {
+        return sizeof(DmcVirtGetPosition) == header.length;
+    }
 };
 
 struct DmcVirtAimPoint {
     DmcHeader header;
-    byte      enable;
-    dword     aim_x;
-    dword     aim_y;
-    dword     aim_z;
-    word      checksum;
+    uint8_t   enable;
+    uint32_t  aim_x;
+    uint32_t  aim_y;
+    uint32_t  aim_z;
 };
 
 #pragma pack(pop)
 
-uint16_t dmc_checksum(uint8_t *buffer, size_t length);
-word dmc_checkbytes(uint16_t checksum);
-void dmc_packet_switch(uint8_t *buffer, size_t length);
-
 // define these routines to handle specific packets
-void dmc_on_ack(DmcAck *ack);
-void dmc_on_hi(DmcHi *hi);
-void dmc_on_dmx(DmcDmx *dmx);
-void dmc_on_gio_out(DmcGioOut *gio_out);
-void dmc_on_gio_in(DmcGioIn *gio_in);
-void dmc_on_gio_cam(DmcGioCam *gio_cam);
-void dmc_on_motor_status(DmcMotorStatus *motor_status);
-void dmc_on_motor_move(DmcMotorMove *motor_move);
-void dmc_on_motor_stop(DmcMotorStop *motor_stop);
-void dmc_on_motor_stop_all(DmcMotorStopAll *motor_stop_all);
-void dmc_on_motor_get_position(DmcMotorGetPosition *motor_get_position);
-void dmc_on_motor_reset_position(DmcMotorResetPosition *motor_reset_position);
-void dmc_on_motor_jog(DmcMotorJog *motor_jog);
-void dmc_on_motor_configure(DmcMotorConfigure *packet);
-void dmc_on_motor_set_speed(DmcMotorSetSpeed *packet);
-void dmc_on_motor_set_limits(DmcMotorSetLimits *packet);
-void dmc_on_motor_hard_stop(DmcMotorHardStop *packet);
-void dmc_on_rt_upload_move_begin(DmcRtUploadMoveBegin *packet);
-void dmc_on_rt_upload_move_axis(DmcRtUploadMoveAxis *packet);
-void dmc_on_rt_upload_move_dmx(DmcRtUploadMoveDmx *packet);
-void dmc_on_rt_upload_move_end(DmcRtUploadMoveEnd *packet);
-void dmc_on_rt_upload_move_triggers(DmcRtUploadMoveTriggers *packet);
-void dmc_on_rt_position_frame(DmcRtPositionFrame *packet);
-void dmc_on_rt_run_move(DmcRtRunMove *packet);
-void dmc_on_rt_shoot_frame(DmcRtShootFrame *packet);
-void dmc_on_rt_shoot_frame_2(DmcRtShootFrame2 *packet);
-void dmc_on_rt_go(DmcRtGo *packet);
-void dmc_on_rt_end(DmcRtEnd *packet);
-void dmc_on_rt_stop_loop(DmcRtStopLoop *packet);
-void dmc_on_rt_jog_all(DmcRtJogAll *packet);
-void dmc_on_virt_config(DmcVirtConfig *packet);
-void dmc_on_virt_move(DmcVirtMove *packet);
-void dmc_on_virt_stop(DmcVirtStop *packet);
-void dmc_on_virt_jog(DmcVirtJog *packet);
-void dmc_on_virt_get_position(DmcVirtGetPosition *packet);
-void dmc_on_virt_jog_on_line(DmcVirtJogOnLine *packet);
-void dmc_on_virt_aim_point(DmcVirtAimPoint *packet);
-void dmc_on_unknown(DmcHeader *packet);
-
 class DmcStream {
 public:
     enum State {
@@ -572,94 +554,79 @@ public:
       STATE_CHECKSUM,
     };
 
-    void reset() {
-        state  = STATE_WAIT_D;
-        index  = 0;
-        length = 0;
-    }
+    DmcStream();
 
-    void update(Stream &stream) {
-        while (stream.available() > 0) {
-            uint8_t b = stream.read();
+    void bind(Stream &stream);
+    void reset();
+    void receive();
+    void transmit();
 
-            switch (state) {
-            case STATE_WAIT_D: {
-                if (b == 'D') {
-                    buffer[index++] = b;
-                    state = STATE_WAIT_F;
-                }
-                break;
-            }
-
-            case STATE_WAIT_F: {
-                if (b == 'F') {
-                    buffer[index++] = b;
-                    state = STATE_READ_HEADER;
-                    break;
-                }
-
-                if (b == 'D') {
-                    // still waiting for byte 'F'
-                    // we can ignore the extra 'D'
-                    break;
-                }
-                // #NOTE: The only state transition into 'F'
-                // is from 'D', and if the byte immediately following
-                // 'D' is not 'F' the packet is malformed.
-                reset();
-                break;
-            }
-
-            case STATE_READ_HEADER: {
-                buffer[index++] = b;
-
-                if (index == sizeof(DmcHeader)) {
-                    length = (buffer[8] << 8) | buffer[9];
-
-                    size_t total = sizeof(DmcHeader) + length + 2;
-                    if (total > DMC_MSG_MAX_LENGTH) {
-                        reset(); // packet too larget
-                        break;
-                    }
-
-                    if (length == 0) {
-                        state = STATE_CHECKSUM;
-                    } else {
-                        state = STATE_READ_PAYLOAD;
-                    }
-
-                    length = total;
-                }
-
-                break;
-            }
-
-            case STATE_READ_PAYLOAD: {
-                buffer[index++] = b;
-                if (index == length) {
-                    state = STATE_CHECKSUM;
-                }
-
-                break;
-            }
-
-            case STATE_CHECKSUM: {
-                uint16_t checksum = dmc_checksum(buffer, length);
-                if (checksum == 0) {
-                    dmc_packet_switch(buffer, length);
-                }
-            }
-            }
-        }
-    }
+protected:
+    void enqueue(void *packet, uint16_t length);
+    void ack(uint32_t id, uint16_t type, uint32_t response);
+    void ack(DmcHeader &header, uint32_t response);
 
 private:
+    static uint16_t checksum(void *buffer, size_t length);
+    static uint16_t checkbytes(uint16_t checksum);
+    void packet_switch(void *buffer, size_t length);
+
+    virtual void on_ack(DmcAck *ack) = 0;
+    virtual void on_hi(DmcHi *hi) = 0;
+    virtual void on_dmx(DmcDmx *dmx) = 0;
+    virtual void on_gio_out(DmcGioOut *gio_out) = 0;
+    virtual void on_gio_in(DmcGioIn *gio_in) = 0;
+    virtual void on_gio_cam(DmcGioCam *gio_cam) = 0;
+    virtual void on_motor_status(DmcMotorStatus *motor_status) = 0;
+    virtual void on_motor_move(DmcMotorMove *motor_move) = 0;
+    virtual void on_motor_stop(DmcMotorStop *motor_stop) = 0;
+    virtual void on_motor_stop_all(DmcMotorStopAll *motor_stop_all) = 0;
+    virtual void on_motor_get_position(DmcMotorGetPosition *motor_get_position) = 0;
+    virtual void on_motor_reset_position(DmcMotorResetPosition *motor_reset_position) = 0;
+    virtual void on_motor_jog(DmcMotorJog *motor_jog) = 0;
+    virtual void on_motor_configure(DmcMotorConfigure *packet) = 0;
+    virtual void on_motor_set_speed(DmcMotorSetSpeed *packet) = 0;
+    virtual void on_motor_set_limits(DmcMotorSetLimits *packet) = 0;
+    virtual void on_motor_hard_stop(DmcMotorHardStop *packet) = 0;
+    virtual void on_rt_upload_move_begin(DmcRtUploadMoveBegin *packet) = 0;
+    virtual void on_rt_upload_move_axis(DmcRtUploadMoveAxis *packet) = 0;
+    virtual void on_rt_upload_move_dmx(DmcRtUploadMoveDmx *packet) = 0;
+    virtual void on_rt_upload_move_end(DmcRtUploadMoveEnd *packet) = 0;
+    virtual void on_rt_upload_move_triggers(DmcRtUploadMoveTriggers *packet) = 0;
+    virtual void on_rt_position_frame(DmcRtPositionFrame *packet) = 0;
+    virtual void on_rt_run_move(DmcRtRunMove *packet) = 0;
+    virtual void on_rt_shoot_frame(DmcRtShootFrame *packet) = 0;
+    virtual void on_rt_shoot_frame_2(DmcRtShootFrame2 *packet) = 0;
+    virtual void on_rt_go(DmcRtGo *packet) = 0;
+    virtual void on_rt_end(DmcRtEnd *packet) = 0;
+    virtual void on_rt_stop_loop(DmcRtStopLoop *packet) = 0;
+    virtual void on_rt_jog_all(DmcRtJogAll *packet) = 0;
+    virtual void on_virt_config(DmcVirtConfig *packet) = 0;
+    virtual void on_virt_move(DmcVirtMove *packet) = 0;
+    virtual void on_virt_stop(DmcVirtStop *packet) = 0;
+    virtual void on_virt_jog(DmcVirtJog *packet) = 0;
+    virtual void on_virt_get_position(DmcVirtGetPosition *packet) = 0;
+    virtual void on_virt_jog_on_line(DmcVirtJogOnLine *packet) = 0;
+    virtual void on_virt_aim_point(DmcVirtAimPoint *packet) = 0;
+    virtual void on_unknown(DmcHeader *packet) = 0;
+
     Stream  *stream;
     State    state;
     size_t   index;
     uint16_t length;
 
-    alignas(4) uint8_t buffer[DMC_MSG_MAX_LENGTH];
+    alignas(4) uint8_t rx_buffer[DMC_MSG_MAX_LENGTH];
+
+    struct QueuedPacket {
+      uint16_t length;
+      uint16_t index;
+      uint8_t buffer[DMC_MSG_MAX_LENGTH];
+    };
+
+    static const uint8_t tx_queue_length = 4;
+    uint8_t tx_queue_head;
+    uint8_t tx_queue_tail;
+    alignas(4) QueuedPacket tx_queue[tx_queue_length];
 };
 
 #endif // !LIMNMOCO_DMC_HPP
