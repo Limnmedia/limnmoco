@@ -223,7 +223,7 @@ struct DmcDevice {
               uint32_t upload_frame_count,
               uint32_t capabilities,
               uint16_t  protocol_version)
-        : header(0, DMC_MSG_HI | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcHiResponse))
+        : header(0, DMC_MSG_HI | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcDevice))
         , name()
         , fw_major(fw_major)
         , fw_minor(fw_minor)

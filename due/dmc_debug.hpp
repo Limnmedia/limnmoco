@@ -8,13 +8,6 @@
 
 class DmcDebug : public DmcStream {
 public:
-    enum class Format : uint8_t {
-        decimal,
-        hexidecimal,
-        sign,
-        real,
-    };
-
     DmcDebug();
 
     void bindDebug(Stream &stream);
@@ -32,13 +25,16 @@ public:
 private:
     void enqueueDebug(char const *str, size_t length);
 
-    void print(uint64_t value);
-    void print(double value);
+    void print(uint32_t value);
+    void print(int32_t value);
+    void print(float value);
     void print(char const *cstr);
     void print(char c);
 
-    void print(char const *field, uint32_t value, Format format = Format::decimal);
-    void print(char const *field, uint8_t major, uint8_t minor, uint8_t rev);
+    void print(char const *field, uint32_t value);
+    void print(char const *field, int32_t value);
+    void print(char const *field, float value);
+    void print(uint8_t major, uint8_t minor, uint8_t rev);
     void print(char const *field, size_t index, uint32_t value);
     void print(char const *field, uint8_t *const value, size_t length);
     void print(char const *field, char const *str);

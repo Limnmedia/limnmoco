@@ -114,64 +114,91 @@ void DmcDebug::enqueueDebug(char const *str, size_t length) {
     tx_tail = (tx_tail + length);
 }
 
-void DmcDebug::print(char const *field, uint32_t value, Format format) {
-    debug_stream->print(field);
-    debug_stream->print(" = ");
-    switch (format) {
-    case Format::decimal:
-        debug_stream->println(value, DEC);
-        break;
-
-    case Format::hexidecimal:
-        debug_stream->println(value, HEX);
-        break;
-
-    case Format::sign:
-        debug_stream->println((int32_t)value, DEC);
-        break;
-
-    case Format::real:
-        debug_stream->println((float)value, 4);
-        break;
-
-    default:
-        debug_stream->println(value);
-        break;
-    }
+void DmcDebug::print(uint32_t value) {
+    uint32_t length = strlenu(value);
+    uint8_t buffer[length];
+    convu(buffer, length, value, 10);
+    enqueueDebug(buffer, length);
 }
 
-void DmcDebug::print(char const *field, uint8_t major, uint8_t minor, uint8_t rev) {
-    debug_stream->print(field);
-    debug_stream->print(" = ");
-    debug_stream->print(major);
-    debug_stream->print('.');
-    debug_stream->print(minor);
-    debug_stream->print('.');
-    debug_stream->println(rev);
+void DmcDebug::print(int32_t value) {
+    uint32_t length = strleni(value);
+    uint8_t  buffer[length];
+    convi(buffer, length, value, 10);
+    enqueueDebug(buffer, length);
+}
+
+void DmcDebug::print(float value) {
+    uint32_t length = strlenf(value);
+    uint8_t  buffer[length];
+    convf(buffer, length, value, 10);
+    equeueDebug(buffer, length);
+}
+
+void DmcDebug::print(char const *cstr) {
+    uint32_t length = strlen(cstr);
+    enqueueDebug((uint8_t *)cstr, length);
+}
+
+void DmcDebug::print(char c) {
+    enqueueDebug(&c, 1);
+}
+
+void DmcDebug::print(char const *field, uint32_t value) {
+    print(field);
+    print(" = ");
+    print(value);
+    print('\n');
+}
+
+void DmcDebug::print(char const *field, int32_t value) {
+    print(field);
+    print(" = ");
+    print(value);
+    print('\n');
+}
+
+void DmcDebug::print(char const *field, float value) {
+    print(field);
+    print(" = ");
+    print(value);
+    print('\n');
+}
+
+void DmcDebug::print(uint8_t major, uint8_t minor, uint8_t rev) {
+    print("version = ");
+    print(major);
+    print('.');
+    print(minor);
+    print('.');
+    print(rev);
+    print('\n');
 }
 
 void DmcDebug::print(char const *field, size_t index, uint32_t value) {
-    debug_stream->print(field);
-    debug_stream->print("[");
-    debug_stream->print(index);
-    debug_stream->print("] = ");
-    debug_stream->println(value);
+    print(field);
+    print('[');
+    print(index);
+    print("] = ");
+    print(value);
+    print('\n');
 }
 
 void DmcDebug::print(char const *field, uint8_t *const value, size_t length) {
-    debug_stream->print(field);
-    debug_stream->print(" = ");
+    print(field);
+    print(" = ");
     for (size_t i = 0; i < length; ++i) {
         if (value[i] == '\0') { break; }
-        debug_stream->print(value[i]);
+        print((char)value[i]);
     }
-    debug_stream->print('\n');
+    print('\n');
 }
 
 void DmcDebug::print(char const *field, char const *str) {
-    debug_stream->print(field);
-    debug_stream->print(" = ");
-    debug_stream->println(str);
+    print(field);
+    print(" = ");
+    print(str);
+    print('\n');
 }
 
 void DmcDebug::print(DmcHeader &header) {
