@@ -123,10 +123,6 @@ uint32_t convf(uint8_t *out, size_t length, float n) {
         cur       += 1;
         remainder -= (float)int_part;
     }
-    //remainder *= 1000000.0;
-    //int_part   = (uint32_t)remainder;
-    //int_limit  = strlenu(int_part);
-    //count     += convu(out, length, int_part, 10);
 
     return count;
 }

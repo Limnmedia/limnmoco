@@ -187,7 +187,7 @@ uint16_t DmcStream::checkbytes(uint16_t checksum) {
 void DmcStream::packet_switch(void *buffer, size_t length) {
     DmcHeader *header = reinterpret_cast<DmcHeader *>(buffer);
 
-    switch (header->type) {
+    switch (header->type & (~DMC_MSG_FLAG_ACK)) {
         case DMC_MSG_HI:
             on_ack(reinterpret_cast<DmcAck *>(buffer));
             break;
@@ -201,7 +201,7 @@ void DmcStream::packet_switch(void *buffer, size_t length) {
             break;
 
         case DMC_MSG_GIO_IN:
-            on_gio_in(reinterpret_cast<DmcGioIn *>(buffer));
+            on_gio_in(reinterpret_cast<DmcAck *>(buffer));
             break;
 
         case DMC_MSG_GIO_CAM:
@@ -209,7 +209,7 @@ void DmcStream::packet_switch(void *buffer, size_t length) {
             break;
 
         case DMC_MSG_MOTOR_STATUS:
-            on_motor_status(reinterpret_cast<DmcMotorStatus *>(buffer));
+            on_motor_status(reinterpret_cast<DmcAck *>(buffer));
             break;
 
         case DMC_MSG_MOTOR_MOVE:
@@ -225,7 +225,7 @@ void DmcStream::packet_switch(void *buffer, size_t length) {
             break;
 
         case DMC_MSG_MOTOR_GET_POSITION:
-            on_motor_get_position(reinterpret_cast<DmcMotorGetPosition *>(buffer));
+            on_motor_get_position(reinterpret_cast<DmcAck *>(buffer));
             break;
 
         case DMC_MSG_MOTOR_RESET_POSITION:
@@ -249,7 +249,7 @@ void DmcStream::packet_switch(void *buffer, size_t length) {
             break;
 
         case DMC_MSG_MOTOR_HARD_STOP:
-            on_motor_hard_stop(reinterpret_cast<DmcMotorHardStop *>(buffer));
+            on_motor_hard_stop(reinterpret_cast<DmcAck *>(buffer));
             break;
 
         case DMC_MSG_RT_UPLOAD_MOVE_BEGIN:
@@ -264,12 +264,12 @@ void DmcStream::packet_switch(void *buffer, size_t length) {
             on_rt_upload_move_dmx(reinterpret_cast<DmcRtUploadMoveDmx *>(buffer));
             break;
 
-        case DMC_MSG_RT_UPLOAD_MOVE_END:
-            on_rt_upload_move_end(reinterpret_cast<DmcRtUploadMoveEnd *>(buffer));
-            break;
-
         case DMC_MSG_RT_UPLOAD_MOVE_TRIGGERS:
             on_rt_upload_move_triggers(reinterpret_cast<DmcRtUploadMoveTriggers *>(buffer));
+            break;
+
+        case DMC_MSG_RT_UPLOAD_MOVE_END:
+            on_rt_upload_move_end(reinterpret_cast<DmcRtUploadMoveEnd *>(buffer));
             break;
 
         case DMC_MSG_RT_POSITION_FRAME:
@@ -296,12 +296,12 @@ void DmcStream::packet_switch(void *buffer, size_t length) {
             on_rt_end(reinterpret_cast<DmcRtEnd *>(buffer));
             break;
 
-        case DMC_MSG_RT_STOP_LOOP:
-            on_rt_stop_loop(reinterpret_cast<DmcRtStopLoop *>(buffer));
-            break;
-
         case DMC_MSG_RT_JOG_ALL:
             on_rt_jog_all(reinterpret_cast<DmcRtJogAll *>(buffer));
+            break;
+
+        case DMC_MSG_RT_STOP_LOOP:
+            on_rt_stop_loop(reinterpret_cast<DmcRtStopLoop *>(buffer));
             break;
 
         case DMC_MSG_VIRT_CONFIG:
@@ -321,7 +321,7 @@ void DmcStream::packet_switch(void *buffer, size_t length) {
             break;
 
         case DMC_MSG_VIRT_GET_POSITION:
-            on_virt_get_position(reinterpret_cast<DmcVirtGetPosition *>(buffer));
+            on_virt_get_position(reinterpret_cast<DmcAck *>(buffer));
             break;
 
         case DMC_MSG_VIRT_JOG_ON_LINE:

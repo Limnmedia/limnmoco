@@ -148,8 +148,8 @@
 #define DMC_MSG_RT_JOG_ALL_FPS_SCALE              1000
 
 // virtuals
-#define DMC_MSG_VIRT_CONFIG_POSITION_SCALE 100000
-#define DMC_MSG_VIRT_CONFIG_LENGTH_SCALE   1000
+#define DMC_MSG_VIRT_CONFIG_POSITION_SCALE 100000.0f
+#define DMC_MSG_VIRT_CONFIG_LENGTH_SCALE   1000.0f
 #define DMC_MSG_VIRT_JOG_SPEED_INCHING     1
 #define DMC_MSG_VIRT_JOG_SPEED_MAX         10000
 #define DMC_MSG_VIRT_JOG_ON_LINE_X         0
@@ -194,6 +194,10 @@ struct DmcAck {
 
 struct DmcHi {
     DmcHeader header;
+
+    DmcHi(uint32_t id)
+        : header(id, DMC_MSG_HI, DMC_MSG_DATA_LENGTH(DmcHi))
+    {}
 };
 
 struct DmcDevice {
@@ -211,7 +215,7 @@ struct DmcDevice {
     uint32_t  capabilities;
     uint16_t  protocol_version;
 
-    DmcDevice(uint8_t name[32],
+    DmcDevice(char const *name,
               uint8_t fw_major,
               uint8_t fw_minor,
               uint8_t fw_rev,
@@ -236,7 +240,7 @@ struct DmcDevice {
         , capabilities(capabilities)
         , protocol_version(protocol_version)
     {
-        memcpy(this->name, name, 32);
+        strncpy((char *)this->name, name, 32);
     }
 };
 
@@ -255,6 +259,11 @@ struct DmcGioOut {
 struct DmcGioIn {
     DmcHeader header;
     uint32_t  triggers;
+
+    DmcGioIn(uint32_t id, uint32_t triggers)
+        : header(id, DMC_MSG_GIO_IN, DMC_MSG_DATA_LENGTH(DmcGioIn))
+        , triggers(triggers)
+    {}
 };
 
 struct DmcGioCam {
@@ -266,12 +275,18 @@ struct DmcMotorStatus {
     DmcHeader header;
     uint32_t  motor_status;
     uint8_t   dmx_status;
+
+    DmcMotorStatus(uint32_t id, uint32_t motor_status, uint8_t dmx_status) 
+        : header(id, DMC_MSG_MOTOR_STATUS | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcMotorStatus))
+        , motor_status(motor_status)
+        , dmx_status(dmx_status)
+    {}
 };
 
 struct DmcMotorMove {
     DmcHeader header;
     uint8_t   motor;
-    uint32_t  position;
+    int32_t   position;
 };
 
 struct DmcMotorMoveResponse {
@@ -297,20 +312,28 @@ struct DmcMotorStopAll {
 struct DmcMotorGetPosition {
     DmcHeader header;
     uint32_t  move_time;
-    uint32_t  motor_positions[MOTOR_COUNT];
+    int32_t   motor_positions[MOTOR_COUNT];
+
+    DmcMotorGetPosition(uint32_t id, uint32_t move_time, int32_t *motor_positions)
+        : header(id, DMC_MSG_MOTOR_GET_POSITION | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcMotorGetPosition))
+        , move_time(move_time)
+        , motor_positions()
+    {
+        memcpy(this->motor_positions, motor_positions, sizeof(int32_t) * MOTOR_COUNT);
+    }
 };
 
 struct DmcMotorResetPosition {
     DmcHeader header;
     uint8_t   motor;
-    uint32_t  position;
+    int32_t   position;
 };
 
 struct DmcMotorJog {
     DmcHeader header;
     uint8_t   motor;
     uint16_t  speed;
-    uint32_t  destination;
+    int32_t  destination;
 };
 
 struct DmcMotorConfigure {
@@ -340,6 +363,12 @@ struct DmcMotorHardStop {
     DmcHeader header;
     uint8_t   reason;
     uint8_t   motor;
+
+    DmcMotorHardStop(uint32_t id, uint8_t reason, uint8_t motor)
+        : header(id, DMC_MSG_MOTOR_HARD_STOP | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcMotorHardStop))
+        , reason(reason)
+        , motor(motor)
+    {}
 };
 
 struct DmcRtUploadMoveBegin {
@@ -494,7 +523,7 @@ struct DmcVirtConfigSwingPan {
 struct DmcVirtMove {
     DmcHeader header;
     uint8_t   motor;
-    uint32_t  position;
+    float     position;
 };
 
 struct DmcVirtStop {
@@ -506,7 +535,7 @@ struct DmcVirtJog {
     DmcHeader header;
     uint8_t   motor;
     uint16_t  speed;
-    uint32_t  destination;
+    int32_t   destination; // step position
 };
 
 struct DmcVirtJogOnLine {
@@ -517,16 +546,40 @@ struct DmcVirtJogOnLine {
 
 struct DmcVirtGetPosition {
     DmcHeader header;
-    uint32_t  track;
-    uint32_t  EW;
-    uint32_t  NS;
-    uint32_t  pan;
-    uint32_t  tilt;
-    uint32_t  roll;
+    float     track;
+    float     EW;
+    float     NS;
+    float     pan;
+    float     tilt;
+    float     roll;
     uint8_t   aim_point;
-    uint32_t  aim_x;
-    uint32_t  aim_y;
-    uint32_t  aim_z;
+    float     aim_x;
+    float     aim_y;
+    float     aim_z;
+
+    DmcVirtGetPosition(uint32_t id,
+                       float track,
+                       float EW,
+                       float NS,
+                       float pan,
+                       float tilt,
+                       float roll,
+                       uint8_t aim_point,
+                       float aim_x,
+                       float aim_y,
+                       float aim_z)
+        : header(id, DMC_MSG_VIRT_GET_POSITION | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcVirtGetPosition))
+        , track(track)
+        , EW(EW)
+        , NS(NS)
+        , pan(pan)
+        , tilt(tilt)
+        , roll(roll)
+        , aim_point(aim_point)
+        , aim_x(aim_x)
+        , aim_y(aim_y)
+        , aim_z(aim_z)
+    {}
 
     bool have_aim_point() {
         return sizeof(DmcVirtGetPosition) == header.length;
@@ -536,9 +589,9 @@ struct DmcVirtGetPosition {
 struct DmcVirtAimPoint {
     DmcHeader header;
     uint8_t   enable;
-    uint32_t  aim_x;
-    uint32_t  aim_y;
-    uint32_t  aim_z;
+    float     aim_x;
+    float     aim_y;
+    float     aim_z;
 };
 
 #pragma pack(pop)
@@ -571,41 +624,41 @@ private:
     static uint16_t checkbytes(uint16_t checksum);
     void packet_switch(void *buffer, size_t length);
 
-    virtual void on_ack(DmcAck *ack) = 0;
-    virtual void on_hi(DmcHi *hi) = 0;
-    virtual void on_dmx(DmcDmx *dmx) = 0;
-    virtual void on_gio_out(DmcGioOut *gio_out) = 0;
-    virtual void on_gio_in(DmcGioIn *gio_in) = 0;
-    virtual void on_gio_cam(DmcGioCam *gio_cam) = 0;
-    virtual void on_motor_status(DmcMotorStatus *motor_status) = 0;
-    virtual void on_motor_move(DmcMotorMove *motor_move) = 0;
-    virtual void on_motor_stop(DmcMotorStop *motor_stop) = 0;
-    virtual void on_motor_stop_all(DmcMotorStopAll *motor_stop_all) = 0;
-    virtual void on_motor_get_position(DmcMotorGetPosition *motor_get_position) = 0;
-    virtual void on_motor_reset_position(DmcMotorResetPosition *motor_reset_position) = 0;
-    virtual void on_motor_jog(DmcMotorJog *motor_jog) = 0;
+    virtual void on_ack(DmcAck *packet) = 0;
+    virtual void on_hi(DmcHi *packet) = 0;
+    virtual void on_dmx(DmcDmx *packet) = 0;
+    virtual void on_gio_out(DmcGioOut *packet) = 0;
+    virtual void on_gio_in(DmcAck *packet) = 0;
+    virtual void on_gio_cam(DmcGioCam *packet) = 0;
+    virtual void on_motor_status(DmcAck *packet) = 0;
+    virtual void on_motor_move(DmcMotorMove *packet) = 0;
+    virtual void on_motor_stop(DmcMotorStop *packet) = 0;
+    virtual void on_motor_stop_all(DmcMotorStopAll *packet) = 0;
+    virtual void on_motor_get_position(DmcAck *packet) = 0;
+    virtual void on_motor_reset_position(DmcMotorResetPosition *packet) = 0;
+    virtual void on_motor_jog(DmcMotorJog *packet) = 0;
     virtual void on_motor_configure(DmcMotorConfigure *packet) = 0;
     virtual void on_motor_set_speed(DmcMotorSetSpeed *packet) = 0;
     virtual void on_motor_set_limits(DmcMotorSetLimits *packet) = 0;
-    virtual void on_motor_hard_stop(DmcMotorHardStop *packet) = 0;
+    virtual void on_motor_hard_stop(DmcAck *packet) = 0;
     virtual void on_rt_upload_move_begin(DmcRtUploadMoveBegin *packet) = 0;
     virtual void on_rt_upload_move_axis(DmcRtUploadMoveAxis *packet) = 0;
     virtual void on_rt_upload_move_dmx(DmcRtUploadMoveDmx *packet) = 0;
-    virtual void on_rt_upload_move_end(DmcRtUploadMoveEnd *packet) = 0;
     virtual void on_rt_upload_move_triggers(DmcRtUploadMoveTriggers *packet) = 0;
+    virtual void on_rt_upload_move_end(DmcRtUploadMoveEnd *packet) = 0;
     virtual void on_rt_position_frame(DmcRtPositionFrame *packet) = 0;
     virtual void on_rt_run_move(DmcRtRunMove *packet) = 0;
     virtual void on_rt_shoot_frame(DmcRtShootFrame *packet) = 0;
     virtual void on_rt_shoot_frame_2(DmcRtShootFrame2 *packet) = 0;
     virtual void on_rt_go(DmcRtGo *packet) = 0;
     virtual void on_rt_end(DmcRtEnd *packet) = 0;
-    virtual void on_rt_stop_loop(DmcRtStopLoop *packet) = 0;
     virtual void on_rt_jog_all(DmcRtJogAll *packet) = 0;
+    virtual void on_rt_stop_loop(DmcRtStopLoop *packet) = 0;
     virtual void on_virt_config(DmcVirtConfig *packet) = 0;
     virtual void on_virt_move(DmcVirtMove *packet) = 0;
     virtual void on_virt_stop(DmcVirtStop *packet) = 0;
     virtual void on_virt_jog(DmcVirtJog *packet) = 0;
-    virtual void on_virt_get_position(DmcVirtGetPosition *packet) = 0;
+    virtual void on_virt_get_position(DmcAck *packet) = 0;
     virtual void on_virt_jog_on_line(DmcVirtJogOnLine *packet) = 0;
     virtual void on_virt_aim_point(DmcVirtAimPoint *packet) = 0;
     virtual void on_unknown(DmcHeader *packet) = 0;

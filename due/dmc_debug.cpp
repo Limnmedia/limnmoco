@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "dmc_debug.hpp"
+#include "conv.hpp"
 
 // when we are stubbing dragonframe we need to play along with the
 // protocol. and send back dummy data as if we are doing real work.
@@ -12,11 +13,63 @@
 DmcDebug::DmcDebug() 
     : DmcStream()
     , debug_stream(nullptr)
-    , stub_device()
     , tx_buffer()
     , tx_head(0)
     , tx_tail(0)
+    , stub_device(
+        DEVICE_NAME,
+        FW_MAJOR,
+        FW_MINOR,
+        FW_REV,
+        MOTOR_COUNT,
+        DMX_COUNT,
+        GIO_OUT,
+        GIO_IN,
+        HW_LIMIT,
+        FRAME_COUNT,
+        CAPABILITIES,
+        PROTOCOL_VERSION
+    )
+    , stub_gio_in(
+        0,
+        0
+    )
+    , stub_motor_status(
+        0,
+        0,
+        0
+    )
+    , stub_motor_move_response(
+        0,
+        1
+    )
+    , stub_motor_positions()
+    , stub_motor_get_position(
+        0,
+        0,
+        stub_motor_positions
+    )
+    , stub_motor_hard_stop(
+        0,
+        0,
+        0
+    )
+    , stub_virt_get_position(
+        0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1,
+        0.0,
+        0.0,
+        1.0
+    )
 {
+    memset(stub_motor_positions, 0, sizeof(int32_t) * MOTOR_COUNT);
+    memcpy(stub_motor_get_position.motor_positions, stub_motor_positions, sizeof(int32_t) * MOTOR_COUNT);
     memset(tx_buffer, 0, tx_length);
 }
 
@@ -62,12 +115,12 @@ void DmcDebug::transmitDebug() {
     // we know the array is larger than 32, but that isn't generic.
     available = tx_tail - tx_head;
     amount = (32 - amount);
-    amount = (available <= amount) ? available : amount);
+    amount = (available <= amount) ? available : amount;
     debug_stream->write(tx_buffer + tx_head, amount);
     tx_head = (tx_head + amount) % tx_length;
 }
 
-void DmcDebug::enqueueDebug(char const *str, size_t length) {
+void DmcDebug::enqueueDebug(uint8_t *str, size_t length) {
     if (tx_tail == tx_head) {
         return; // tx buffer full, dropping string
     }
@@ -93,7 +146,7 @@ void DmcDebug::enqueueDebug(char const *str, size_t length) {
     size_t empty  = tx_length - filled;
     if (empty < length) { return; }
 
-    size_t available = (tx_buffer + tx_length) - tx_tail;
+    size_t available = tx_length - tx_tail;
     if (available < length) {
         // there is enough space between the tail and the end to 
         // fit the string
@@ -131,8 +184,8 @@ void DmcDebug::print(int32_t value) {
 void DmcDebug::print(float value) {
     uint32_t length = strlenf(value);
     uint8_t  buffer[length];
-    convf(buffer, length, value, 10);
-    equeueDebug(buffer, length);
+    convf(buffer, length, value);
+    enqueueDebug(buffer, length);
 }
 
 void DmcDebug::print(char const *cstr) {
@@ -141,7 +194,7 @@ void DmcDebug::print(char const *cstr) {
 }
 
 void DmcDebug::print(char c) {
-    enqueueDebug(&c, 1);
+    enqueueDebug((uint8_t *)&c, 1);
 }
 
 void DmcDebug::print(char const *field, uint32_t value) {
@@ -165,7 +218,7 @@ void DmcDebug::print(char const *field, float value) {
     print('\n');
 }
 
-void DmcDebug::print(uint8_t major, uint8_t minor, uint8_t rev) {
+void DmcDebug::print(uint32_t major, uint32_t minor, uint32_t rev) {
     print("version = ");
     print(major);
     print('.');
@@ -175,7 +228,25 @@ void DmcDebug::print(uint8_t major, uint8_t minor, uint8_t rev) {
     print('\n');
 }
 
-void DmcDebug::print(char const *field, size_t index, uint32_t value) {
+void DmcDebug::print(char const *field, uint32_t index, uint32_t value) {
+    print(field);
+    print('[');
+    print(index);
+    print("] = ");
+    print(value);
+    print('\n');
+}
+
+void DmcDebug::print(char const *field, uint32_t index, int32_t value) {
+    print(field);
+    print('[');
+    print(index);
+    print("] = ");
+    print(value);
+    print('\n');
+}
+
+void DmcDebug::print(char const *field, uint32_t index, float value) {
     print(field);
     print('[');
     print(index);
@@ -243,11 +314,13 @@ void DmcDebug::print(DmcHeader &header) {
     case DMC_MSG_VIRT_AIM_POINT:          print("type", "virt_aim_point"); break;
     default:                              print("type", "unknown"); break;
     }
-    print("length", header.length);
+    print("length", (uint32_t)header.length);
 }
 
 
 void DmcDebug::on_ack(DmcAck *ack) {
+    // #NOTE: I don't expect Dragonframe to ever send an 
+    // acknowledge packet on it's own.
     print(ack->header);
     switch (ack->response_code) {
     case DMC_ACK_OK:                  print("ack", "ok"); break;
@@ -271,29 +344,29 @@ void DmcDebug::on_ack(DmcAck *ack) {
 void DmcDebug::on_hi(DmcHi *packet) {
     print(packet->header);
     if (packet->header.length > DMC_MSG_DATA_LENGTH(DmcHi)) {
-        DmcHiResponse *packet = reinterpret_cast<DmcHiResponse *>(packet);
+        DmcDevice *packet = reinterpret_cast<DmcDevice *>(packet);
         print("name",               packet->name, sizeof(packet->name));
-        print("version",            packet->fw_major, packet->fw_minor, packet->fw_rev);
-        print("motor_count",        packet->motor_count);
-        print("dmx_count",          packet->dmx_count);
-        print("gio_out_count",      packet->gio_out_count);
-        print("gio_in_count",       packet->gio_in_count);
-        print("hw_limit_count",     packet->hw_limit_count);
+        print(packet->fw_major, packet->fw_minor, packet->fw_rev);
+        print("motor_count",        (uint32_t)packet->motor_count);
+        print("dmx_count",          (uint32_t)packet->dmx_count);
+        print("gio_out_count",      (uint32_t)packet->gio_out_count);
+        print("gio_in_count",       (uint32_t)packet->gio_in_count);
+        print("hw_limit_count",     (uint32_t)packet->hw_limit_count);
         print("upload_frame_count", packet->upload_frame_count);
         print("capabilities",       packet->capabilities);
-        print("protocol_version",   packet->protocol_version);
+        print("protocol_version",   (uint32_t)packet->protocol_version);
     }
 
-    this->hi();
+    enqueue(&stub_device, sizeof(DmcDevice));
 }
 
 void DmcDebug::on_dmx(DmcDmx *packet) {
     print(packet->header);
-    print("ramp", packet->ramp);
-    print("start_channel", packet->start_channel);
+    print("ramp", (uint32_t)packet->ramp);
+    print("start_channel", (uint32_t)packet->start_channel);
     size_t length = packet->header.length - sizeof(byte) - sizeof(word);
     for (size_t i = 0; i < length; ++i) {
-        print("light_value", i, packet->light_values[i]);
+        print("light_value", i, (uint32_t)packet->light_values[i]);
     }
 
     ack(packet->header, DMC_ACK_OK);
@@ -301,101 +374,141 @@ void DmcDebug::on_dmx(DmcDmx *packet) {
 
 void DmcDebug::on_gio_out(DmcGioOut *packet) {
     print(packet->header);
-    print("triggers", packet->triggers, Format::hexidecimal);
+    print("triggers", packet->triggers);
+
     ack(packet->header, DMC_ACK_OK);
 }
 
-void DmcDebug::on_gio_in(DmcGioIn *packet) {
+void DmcDebug::on_gio_in(DmcAck *packet) {
     print(packet->header);
-    print("triggers", packet->triggers, Format::hexidecimal);
-    ack(packet->header, DMC_ACK_OK);
+    print("response_code", (uint32_t)packet->response_code);
+
+    // the size of a GIO_IN packet == sizeof ACK packet
+    // and the Dragonframe Request packet will have the 
+    // type "DMC_MSG_GIO_ACK", so there is no way to tell 
+    // the difference between a message from dragonframe
+    // and a message from limnmoco here.
+    // "triggers will be equal to response code if it is
+    // coming from limnmoco". Yes. and triggers could be 
+    // equal to response code when coming from dragonframe
+    // through coincidence. (I think we will be interpreting 
+    // the checkbytes as if they are the response code
+    // when we read a packet from dragonframe.)
+    // it's fine, just make a note of it.
+    if (packet->header.length == DMC_MSG_DATA_LENGTH(DmcGioIn)) {
+        DmcGioIn *packet = reinterpret_cast<DmcGioIn *>(packet);
+        print("triggers", packet->triggers);
+    }
+    
+    enqueue(&stub_gio_in, sizeof(DmcGioIn));
 }
 
 void DmcDebug::on_gio_cam(DmcGioCam *packet) {
     print(packet->header);
-    print("triggers", packet->triggers, Format::hexidecimal);
+    print("triggers.cam_shutter", (packet->triggers & DMC_GIO_CAM_SHUTTER_FLAG) ? "enable" : "disable"); 
+    print("triggers.cam_meter", (packet->triggers & DMC_GIO_CAM_METER_FLAG) ? "enable" : "disable");
+
     ack(packet->header, DMC_ACK_OK);
 }
 
-void DmcDebug::on_motor_status(DmcMotorStatus *packet) {
-    // this format is the response data
-    // the request is just a header + checkbytes from DF
-    // since we know DF will send an empty packet for requesting 
-    // the motor status. and we know that Limnmoco will send the 
-    // it's actual motor status. and we know we need to stub 
-    // dragonframe with a fake motor status. if we 
+void DmcDebug::on_motor_status(DmcAck *packet) {
     print(packet->header);
-    print("motor_status", packet->motor_status ? "moving" : "stopped");
-    print("dmx_status", packet->dmx_status ? "adjusting" : "stopped");
+    print("response_code", (uint32_t)packet->response_code);
+
+    if (packet->header.length == DMC_MSG_DATA_LENGTH(DmcMotorStatus)) {
+        DmcMotorStatus *packet = reinterpret_cast<DmcMotorStatus *>(packet);
+        print("motor_status", packet->motor_status ? "moving" : "stopped");
+        print("dmx_status", packet->dmx_status ? "adjusting" : "stopped");
+    }
+
+    enqueue(&stub_motor_status, sizeof(DmcMotorStatus));
 }
 
 void DmcDebug::on_motor_move(DmcMotorMove *packet) {
-    // the response packet is needed
     print(packet->header);
-    print("motor", packet->motor);
-    print("position", packet->position, Format::sign);
+    print("motor", (uint32_t)packet->motor);
+    print("position", packet->position);
+
+    enqueue(&stub_motor_move_response, sizeof(DmcMotorMoveResponse));
 }
 
 void DmcDebug::on_motor_stop(DmcMotorStop *packet) {
     print(packet->header);
-    print("motor", packet->motor);
+    print("motor", (uint32_t)packet->motor);
+
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_motor_stop_all(DmcMotorStopAll *packet) {
     print(packet->header);
     print("flags", packet->flags ? "silent" : "warning");
+    
     ack(packet->header, DMC_ACK_OK);
 }
 
-void DmcDebug::on_motor_get_position(DmcMotorGetPosition *packet) {
-    // this format is the response data.
-    // the request is just a header + checkbytes from DF
+void DmcDebug::on_motor_get_position(DmcAck *packet) {
     print(packet->header);
-    print("move_time", packet->move_time);
-    for (size_t i = 0; i < MOTOR_COUNT; ++i) {
-        print("motor_position", i, packet->motor_positions[i]);
+
+    // Dragonframe will only send an Ack packet, however 
+    // when we are watching the Limnmoco, it will send out 
+    // the full DmcMotorGetPosition packet. in order to 
+    // properly handle that we could check the size reported 
+    // by the header. Presumably Dragonframe will send a small 
+    // Ack packet, and Limnmoco will send a full DmcMotorGetPosition
+    if (packet->header.length == DMC_MSG_DATA_LENGTH(DmcMotorGetPosition)) {
+        // we are reading a packet from the Limnmoco
+        DmcMotorGetPosition *packet = reinterpret_cast<DmcMotorGetPosition *>(packet);
+        print("move_time", packet->move_time);
+        for (uint8_t i = 0; i < MOTOR_COUNT; ++i) {
+            print("motor_positions", i, packet->motor_positions[i]);
+        }
     }
+
+    enqueue(&stub_motor_get_position, sizeof(DmcMotorGetPosition));
 }
 
 void DmcDebug::on_motor_reset_position(DmcMotorResetPosition *packet) {
     print(packet->header);
-    print("motor", packet->motor);
-    print("position", packet->position, Format::sign);
+    print("motor", (uint32_t)packet->motor);
+    print("position", packet->position);
+
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_motor_jog(DmcMotorJog *packet) {
     print(packet->header);
-    print("motor", packet->motor);
-    print("speed", packet->speed);
-    print("destination", packet->destination, Format::sign);
+    print("motor", (uint32_t)packet->motor);
+    print("speed", (uint32_t)packet->speed);
+    print("destination", (int32_t)packet->destination);
+
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_motor_configure(DmcMotorConfigure *packet) {
     print(packet->header);
-    print("motor", packet->motor);
+    print("motor", (uint32_t)packet->motor);
     print("flags.config", (packet->flags & DMC_MOTOR_CONFIG_ENABLED) ? "true" : "false");
     print("flags.blur",   (packet->flags & DMC_MOTOR_CONFIG_BLUR) ? "true" : "false");
     print("flags.virt",   (packet->flags & DMC_MOTOR_CONFIG_VIRT) ? "true" : "false");
     print("flags.live_control", (packet->flags & DMC_MOTOR_CONFIG_LIVE_CONTROL) ? "true" : "false");
     print("flags.couple", (packet->flags & DMC_MOTOR_CONFIG_COUPLE) ? "true" : "false");
     print("flags.couple_r", (packet->flags & DMC_MOTOR_CONFIG_COUPLE_R) ? "true" : "false");
+
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_motor_set_speed(DmcMotorSetSpeed *packet) {
     print(packet->header);
-    print("motor", packet->motor);
+    print("motor", (uint32_t)packet->motor);
     print("max_velocity (steps/second)", packet->max_velocity);
     print("max_acceleration (steps/second/second)", packet->max_acceleration);
+
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_motor_set_limits(DmcMotorSetLimits *packet) {
     print(packet->header);
-    print("motor", packet->motor);
+    print("motor", (uint32_t)packet->motor);
     print("lower_enable", packet->lower_enable ? "true" : "false");
     print("lower_limit", packet->lower_limit);
     print("upper_enable", packet->upper_enable ? "true" : "false");
@@ -407,42 +520,50 @@ void DmcDebug::on_motor_set_limits(DmcMotorSetLimits *packet) {
     uint8_t hard = (packet->hw_set & ~0x80);
     print("hw_set", hard ? "hard" : "soft");
     print("swap high/low", swap ? "true" : "false");
+
     ack(packet->header, DMC_ACK_OK);
 }
 
-void DmcDebug::on_motor_hard_stop(DmcMotorHardStop *packet) {
+void DmcDebug::on_motor_hard_stop(DmcAck *packet) {
     print(packet->header);
-    switch (packet->reason) {
-    case DMC_MSG_HARD_STOP_REASON_UPPER:
-        print("reason", "upper");
-        break;
 
-    case DMC_MSG_HARD_STOP_REASON_LOWER:
-        print("reason", "lower");
-        break;
+    if (packet->header.length > DMC_MSG_DATA_LENGTH(DmcAck)) {
+        DmcMotorHardStop *packet = reinterpret_cast<DmcMotorHardStop *>(packet);
+        switch (packet->reason) {
+        case DMC_MSG_HARD_STOP_REASON_UPPER:
+            print("reason", "upper");
+            break;
 
-    case DMC_MSG_HARD_STOP_REASON_EXCEPTION:
-        print("reason", "exception");
-        break;
+        case DMC_MSG_HARD_STOP_REASON_LOWER:
+            print("reason", "lower");
+            break;
 
-    case DMC_MSG_HARD_STOP_REASON_GENERAL:
-    default:
-        print("reason", "general");
-        break;
+        case DMC_MSG_HARD_STOP_REASON_EXCEPTION:
+            print("reason", "exception");
+            break;
+
+        case DMC_MSG_HARD_STOP_REASON_GENERAL:
+        default:
+            print("reason", "general");
+            break;
+        }
+        print("motor", (uint32_t)packet->motor);
     }
-    print("motor", packet->motor);
+
+    enqueue(&stub_motor_hard_stop, sizeof(stub_motor_hard_stop));
 }
 
 void DmcDebug::on_rt_upload_move_begin(DmcRtUploadMoveBegin *packet) {
     print(packet->header);
     print("start_frame", packet->start_frame);
     print("end_frame", packet->end_frame);
+
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_rt_upload_move_axis(DmcRtUploadMoveAxis *packet) {
     print(packet->header);
-    print("motor", packet->motor);
+    print("motor", (uint32_t)packet->motor);
     print("start_index", packet->start_index);
     size_t length = (packet->header.length - sizeof(packet->motor) - sizeof(packet->start_index));
     size_t count  = length / sizeof(packet->positions[0]);
@@ -454,24 +575,19 @@ void DmcDebug::on_rt_upload_move_axis(DmcRtUploadMoveAxis *packet) {
 
 void DmcDebug::on_rt_upload_move_dmx(DmcRtUploadMoveDmx *packet) {
     print(packet->header);
-    print("channel", packet->channel);
+    print("channel", (uint32_t)packet->channel);
     print("start_index", packet->start_index);
     size_t length = packet->header.length - sizeof(packet->channel) - sizeof(packet->start_index);
     size_t count  = length / sizeof(packet->light_levels[0]);
     for (size_t i = 0; i < count; ++i) {
-        print("light_levels", i, packet->light_levels[i]);
+        print("light_levels", i, (uint32_t)packet->light_levels[i]);
     }
-    ack(packet->header, DMC_ACK_OK);
-}
-
-void DmcDebug::on_rt_upload_move_end(DmcRtUploadMoveEnd *packet) {
-    print(packet->header);
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_rt_upload_move_triggers(DmcRtUploadMoveTriggers *packet) {
     print(packet->header);
-    print("mask", packet->mask, Format::hexidecimal);
+    print("mask", (uint32_t)packet->mask);
     size_t length = packet->header.length - sizeof(packet->mask);
     size_t count  = length / sizeof(packet->move_frame_values[0]);
     for (size_t i = 0; i < count; ++i) {
@@ -482,9 +598,15 @@ void DmcDebug::on_rt_upload_move_triggers(DmcRtUploadMoveTriggers *packet) {
     ack(packet->header, DMC_ACK_OK);
 }
 
+void DmcDebug::on_rt_upload_move_end(DmcRtUploadMoveEnd *packet) {
+    print(packet->header);
+    ack(packet->header, DMC_ACK_OK);
+}
+
 void DmcDebug::on_rt_position_frame(DmcRtPositionFrame *packet) {
     print(packet->header);
     print("frame", packet->frame);
+
     ack(packet->header, DMC_ACK_OK);
 }
 
@@ -497,8 +619,8 @@ void DmcDebug::on_rt_run_move(DmcRtRunMove *packet) {
     print("post_roll_time", packet->post_roll_time);
     print("sync_dmx", packet->sync_dmx ? "true" : "false");
     print("bloop_location", packet->bloop_location);
-    print("bloop_dmx_channel", packet->bloop_dmx_channel);
-    print("bloop_time", packet->bloop_time);
+    print("bloop_dmx_channel", (uint32_t)packet->bloop_dmx_channel);
+    print("bloop_time", (uint32_t)packet->bloop_time);
     switch (packet->flags) {
     case DMC_MSG_RT_RUN_MOVE_FLAGS_PING_PONG:
         print("flags", "ping_pong");
@@ -512,6 +634,7 @@ void DmcDebug::on_rt_run_move(DmcRtRunMove *packet) {
         print("flags", "none");
         break;
     }
+
     ack(packet->header, DMC_ACK_OK);
 }
 
@@ -520,7 +643,7 @@ void DmcDebug::on_rt_shoot_frame(DmcRtShootFrame *packet) {
     print("frame", packet->frame);
     print("direction", packet->direction ? "forward" : "backward");
     print("exposure_time", packet->exposure_time);
-    print("blur_percent", packet->blur_percent / DMC_MSG_RT_SHOOT_FRAME_BLUR_PERCENT_SCALE);
+    print("blur_percent", (uint32_t)packet->blur_percent / DMC_MSG_RT_SHOOT_FRAME_BLUR_PERCENT_SCALE);
     size_t length = packet->header.length - sizeof(packet->frame) 
                                           - sizeof(packet->direction) 
                                           - sizeof(packet->exposure_time)
@@ -528,10 +651,11 @@ void DmcDebug::on_rt_shoot_frame(DmcRtShootFrame *packet) {
     size_t count = length / sizeof(ShootFrameMotorBlur);
     for (size_t i = 0; i < count; ++i) {
         ShootFrameMotorBlur blur = packet->motor_blur[i];
-        print("blur.motor", blur.motor);
+        print("blur.motor", (uint32_t)blur.motor);
         print("blur.position_A", blur.position_A);
         print("blur.position_B", blur.position_B);
     }
+
     ack(packet->header, DMC_ACK_OK);
 }
 
@@ -539,8 +663,8 @@ void DmcDebug::on_rt_shoot_frame_2(DmcRtShootFrame2 *packet) {
     print(packet->header);
     print("frame", packet->frame);
     print("exposure_time", packet->exposure_time);
-    print("open_angle", packet->open_angle);
-    print("close_angle", packet->close_angle);
+    print("open_angle", (uint32_t)packet->open_angle);
+    print("close_angle", (uint32_t)packet->close_angle);
     size_t length = packet->header.length - sizeof(packet->frame)
                                           - sizeof(packet->exposure_time)
                                           - sizeof(packet->open_angle)
@@ -548,23 +672,20 @@ void DmcDebug::on_rt_shoot_frame_2(DmcRtShootFrame2 *packet) {
     size_t count = length / sizeof(ShootFrameMotorBlur);
     for (size_t i = 0; i < count; ++i) {
         ShootFrameMotorBlur blur = packet->motor_blur[i];
-        print("blur.motor", blur.motor);
+        print("blur.motor", (uint32_t)blur.motor);
         print("blur.position_A", blur.position_A);
         print("blur.position_B", blur.position_B);
     }
+
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_rt_go(DmcRtGo *packet) {
     print(packet->header);
-    ack(pcaket->header, DMC_ACK_OK);
+    ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_rt_end(DmcRtEnd *packet) {
-    print(packet->header);
-}
-
-void DmcDebug::on_rt_stop_loop(DmcRtStopLoop *packet) {
     print(packet->header);
     ack(packet->header, DMC_ACK_OK);
 }
@@ -573,6 +694,13 @@ void DmcDebug::on_rt_jog_all(DmcRtJogAll *packet) {
     print(packet->header);
     print("fps", packet->fps);
     print("destination", packet->destination);
+
+    ack(packet->header, DMC_ACK_OK);
+}
+
+void DmcDebug::on_rt_stop_loop(DmcRtStopLoop *packet) {
+    print(packet->header);
+
     ack(packet->header, DMC_ACK_OK);
 }
 
@@ -584,32 +712,32 @@ void DmcDebug::on_virt_config(DmcVirtConfig *packet) {
         print("type", "boom-swing-track");
         print("boom_motor", bst->boom_motor);
         print("boom_spu", bst->boom_spu);
-        print("boom_position", bst->boom_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
+        print("boom_position", (float)bst->boom_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
         print("swing_motor", bst->swing_motor);
         print("swing_spu", bst->swing_spu);
-        print("swing_position", bst->swing_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
+        print("swing_position", (float)bst->swing_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
         print("track_motor", bst->track_motor);
         print("track_spu", bst->track_spu);
-        print("track_position", bst->track_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
+        print("track_position", (float)bst->track_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
         print("pan_motor", bst->pan_motor);
         print("pan_spu", bst->pan_spu);
-        print("pan_position", bst->pan_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
+        print("pan_position", (float)bst->pan_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
         print("tilt_motor", bst->tilt_motor);
         print("tilt_spu", bst->tilt_spu);
-        print("tilt_position", bst->tilt_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
+        print("tilt_position", (float)bst->tilt_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
         print("roll_motor", bst->roll_motor);
         print("roll_spu", bst->roll_spu);
-        print("roll_position", bst->roll_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
-        print("boom_length", bst->boom_length / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
-        print("boom_extension", bst->boom_extension / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
-        print("nodal_offset_x", bst->nodal_offset_x / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
-        print("nodal_offset_y", bst->nodal_offset_y / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
-        print("nodal_offset_z", bst->nodal_offset_z / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
+        print("roll_position", (float)bst->roll_position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
+        print("boom_length", (float)bst->boom_length / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
+        print("boom_extension", (float)bst->boom_extension / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
+        print("nodal_offset_x", (float)bst->nodal_offset_x / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
+        print("nodal_offset_y", (float)bst->nodal_offset_y / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
+        print("nodal_offset_z", (float)bst->nodal_offset_z / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
         if (bst->have_compensation()) {
             for (size_t i = 0; i < DMC_BOOM_COMPENSATION_ANGLES; ++i) {
-                print("boom_compensation", i, bst->boom_compensation[i]);
+                print("boom_compensation", i, (float)bst->boom_compensation[i]);
             }
-            print("safe_distance", bst->safe_distance / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
+            print("safe_distance", (float)bst->safe_distance / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
         }
         break;
     }
@@ -628,46 +756,32 @@ void DmcDebug::on_virt_config(DmcVirtConfig *packet) {
         print("type", "unsupported");
         break;
     }
+
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_virt_move(DmcVirtMove *packet) {
     print(packet->header);
-    print("motor", packet->motor);
-    print("position", packet->position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
+    print("motor", (uint32_t)packet->motor);
+    print("position", (float)packet->position / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
+
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_virt_stop(DmcVirtStop *packet) {
     print(packet->header);
-    print("motor", packet->motor);
+    print("motor", (uint32_t)packet->motor);
+
     ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_virt_jog(DmcVirtJog *packet) {
     print(packet->header);
-    print("motor", packet->motor);
-    print("speed", packet->speed);
-    print("destination", packet->destination, Format::sign);
-    ack(packet->header, DMC_ACK_OK);
-}
+    print("motor", (uint32_t)packet->motor);
+    print("speed", (uint32_t)packet->speed);
+    print("destination", (int32_t)packet->destination);
 
-void DmcDebug::on_virt_get_position(DmcVirtGetPosition *packet) {
-    print(packet->header);
-    print("track", packet->track / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
-    print("EW", packet->EW / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
-    print("NS", packet->NS / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
-    print("pan", packet->pan / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
-    print("tilt", packet->tilt / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
-    print("roll", packet->roll / DMC_MSG_VIRT_CONFIG_POSITION_SCALE, Format::real);
-    if (packet->have_aim_point()) {
-        print("aim_point", "enabled");
-        print("aim_x", packet->aim_x / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
-        print("aim_y", packet->aim_y / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
-        print("aim_z", packet->aim_z / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
-    } else {
-        print("aim_point", "disabled");
-    }
+    ack(packet->header, DMC_ACK_OK);
 }
 
 void DmcDebug::on_virt_jog_on_line(DmcVirtJogOnLine *packet) {
@@ -697,22 +811,48 @@ void DmcDebug::on_virt_jog_on_line(DmcVirtJogOnLine *packet) {
         print("axis", "unknown");
         break;
     }
-    print("speed", packet->speed);
+    print("speed", (uint32_t)packet->speed);
+
     ack(packet->header, DMC_ACK_OK);
+}
+
+void DmcDebug::on_virt_get_position(DmcAck *packet) {
+    print(packet->header);
+
+    if (packet->header.length > DMC_MSG_DATA_LENGTH(DmcAck)) {
+        DmcVirtGetPosition *packet = reinterpret_cast<DmcVirtGetPosition *>(packet);
+        print("track", packet->track / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
+        print("EW", packet->EW / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
+        print("NS", packet->NS / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
+        print("pan", packet->pan / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
+        print("tilt", packet->tilt / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
+        print("roll", packet->roll / DMC_MSG_VIRT_CONFIG_POSITION_SCALE);
+        if (packet->have_aim_point()) {
+            print("aim_point", "enabled");
+            print("aim_x", packet->aim_x / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
+            print("aim_y", packet->aim_y / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
+            print("aim_z", packet->aim_z / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
+        } else {
+            print("aim_point", "disabled");
+        }
+    }
+
+    enqueue(&stub_virt_get_position, sizeof(DmcVirtGetPosition));
 }
 
 void DmcDebug::on_virt_aim_point(DmcVirtAimPoint *packet) {
     print(packet->header);
     print("aim_point", packet->enable ? "enabled" : "disabled");
-    print("aim_x", packet->aim_x / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
-    print("aim_y", packet->aim_y / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
-    print("aim_z", packet->aim_z / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE, Format::real);
+    print("aim_x", packet->aim_x / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
+    print("aim_y", packet->aim_y / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
+    print("aim_z", packet->aim_z / DMC_MSG_VIRT_CONFIG_LENGTH_SCALE);
 
     enqueue(packet, sizeof(*packet));
 }
 
 void DmcDebug::on_unknown(DmcHeader *packet) {
     print(*packet);
+
     ack(*packet, DMC_ACK_ERR_GENERAL);
 }
 
