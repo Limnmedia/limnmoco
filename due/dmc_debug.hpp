@@ -74,7 +74,6 @@ private:
     void on_unknown(DmcHeader *packet) override;
 
     Stream              *debug_stream;
-    DmcDevice            stub_device;
     DmcGioIn             stub_gio_in;
     DmcMotorStatus       stub_motor_status;
     DmcMotorMoveResponse stub_motor_move_response;

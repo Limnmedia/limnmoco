@@ -24,11 +24,13 @@
 #error "Make sure to target the Main core with flash split 1.5MB M7 + 0.5MB M4"
 #endif
 
-// #TODO:
-// refactor the setup function into separate functions by responsibility.
-// refactor the loop function into separate functions by responsibility.
+// #TODO: refactor the setup function into separate functions by responsibility.
+// #TODO: refactor the loop function into separate functions by responsibility.
 //   and the large if-elseif-else chain should be a dispatch table.
-//
+// #TODO: More separation of concerns into files. and this modules of the code.
+//   this should go a long way in improving the maintinence of the codebase over 
+//   time.
+
 // There are three main responsibilities of the m7 core:
 // 1. receive and process messages from Dragonframe and then respond to them.
 // 2. compute motor moves based on the received messages and the current state of the motors.
@@ -49,7 +51,25 @@
 // the outgoing messages state machine is just idle, writing message, done writing. along with a queue of messages to write.
 // the outgoing message buffer and the incoming message buffer can be statically allocated ringbuffers.
 //
-// 2.
+// 2. somputing motor moves can be accomplished with a integrator setup i believe. We have a single real number for the 
+// position velocity and acceleration of each motor, and we compute a movement from point a to point b by adding to and 
+// subtracting from the acceleration of the motor. this velocity is translated into a sequence of pulses by the m4 co-processor.
+// When we come to consideration for the virtual axis of motion, that is where we want a full vector treatment of 
+// position velocity and acceleration. and since the underlying integrator already handles point to point movement,
+// The target location is given to us, and we know the starting location. the issue is that we are asked to move in 
+// virtual space, and the translation between movement of the virtual axis and the real motor movements is what the 
+// inverse kinematics engine is for. The inverse kinematics engine will be given a set of target positions for the end effector of 
+// the crane, (the camera). and the IK engine is built to compute the target position of each motor from the target virtual position.
+//
+// 3. communication with the m4 co-processor happens via RPC. This is an amount of overhead. From reading Diyami's code I can 
+// clearly see that he is using RPC once, to communicate the position of a struct of shared memory between the processors,
+// and then each processor communicates by modifying the state of this shared memory. setting aside atomicity concerns for the 
+// moment, this is a very efficient way of processing the data. particularly so given that the m4 co-processor is entirely interrupt 
+// driven, in order to acheive it's consistent output. The m4 co-processor is essentially another state machine, this time 
+// a closed loop system, which reads inputs from the shared memory, and on state transisitons emits pulses to the motors.
+// I mean, not quite with the existing code base, that is just how I see it's implementation were I to attempt such a thing.
+// which I am, right now. anyway. This state machine is easily formalizable and verifyable by well understood methods of 
+// programming, and so I trust the efficiency and correctness of the method.
 //
 
 int killSwitchState;

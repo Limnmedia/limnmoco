@@ -240,7 +240,8 @@ struct DmcDevice {
         , capabilities(capabilities)
         , protocol_version(protocol_version)
     {
-        strncpy((char *)this->name, name, 32);
+        memset(this->name, 0, sizeof(this->name));
+        strncpy((char *)this->name, name, sizeof(this->name));
     }
 };
 
@@ -619,13 +620,12 @@ protected:
     void ack(uint32_t id, uint16_t type, uint32_t response);
     void ack(DmcHeader &header, uint32_t response);
 
-private:
     static uint16_t checksum(void *buffer, size_t length);
     static uint16_t checkbytes(uint16_t checksum);
     void packet_switch(void *buffer, size_t length);
 
     virtual void on_ack(DmcAck *packet) = 0;
-    virtual void on_hi(DmcHi *packet) = 0;
+    virtual void on_hi(DmcHi *packet);
     virtual void on_dmx(DmcDmx *packet) = 0;
     virtual void on_gio_out(DmcGioOut *packet) = 0;
     virtual void on_gio_in(DmcAck *packet) = 0;
@@ -663,17 +663,19 @@ private:
     virtual void on_virt_aim_point(DmcVirtAimPoint *packet) = 0;
     virtual void on_unknown(DmcHeader *packet) = 0;
 
-    Stream  *stream;
-    State    state;
-    size_t   index;
-    uint16_t length;
+private:
+    DmcDevice dmc_device;
+    Stream   *stream;
+    State     state;
+    size_t    index;
+    uint16_t  length;
 
     alignas(4) uint8_t rx_buffer[DMC_MSG_MAX_LENGTH];
 
     struct QueuedPacket {
       uint16_t length;
       uint16_t index;
-      uint8_t buffer[DMC_MSG_MAX_LENGTH];
+      uint8_t  buffer[DMC_MSG_MAX_LENGTH];
     };
 
     static const uint8_t tx_queue_length = 4;

@@ -2,10 +2,27 @@
 
 #include <cstring>
 
+#include "config.hpp"
 #include "dmc.hpp"
 
+#include "debug.hpp"
+
 DmcStream::DmcStream()
-    : stream(nullptr)
+    : dmc_device(
+    DEVICE_NAME,
+	FW_MAJOR,
+	FW_MINOR,
+	FW_REV,
+	MOTOR_COUNT,
+	DMX_COUNT,
+	GIO_OUT,
+	GIO_IN,
+	HW_LIMIT,
+	FRAME_COUNT,
+	CAPABILITIES,
+	PROTOCOL_VERSION
+    )
+    , stream(nullptr)
     , state(STATE_WAIT_D)
     , index(0)
     , length(0)
@@ -18,6 +35,19 @@ DmcStream::DmcStream()
 
 void DmcStream::bind(Stream &stream) {
     this->stream = &stream;
+
+    // According to the DMC Spec, the DMC device must 
+    // send a Device Capabilities Packet on bootup.
+    // This seems as good a place as any to enqueue 
+    // a DmcDevice for sending.
+    // Of course, we set up the DmcDebug to have a DmcDevice 
+    // packet ready for sending. since it's static configuration 
+    // data it makes sense to allocate on within the class 
+    // definition itself. And since it's baked into the protocol, 
+    // it also makes sense to place it into the virtual 
+    // protocol base class. where the protocol can be taken care 
+    // of in the same way for each concrete base class.
+    enqueue(&dmc_device, sizeof(DmcDevice));
 }
 
 void DmcStream::reset() {
@@ -27,11 +57,14 @@ void DmcStream::reset() {
 }
 
 void DmcStream::receive() {
+    //debug_pulse(PIN_DBG_0);
+    // #TODO: Limit ourselves to 32 bytes incoming at a time
     while (stream->available() > 0) {
         uint8_t b = stream->read();
 
         switch (state) {
         case STATE_WAIT_D: {
+            //debug_pulse(PIN_DBG_1);
             if (b == 'D') {
                 rx_buffer[index++] = b;
                 state = STATE_WAIT_F;
@@ -40,6 +73,7 @@ void DmcStream::receive() {
         }
 
         case STATE_WAIT_F: {
+            //debug_pulse(PIN_DBG_2);
             if (b == 'F') {
                 rx_buffer[index++] = b;
                 state = STATE_READ_HEADER;
@@ -52,13 +86,14 @@ void DmcStream::receive() {
                 break;
             }
             // #NOTE: The only state transition into 'F'
-            // is from 'D', and if the byte immediately following
-            // 'D' is not 'F' the packet is malformed.
+            //  is from 'D', and if the byte immediately following
+            //  'D' is not 'F' the packet is malformed.
             reset();
             break;
         }
 
         case STATE_READ_HEADER: {
+            //debug_pulse(PIN_DBG_3);
             rx_buffer[index++] = b;
 
             if (index == sizeof(DmcHeader)) {
@@ -70,12 +105,7 @@ void DmcStream::receive() {
                     break;
                 }
 
-                if (length == 0) {
-                    state = STATE_CHECKSUM;
-                } else {
-                    state = STATE_READ_PAYLOAD;
-                }
-
+                state  = STATE_READ_PAYLOAD;
                 length = total;
             }
 
@@ -83,19 +113,24 @@ void DmcStream::receive() {
         }
 
         case STATE_READ_PAYLOAD: {
+            //debug_pulse(PIN_DBG_4);
             rx_buffer[index++] = b;
-            if (index == length) {
-                state = STATE_CHECKSUM;
+
+            if (index < length) {
+                break;
             }
 
-            break;
+            state = STATE_CHECKSUM;
+            [[fallthrough]];
         }
 
         case STATE_CHECKSUM: {
             uint16_t cs = checksum(rx_buffer, length);
             if (cs == 0) {
+                //debug_pulse(PIN_DBG_5);
                 packet_switch(rx_buffer, length);
             } else {
+                //debug_pulse(PIN_DBG_6);
                 uint32_t id;
                 uint16_t type;
                 memcpy(&id, rx_buffer + 2, sizeof(uint32_t));
@@ -111,7 +146,6 @@ void DmcStream::receive() {
 }
 
 void DmcStream::transmit() {
-    // is there a packet?
     if (tx_queue_head == tx_queue_tail) {
         return;
     }
@@ -120,18 +154,22 @@ void DmcStream::transmit() {
 
     // how much left of the packet?
     int waiting = packet->length - packet->index;
+
     // only write out what we need to, or what we can, whichever is less
     int available = (32 <= waiting) ? 32 : waiting;
 
-    packet->index += stream->write(packet->buffer + packet->index, available);
-
+    while (available--) {
+        stream->write(packet->buffer[packet->index++]);
+    }
     // is the packet fully transmitted?
     if (packet->index >= packet->length) {
+        debug_pulse(PIN_DBG_4);
         tx_queue_tail = (tx_queue_tail + 1) % tx_queue_length;
     }
 }
 
 void DmcStream::enqueue(void *packet, uint16_t length) {
+    debug_pulse(PIN_DBG_3);
     uint8_t next = (tx_queue_head + 1) % tx_queue_length;
     if (next == tx_queue_tail) {
         return; // TX queue full, drop the packet
@@ -142,7 +180,7 @@ void DmcStream::enqueue(void *packet, uint16_t length) {
     QueuedPacket *slot = &tx_queue[tx_queue_head];
     memcpy(slot->buffer, packet, length);
     memcpy(slot->buffer + length, (uint8_t *)(&cb), sizeof(cb));
-    slot->length = length + 2;
+    slot->length = length + sizeof(cb);
     slot->index  = 0;
 
     tx_queue_head = next;
@@ -185,11 +223,13 @@ uint16_t DmcStream::checkbytes(uint16_t checksum) {
 }
 
 void DmcStream::packet_switch(void *buffer, size_t length) {
+    debug_pulse(PIN_DBG_0);
     DmcHeader *header = reinterpret_cast<DmcHeader *>(buffer);
 
-    switch (header->type & (~DMC_MSG_FLAG_ACK)) {
+    //switch (header->type & (~DMC_MSG_FLAG_ACK)) {
+    switch(header->type) {
         case DMC_MSG_HI:
-            on_ack(reinterpret_cast<DmcAck *>(buffer));
+            on_hi(reinterpret_cast<DmcHi *>(buffer));
             break;
 
         case DMC_MSG_DMX:
@@ -336,6 +376,12 @@ void DmcStream::packet_switch(void *buffer, size_t length) {
             on_unknown(header);
             break;
     }
+}
+
+void DmcStream::on_hi(DmcHi *hi) {
+    debug_pulse(PIN_DBG_2);
+    dmc_device.header.id = hi->header.id;
+    enqueue(&dmc_device, sizeof(DmcDevice));
 }
 
 

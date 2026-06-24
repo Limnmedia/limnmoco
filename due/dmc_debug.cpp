@@ -3,6 +3,8 @@
 #include "dmc_debug.hpp"
 #include "conv.hpp"
 
+#include "debug.hpp"
+
 // when we are stubbing dragonframe we need to play along with the
 // protocol. and send back dummy data as if we are doing real work.
 // when we are sitting alongside the limnmoco proper, we dont need
@@ -15,21 +17,7 @@ DmcDebug::DmcDebug()
     , debug_stream(nullptr)
     , tx_buffer()
     , tx_head(0)
-    , tx_tail(0)
-    , stub_device(
-        DEVICE_NAME,
-        FW_MAJOR,
-        FW_MINOR,
-        FW_REV,
-        MOTOR_COUNT,
-        DMX_COUNT,
-        GIO_OUT,
-        GIO_IN,
-        HW_LIMIT,
-        FRAME_COUNT,
-        CAPABILITIES,
-        PROTOCOL_VERSION
-    )
+    , tx_tail(0) 
     , stub_gio_in(
         0,
         0
@@ -78,6 +66,7 @@ void DmcDebug::bindDebug(Stream &stream) {
 }
 
 void DmcDebug::transmitDebug() {
+    //debug_pulse(PIN_DBG_7);
     // we transmit from head
     // we print to tail
     // so the amount we need to transmit
@@ -121,6 +110,8 @@ void DmcDebug::transmitDebug() {
 }
 
 void DmcDebug::enqueueDebug(uint8_t *str, size_t length) {
+    //debug_pulse(PIN_DBG_6);
+
     if (tx_tail == tx_head) {
         return; // tx buffer full, dropping string
     }
@@ -320,7 +311,7 @@ void DmcDebug::print(DmcHeader &header) {
 
 void DmcDebug::on_ack(DmcAck *ack) {
     // #NOTE: I don't expect Dragonframe to ever send an 
-    // acknowledge packet on it's own.
+    //  acknowledge packet on it's own.
     print(ack->header);
     switch (ack->response_code) {
     case DMC_ACK_OK:                  print("ack", "ok"); break;
@@ -342,6 +333,7 @@ void DmcDebug::on_ack(DmcAck *ack) {
 }
 
 void DmcDebug::on_hi(DmcHi *packet) {
+    debug_pulse(PIN_DBG_1);
     print(packet->header);
     if (packet->header.length > DMC_MSG_DATA_LENGTH(DmcHi)) {
         DmcDevice *packet = reinterpret_cast<DmcDevice *>(packet);
@@ -357,7 +349,7 @@ void DmcDebug::on_hi(DmcHi *packet) {
         print("protocol_version",   (uint32_t)packet->protocol_version);
     }
 
-    enqueue(&stub_device, sizeof(DmcDevice));
+    DmcStream::on_hi(packet);
 }
 
 void DmcDebug::on_dmx(DmcDmx *packet) {
@@ -851,8 +843,9 @@ void DmcDebug::on_virt_aim_point(DmcVirtAimPoint *packet) {
 }
 
 void DmcDebug::on_unknown(DmcHeader *packet) {
+    debug_pulse(PIN_DBG_0);
     print(*packet);
-
+    
     ack(*packet, DMC_ACK_ERR_GENERAL);
 }
 

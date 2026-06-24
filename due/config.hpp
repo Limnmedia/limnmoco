@@ -13,7 +13,8 @@
 #define GIO_IN           1
 #define HW_LIMIT         1
 #define FRAME_COUNT      10000
-#define CAPABILITIES     0xFFFF
+//#define CAPABILITIES     0x07FF
+#define CAPABILITIES     0x0
 #define PROTOCOL_VERSION 2
 
 #endif // !LIMNMOCO_DUE_CONFIG_HPP
