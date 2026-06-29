@@ -59,6 +59,8 @@ DmcDebug::DmcDebug()
     memset(stub_motor_positions, 0, sizeof(int32_t) * MOTOR_COUNT);
     memcpy(stub_motor_get_position.motor_positions, stub_motor_positions, sizeof(int32_t) * MOTOR_COUNT);
     memset(tx_buffer, 0, tx_length);
+
+    //print("limnmoco-debug, v0.1.1\n");
 }
 
 void DmcDebug::bindDebug(Stream &stream) {
@@ -66,15 +68,20 @@ void DmcDebug::bindDebug(Stream &stream) {
 }
 
 void DmcDebug::transmitDebug() {
-    //debug_pulse(PIN_DBG_7);
+    debug_pulse(PIN_DBG_0);
     // we transmit from head
     // we print to tail
     // so the amount we need to transmit
     // is tail - head
     // but the full condition is head === tail
     // so if tx_tail == tx_head than their difference is 0
+    if (tx_head == tx_tail) {
+        debug_pulse(PIN_DBG_1);
+        return;
+    }
 
     if (tx_head < tx_tail) {
+        debug_pulse(PIN_DBG_2);
         // the amount we need to transmit is simply
         // tail - head.
         size_t available = tx_tail - tx_head;
@@ -83,9 +90,11 @@ void DmcDebug::transmitDebug() {
         size_t amount = (available <= 32) ? available : 32;
         debug_stream->write(tx_buffer + tx_head, amount);
         tx_head = (tx_head + amount) % tx_length;
+        debug_pulse(PIN_DBG_3);
         return;
     }
 
+    debug_pulse(PIN_DBG_4);
     // tx_head >= tx_tail
     // the string left to transmit must wrap around the ring
     // the amount we can write in a single go is between head
@@ -95,26 +104,31 @@ void DmcDebug::transmitDebug() {
     debug_stream->write(tx_buffer + tx_head, amount);
     tx_head = (tx_head + amount) % tx_length;
 
+    debug_pulse(PIN_DBG_5);
     // if tx_head > tx_tail then we know we sent == 32 bytes.
     // and we must not have wrapped. so we can exit early.
-    if (tx_head > tx_tail) { return; }
+    if (tx_head > tx_tail) { 
+        return; 
+    }
     // if tx_head wrapped, then we sent < 32 bytes.
     // and tx_head < tx_tail
     // so we can write the min(whats_left_to_send, 32 - what_we_sent)
     // we know the array is larger than 32, but that isn't generic.
+    debug_pulse(PIN_DBG_6);
     available = tx_tail - tx_head;
     amount = (32 - amount);
     amount = (available <= amount) ? available : amount;
     debug_stream->write(tx_buffer + tx_head, amount);
     tx_head = (tx_head + amount) % tx_length;
+    debug_pulse(PIN_DBG_7);
 }
 
 void DmcDebug::enqueueDebug(uint8_t *str, size_t length) {
-    //debug_pulse(PIN_DBG_6);
+    debug_pulse(PIN_DBG_0);
 
-    if (tx_tail == tx_head) {
-        return; // tx buffer full, dropping string
-    }
+    //if (tx_tail == tx_head) {
+    //    return; // tx buffer full, dropping string
+    //}
     // we transmit from the head,
     // we print to the tail
     // so when we enqueue a string we are appending to the 
@@ -123,28 +137,37 @@ void DmcDebug::enqueueDebug(uint8_t *str, size_t length) {
     // we have to write the string.
 
     if (tx_head > tx_tail) {
+        debug_pulse(PIN_DBG_1);
         size_t space = tx_head - tx_tail;
         if (space < length) { return; } // not enough space
         // since head > tail, there is no need to wrap 
         // the string around the ring.
         memcpy(tx_buffer + tx_tail, str, length);
         tx_tail = (tx_tail + length) % tx_length;
+        debug_pulse(PIN_DBG_2);
         return;
     }
 
+    debug_pulse(PIN_DBG_3);
     // head < tail
     size_t filled = tx_tail - tx_head;
     size_t empty  = tx_length - filled;
-    if (empty < length) { return; }
+    if (empty < length) { 
+        return; 
+    }
 
     size_t available = tx_length - tx_tail;
     if (available < length) {
+        debug_pulse(PIN_DBG_4);
         // there is enough space between the tail and the end to 
         // fit the string
         memcpy(tx_buffer + tx_tail, str, length);
         tx_tail = (tx_tail + length) % tx_length;
+        debug_pulse(PIN_DBG_5);
         return;
     }
+    
+    debug_pulse(PIN_DBG_6);
     // we have to split the string around the ring
     // first fill the remaining space at the end of
     // the buffer.
@@ -156,11 +179,13 @@ void DmcDebug::enqueueDebug(uint8_t *str, size_t length) {
     // the buffer, thus there is no way we could have written
     // enough to need to wrap
     tx_tail = (tx_tail + length);
+    debug_pulse(PIN_DBG_7);
 }
 
 void DmcDebug::print(uint32_t value) {
     uint32_t length = strlenu(value);
     uint8_t buffer[length];
+
     convu(buffer, length, value, 10);
     enqueueDebug(buffer, length);
 }
@@ -266,7 +291,7 @@ void DmcDebug::print(char const *field, char const *str) {
 void DmcDebug::print(DmcHeader &header) {
     print("marker", header.marker, sizeof(header.marker));
     print("id", header.id);
-    switch (header.type & (~DMC_MSG_FLAG_ACK)) {
+    switch (header.type) {
     case DMC_MSG_HI:                      print("type", "hi"); break;
     case DMC_MSG_DMX:                     print("type", "dmx"); break;
     case DMC_MSG_GIO_OUT:                 print("type", "gio_out"); break;
@@ -301,7 +326,7 @@ void DmcDebug::print(DmcHeader &header) {
     case DMC_MSG_VIRT_STOP:               print("type", "virt_stop"); break;
     case DMC_MSG_VIRT_JOG:                print("type", "virt_jog"); break;
     case DMC_MSG_VIRT_GET_POSITION:       print("type", "virt_get_position"); break;
-    case DMC_MSG_VIRT_JOG_ON_LINE:        print("type", "jog_on_line"); break;
+    case DMC_MSG_VIRT_JOG_ON_LINE:        print("type", "virt_jog_on_line"); break;
     case DMC_MSG_VIRT_AIM_POINT:          print("type", "virt_aim_point"); break;
     default:                              print("type", "unknown"); break;
     }
@@ -333,7 +358,7 @@ void DmcDebug::on_ack(DmcAck *ack) {
 }
 
 void DmcDebug::on_hi(DmcHi *packet) {
-    debug_pulse(PIN_DBG_1);
+    //debug_pulse(PIN_DBG_1);
     print(packet->header);
     if (packet->header.length > DMC_MSG_DATA_LENGTH(DmcHi)) {
         DmcDevice *packet = reinterpret_cast<DmcDevice *>(packet);

@@ -227,7 +227,7 @@ struct DmcDevice {
               uint32_t upload_frame_count,
               uint32_t capabilities,
               uint16_t  protocol_version)
-        : header(0, DMC_MSG_HI | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcDevice))
+        : header(0, DMC_MSG_HI, DMC_MSG_DATA_LENGTH(DmcDevice))
         , name()
         , fw_major(fw_major)
         , fw_minor(fw_minor)
@@ -237,6 +237,7 @@ struct DmcDevice {
         , gio_out_count(gio_out_count)
         , gio_in_count(gio_in_count)
         , hw_limit_count(hw_limit_count)
+        , upload_frame_count(upload_frame_count)
         , capabilities(capabilities)
         , protocol_version(protocol_version)
     {
@@ -278,7 +279,7 @@ struct DmcMotorStatus {
     uint8_t   dmx_status;
 
     DmcMotorStatus(uint32_t id, uint32_t motor_status, uint8_t dmx_status) 
-        : header(id, DMC_MSG_MOTOR_STATUS | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcMotorStatus))
+        : header(id, DMC_MSG_MOTOR_STATUS, DMC_MSG_DATA_LENGTH(DmcMotorStatus))
         , motor_status(motor_status)
         , dmx_status(dmx_status)
     {}
@@ -295,7 +296,7 @@ struct DmcMotorMoveResponse {
     uint8_t   motor_status;
 
     DmcMotorMoveResponse(uint32_t id, uint8_t motor_status) 
-        : header(id, DMC_MSG_MOTOR_MOVE | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcMotorMoveResponse))
+        : header(id, DMC_MSG_MOTOR_MOVE, DMC_MSG_DATA_LENGTH(DmcMotorMoveResponse))
         , motor_status(motor_status)
     {}
 };
@@ -316,7 +317,7 @@ struct DmcMotorGetPosition {
     int32_t   motor_positions[MOTOR_COUNT];
 
     DmcMotorGetPosition(uint32_t id, uint32_t move_time, int32_t *motor_positions)
-        : header(id, DMC_MSG_MOTOR_GET_POSITION | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcMotorGetPosition))
+        : header(id, DMC_MSG_MOTOR_GET_POSITION, DMC_MSG_DATA_LENGTH(DmcMotorGetPosition))
         , move_time(move_time)
         , motor_positions()
     {
@@ -366,7 +367,7 @@ struct DmcMotorHardStop {
     uint8_t   motor;
 
     DmcMotorHardStop(uint32_t id, uint8_t reason, uint8_t motor)
-        : header(id, DMC_MSG_MOTOR_HARD_STOP | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcMotorHardStop))
+        : header(id, DMC_MSG_MOTOR_HARD_STOP, DMC_MSG_DATA_LENGTH(DmcMotorHardStop))
         , reason(reason)
         , motor(motor)
     {}
@@ -569,7 +570,7 @@ struct DmcVirtGetPosition {
                        float aim_x,
                        float aim_y,
                        float aim_z)
-        : header(id, DMC_MSG_VIRT_GET_POSITION | DMC_MSG_FLAG_ACK, DMC_MSG_DATA_LENGTH(DmcVirtGetPosition))
+        : header(id, DMC_MSG_VIRT_GET_POSITION, DMC_MSG_DATA_LENGTH(DmcVirtGetPosition))
         , track(track)
         , EW(EW)
         , NS(NS)
