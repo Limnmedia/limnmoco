@@ -14,6 +14,7 @@ public:
     void transmitDebug();
 
 private:
+    void enqueueDebug(uint8_t data);
     void enqueueDebug(uint8_t *str, size_t length);
 
     void print(uint8_t value);

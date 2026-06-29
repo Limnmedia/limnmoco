@@ -155,25 +155,25 @@ void DmcStream::transmit() {
     int available = (32 <= waiting) ? 32 : waiting;
     
     while (available--) {
-        debug_pulse(PIN_DBG_2);
         stream->write(packet->buffer[packet->index++]);
     }
 
-    debug_pulse(PIN_DBG_3);
+    debug_pulse(PIN_DBG_2);
     // is the packet fully transmitted?
     if (packet->index >= packet->length) {
-        debug_pulse(PIN_DBG_4);
+        debug_pulse(PIN_DBG_3);
         tx_queue_tail = (tx_queue_tail + 1) % tx_queue_length;
     }
 }
 
 void DmcStream::enqueue(void *packet, uint16_t length) {
-    //debug_pulse(PIN_DBG_3);
+    debug_pulse(PIN_DBG_0);
     uint8_t next = (tx_queue_head + 1) % tx_queue_length;
     if (next == tx_queue_tail) {
+        debug_pulse(PIN_DBG_1);
         return; // TX queue full, drop the packet
     }
-
+    debug_pulse(PIN_DBG_2);
     uint16_t cb = checkbytes(checksum(packet, length));
 
     QueuedPacket *slot = &tx_queue[tx_queue_head];
@@ -183,6 +183,7 @@ void DmcStream::enqueue(void *packet, uint16_t length) {
     slot->index  = 0;
 
     tx_queue_head = next;
+    debug_pulse(PIN_DBG_3);
 }
 
 void DmcStream::ack(uint32_t id, uint16_t type, uint32_t response) {
@@ -222,7 +223,7 @@ uint16_t DmcStream::checkbytes(uint16_t checksum) {
 }
 
 void DmcStream::packet_switch(void *buffer, size_t length) {
-    //debug_pulse(PIN_DBG_0);
+    debug_pulse(PIN_DBG_0);
     DmcHeader *header = reinterpret_cast<DmcHeader *>(buffer);
 
     //switch (header->type & (~DMC_MSG_FLAG_ACK)) {
@@ -378,7 +379,7 @@ void DmcStream::packet_switch(void *buffer, size_t length) {
 }
 
 void DmcStream::on_hi(DmcHi *hi) {
-    //debug_pulse(PIN_DBG_2);
+    debug_pulse(PIN_DBG_2);
     dmc_device.header.id = hi->header.id;
     enqueue(&dmc_device, sizeof(DmcDevice));
 }

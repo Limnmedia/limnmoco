@@ -28,7 +28,7 @@ void setup() {
 
     Serial.begin(SERIAL_BAUD);
 
-    // Serial USB transfers data in blocks of 1024, with an interval 
+    // Serial USB transfers data in blocks of 1024, with an interval
     // of some multiple of 125us
     SerialUSB.begin(SERIAL_BAUD);
     // while (!Serial || !SerialUSB) {}
