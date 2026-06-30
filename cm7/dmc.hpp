@@ -511,8 +511,9 @@ struct DmcVirtConfigBoomSwingTrack {
     uint32_t     nodal_offset_x;
     uint32_t     nodal_offset_y;
     uint32_t     nodal_offset_z;
-    uint32_t     boom_compensation[DMC_BOOM_COMPENSATION_ANGLES];
-    uint32_t     safe_distance;
+    uint8_t      data[];
+    //uint32_t     boom_compensation[DMC_BOOM_COMPENSATION_ANGLES];
+    //uint32_t     safe_distance;
 
     bool have_compensation() {
         // if the compensation table exists in the packet, then 
@@ -615,11 +616,11 @@ public:
     void receive();
     void transmit();
 
-protected:
     void enqueue(void *packet, uint16_t length);
     void ack(uint32_t id, uint16_t type, uint32_t response);
     void ack(DmcHeader &header, uint32_t response);
 
+protected:
     static uint16_t checksum(void *buffer, size_t length);
     static uint16_t checkbytes(uint16_t checksum);
     void packet_switch(void *buffer, size_t length);

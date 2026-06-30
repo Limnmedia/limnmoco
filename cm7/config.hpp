@@ -16,12 +16,14 @@
 
 #ifdef ARDUINO_ARCH_MBED_GIGA
 
+#define LIMNMOCO_DEBUG
+
 #define LIMNMOCO_DEVICE_NAME      "limnmoco"
 #define LIMNMOCO_FW_MAJOR         0
 #define LIMNMOCO_FW_MINOR         1
 #define LIMNMOCO_FW_REV           2
 #define LIMNMOCO_MOTOR_COUNT      8
-#define LIMNMOCO_DMX_COUNT        512
+#define LIMNMOCO_DMX_COUNT        0
 #define LIMNMOCO_GIO_OUT          2
 #define LIMNMOCO_GIO_IN           1
 #define LIMNMOCO_HW_LIMIT         1
@@ -37,15 +39,19 @@
 //   Using a transistor to isolate the chip from large current draw is highly reccommended.
 #define LIMNMOCO_LOGIC_OUT_0 D40
 #define LIMNMOCO_LOGIC_OUT_1 D41
+uint8_t limnmoco_logic_out[LIMNMOCO_GIO_OUT] = { D40, D41 };
 
 // #NOTE: logic input uses internal pull-up, so switch needs to connect to ground.
 #define LIMNMOCO_LOGIC_IN_0 D49
+uint8_t limnmoco_logic_in[LIMNMOCO_GIO_IN] = { D49 };
 
 // #NOTE: e-stop input uses internal pull-up, so switch needs to connect to ground.
 #define LIMNMOCO_KILL_SWITCH D48
 
 // #NOTE: e-stop switch normally closed -> 1 | normally open -> 0
 #define LIMNMOCO_KILL_SWITCH_NORMALLY_CLOSED 0
+
+#define LIMNMOCO_SERIAL_BAUD 115200
 
 #else
 #error "Board not supported for limnmoco sketch"

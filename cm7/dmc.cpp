@@ -259,7 +259,6 @@ uint16_t DmcStream::checkbytes(uint16_t checksum) {
 void DmcStream::packet_switch(void *buffer, size_t length) {
     DmcHeader *header = reinterpret_cast<DmcHeader *>(buffer);
 
-    //switch (header->type & (~DMC_MSG_FLAG_ACK)) {
     switch(header->type) {
         case DMC_MSG_HI:
             on_hi(reinterpret_cast<DmcHi *>(buffer));

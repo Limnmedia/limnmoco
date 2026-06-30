@@ -89,5 +89,83 @@ private:
     size_t              tx_tail;
 };
 
+class DmcPrint {
+public:
+    DmcPrint();
+
+    void bind(Stream &stream);
+    void transmit();
+    
+    void print(DmcHeader *header);
+    void print(DmcAck *packet);
+    void print(DmcHi *packet);
+    void print(DmcDevice *packet);
+    void print(DmcDmx *packet);
+    void print(DmcGioOut *packet);
+    void print(DmcGioIn *packet);
+    void print(DmcGioCam *packet);
+    void print(DmcMotorStatus *packet);
+    void print(DmcMotorMove *packet);
+    void print(DmcMotorMoveResponse *packet);
+    void print(DmcMotorStop *packet);
+    void print(DmcMotorStopAll *packet);
+    void print(DmcMotorGetPosition *packet);
+    void print(DmcMotorResetPosition *packet);
+    void print(DmcMotorJog *packet);
+    void print(DmcMotorConfigure *packet);
+    void print(DmcMotorSetSpeed *packet);
+    void print(DmcMotorSetLimits *packet);
+    void print(DmcMotorHardStop *packet);
+    void print(DmcRtUploadMoveBegin *packet);
+    void print(DmcRtUploadMoveAxis *packet);
+    void print(DmcRtUploadMoveDmx *packet);
+    void print(MoveFrameValue *mfv);
+    void print(DmcRtUploadMoveTriggers *packet);
+    void print(DmcRtUploadMoveEnd *packet);
+    void print(DmcRtPositionFrame *packet);
+    void print(DmcRtRunMove *packet);
+    void print(ShootFrameMotorBlur *sfmb);
+    void print(DmcShootFrame *packet);
+    void print(DmcShootFrame2 *packet);
+    void print(DmcRtGo *packet);
+    void print(DmcRtEnd *packet);
+    void print(DmcRtJogAll *packet);
+    void print(DmcRtStopLoop *packet);
+    void print(DmcVirtConfig *packet);
+    void print(DmcVirtConfigBoomSwingTrack *packet);
+    void print(DmcVirtConfigSwingPan *packet);
+    void print(DmcVirtMove *packet);
+    void print(DmcVirtStop *packet);
+    void print(DmcVirtJog *packet);
+    void print(DmcVirtJogOnLine *packet);
+    void print(DmcVirtGetPosition *packet);
+    void print(DmcVirtAimPoint *packet);
+
+private:
+    void enqueue(uint8_t data);
+    void enqueue(uint8_t *data, uint32_t length);
+
+    void enqueue(uint32_t data);
+    void enqueue(int32_t data);
+    void enqueue(float data);
+    void enqueue(char const *data);
+    
+    void enqueue(char const *field, uint32_t data);
+    void enqueue(char const *field, int32_t data);
+    void enqueue(char const *field, float data);
+    void enqueue(char const *field, uint8_t major, uint8_t minor, uint8_ rev);
+    void enqueue(char const *field, uint32_t index, uint32_t value);
+    void enqueue(char const *field, uint32_t index, int32_t value);
+    void enqueue(char const *field, uint32_t index, float value);
+    void enqueue(char const *field, char const *value);
+
+    Stream *stream;
+
+    static const uint32_t tx_length = 2048;
+    uint8_t               tx_buffer[tx_length];
+    uint32_t              tx_head;
+    uint32_t              tx_tail;
+}
+
 #endif // !LIMNMOCO_DMC_DEBUG_HPP
 

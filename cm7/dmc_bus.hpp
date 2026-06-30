@@ -3,10 +3,17 @@
 #ifndef LIMNMOCO_CM7_DMC_BUS_HPP
 #define LIMNMOCO_CM7_DMC_BUS_HPP
 
+#include "config.hpp"
 #include "dmc.hpp"
+#include "dmc_debug.hpp"
 
 class DmcBus : public DmcStream {
 public:
+
+#ifndef LIMNMOCO_DEBUG
+  void bindPrint(Stream &stream);
+  void transmitPrint();
+#endif // !LIMNMOCO_DEBUG
 
 private:
   void on_ack(DmcAck *packet) override;
@@ -47,6 +54,10 @@ private:
   void on_virt_jog_on_line(DmcVirtJogOnLine *packet) override;
   void on_virt_aim_point(DmcVirtAimPoint *packet) override;
   void on_unknown(DmcHeader *packet) override;
+
+#ifndef LIMNMOCO_DEBUG
+  DmcPrint print;
+#endif // !LIMNMOCO_DEBUG
 };
 
 #endif // !LIMNMOCO_CM7_DMC_BUS_HPP
