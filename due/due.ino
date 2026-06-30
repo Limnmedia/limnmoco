@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "dmc_debug.hpp"
 #include "debug.hpp"
@@ -26,14 +26,16 @@ void setup() {
     debug_pulse(PIN_DBG_6);
     debug_pulse(PIN_DBG_7);
 
-    Serial.begin(SERIAL_BAUD);
+    Serial1.begin(SERIAL_BAUD);
 
     // Serial USB transfers data in blocks of 1024, with an interval
     // of some multiple of 125us
     SerialUSB.begin(SERIAL_BAUD);
+    //Serial1.begin(SERIAL_BAUD);
     // while (!Serial || !SerialUSB) {}
     dmc.bind(SerialUSB);
-    dmc.bindDebug(Serial);
+    //dmc.bind(Serial1);
+    dmc.bindDebug(Serial1);
 }
 
 void loop() {
