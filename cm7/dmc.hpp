@@ -324,14 +324,14 @@ struct DmcMotorStopAll {
 struct DmcMotorGetPosition {
     DmcHeader header;
     uint32_t  move_time;
-    int32_t   motor_positions[MOTOR_COUNT];
+    int32_t   motor_positions[LIMNMOCO_MOTOR_COUNT];
 
     DmcMotorGetPosition(uint32_t id, uint32_t move_time, int32_t *motor_positions)
         : header(id, DMC_MSG_MOTOR_GET_POSITION, DMC_MSG_DATA_LENGTH(DmcMotorGetPosition))
         , move_time(move_time)
         , motor_positions()
     {
-        memcpy(this->motor_positions, motor_positions, sizeof(int32_t) * MOTOR_COUNT);
+        memcpy(this->motor_positions, motor_positions, sizeof(int32_t) * LIMNMOCO_MOTOR_COUNT);
     }
 };
 
@@ -449,7 +449,7 @@ struct DmcRtShootFrame {
     uint8_t             direction;
     uint32_t            exposure_time;
     uint16_t            blur_percent;
-    ShootFrameMotorBlur motor_blur[MOTOR_COUNT];
+    ShootFrameMotorBlur motor_blur[LIMNMOCO_MOTOR_COUNT];
 };
 
 struct DmcRtShootFrame2 {
@@ -458,7 +458,7 @@ struct DmcRtShootFrame2 {
     uint32_t            exposure_time;
     uint16_t            open_angle;
     uint16_t            close_angle;
-    ShootFrameMotorBlur motor_blur[MOTOR_COUNT];
+    ShootFrameMotorBlur motor_blur[LIMNMOCO_MOTOR_COUNT];
 };
 
 struct DmcRtGo {
@@ -621,6 +621,12 @@ public:
     void ack(DmcHeader &header, uint32_t response);
 
 protected:
+    void transmit_small();
+    void transmit_large();
+
+    void enqueue_small(void *packet, uint16_t length);
+    void enqueue_large(void *packet, uint16_t length);
+
     static uint16_t checksum(void *buffer, size_t length);
     static uint16_t checkbytes(uint16_t checksum);
     void packet_switch(void *buffer, size_t length);
@@ -695,7 +701,12 @@ private:
     uint8_t                      tx_queue_small_tail;
     alignas(4) QueuedPacketSmall tx_queue_small[tx_queue_small_length];
 
-    bool tx_large_queue_active;
+    enum ActiveTxQueue {
+        TX_SMALL,
+        TX_LARGE,
+    };
+
+    ActiveTxQueue active_tx_queue;
 };
 
 #endif // !LIMNMOCO_DMC_HPP

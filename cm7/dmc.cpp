@@ -9,18 +9,18 @@
 
 DmcStream::DmcStream()
     : dmc_device(
-    DEVICE_NAME,
-	FW_MAJOR,
-	FW_MINOR,
-	FW_REV,
-	MOTOR_COUNT,
-	DMX_COUNT,
-	GIO_OUT,
-	GIO_IN,
-	HW_LIMIT,
-	FRAME_COUNT,
-	CAPABILITIES,
-	PROTOCOL_VERSION
+    LIMNMOCO_DEVICE_NAME,
+	LIMNMOCO_FW_MAJOR,
+	LIMNMOCO_FW_MINOR,
+	LIMNMOCO_FW_REV,
+	LIMNMOCO_MOTOR_COUNT,
+	LIMNMOCO_DMX_COUNT,
+	LIMNMOCO_GIO_OUT,
+	LIMNMOCO_GIO_IN,
+	LIMNMOCO_HW_LIMIT,
+	LIMNMOCO_FRAME_COUNT,
+	LIMNMOCO_CAPABILITIES,
+	LIMNMOCO_PROTOCOL_VERSION
     )
     , stream(nullptr)
     , state(STATE_WAIT_D)
@@ -29,7 +29,7 @@ DmcStream::DmcStream()
     , tx_queue_large_head(0)
     , tx_queue_large_tail(0)
     , tx_queue_small_head(0)
-    , tx_queue_small_large(0)
+    , tx_queue_small_tail(0)
 {
     memset(rx_buffer, 0, sizeof(rx_buffer));
     memset(tx_queue_large, 0, sizeof(tx_queue_large));
@@ -135,39 +135,21 @@ void DmcStream::receive() {
 }
 
 void DmcStream::transmit() {
-    if (tx_large_queue_active) {
-        if (tx_queue_large_head == tx_queue_large_tail) {
-            tx_queue_large_active = false;
-            return;
-        }
-
-        QueuedPacketLarge *packet = &tx_queue_large[tx_queue_large_tail];
-
-        // how much left of the packet?
-        int waiting = packet->length - packet->index;
-
-        // only write out what we need to, or what we can, whichever is less
-        int available = (32 <= waiting) ? 32 : waiting;
-
-        while (available--) {
-            stream->write(packet->buffer[packet->index++]);
-        }
-
-        // is the packet fully transmitted?
-        if (packet->index >= packet->length) {
-            tx_queue_large_tail = (tx_queue_large_tail + 1) % tx_queue_large_length;
-            tx_large_queue_active = false;
-        }
-
+    if (active_tx_queue == TX_LARGE) {
+        transmit_large();
         return;
     }
 
+    transmit_small();
+}
+
+void DmcStream::transmit_small() {
     if (tx_queue_small_head == tx_queue_small_tail) {
-        tx_queue_large_active = true;
+        active_tx_queue = TX_LARGE;
         return;
     }
 
-    QueuePacketSmall *packet = &tx_queue_small[tx_queue_small_tail];
+    QueuedPacketSmall *packet = &tx_queue_small[tx_queue_small_tail];
 
     int waiting = packet->length - packet->index;
     int available = (32 <= waiting) ? 32 : waiting;
@@ -178,32 +160,46 @@ void DmcStream::transmit() {
 
     if (packet->index >= packet->length) {
         tx_queue_small_tail   = (tx_queue_small_tail + 1) % tx_queue_small_length;
-        tx_large_queue_active = true;
+        active_tx_queue = TX_LARGE;
+    }
+}
+
+void DmcStream::transmit_large() {
+    if (tx_queue_large_head == tx_queue_large_tail) {
+        active_tx_queue = TX_SMALL;
+        return;
     }
 
-    return;
+    QueuedPacketLarge *packet = &tx_queue_large[tx_queue_large_tail];
+
+    // how much left of the packet?
+    int waiting = packet->length - packet->index;
+
+    // only write out what we need to, or what we can, whichever is less
+    int available = (32 <= waiting) ? 32 : waiting;
+
+    while (available--) {
+        stream->write(packet->buffer[packet->index++]);
+    }
+
+    // is the packet fully transmitted?
+    if (packet->index >= packet->length) {
+        tx_queue_large_tail = (tx_queue_large_tail + 1) % tx_queue_large_length;
+        active_tx_queue = TX_SMALL;
+    }
 }
 
 void DmcStream::enqueue(void *packet, uint16_t length) {
     if (length > 64) {
-        uint8_t next = (tx_queue_large_head + 1) % tx_queue_large_length;
-        if (next == tx_queue_large_tail) {
-            return; // TX queue full, drop the packet
-        }
-
-        uint16_t cb = checkbytes(checksum(packet, length));
-
-        QueuedPacketLarge *slot = &tx_queue_large[tx_queue_large_head];
-        memcpy(slot->buffer, packet, length);
-        memcpy(slot->buffer + length, (uint8_t *)(&cb), sizeof(cb));
-        slot->length = length + sizeof(cb);
-        slot->index  = 0;
-
-        tx_queue_large_head = next;
+        enqueue_large(packet, length);
         return;
     }
 
-    uint8_t next = (tx_queue_small + 1) % tx_queue_small_length;
+    enqueue_small(packet, length);
+}
+
+void DmcStream::enqueue_small(void *packet, uint16_t length) {
+    uint8_t next = (tx_queue_small_head + 1) % tx_queue_small_length;
     if (next == tx_queue_small_tail) {
         return; // TX queue full, drop the packet
     }
@@ -217,7 +213,23 @@ void DmcStream::enqueue(void *packet, uint16_t length) {
     slot->index  = 0;
 
     tx_queue_small_head = next;
-    return;
+}
+
+void DmcStream::enqueue_large(void *packet, uint16_t length) {
+    uint8_t next = (tx_queue_large_head + 1) % tx_queue_large_length;
+    if (next == tx_queue_large_tail) {
+        return; // TX queue full, drop the packet
+    }
+
+    uint16_t cb = checkbytes(checksum(packet, length));
+
+    QueuedPacketLarge *slot = &tx_queue_large[tx_queue_large_head];
+    memcpy(slot->buffer, packet, length);
+    memcpy(slot->buffer + length, (uint8_t *)(&cb), sizeof(cb));
+    slot->length = length + sizeof(cb);
+    slot->index  = 0;
+
+    tx_queue_large_head = next;
 }
 
 void DmcStream::ack(uint32_t id, uint16_t type, uint32_t response) {

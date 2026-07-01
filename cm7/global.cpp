@@ -10,7 +10,6 @@ Global::Global()
 
 }
 
-
 void Global::update() {
   gio.update();
 }

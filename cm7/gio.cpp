@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <cstring>
+
 #include "dmc_bus.hpp"
 #include "gio.hpp"
 #include "utility.hpp"
 
-
 Gio::Gio() 
   : out(0)
-  , in(0),
+  , in(0)
   , in_debounce()
   , change(false)
 {
@@ -52,7 +53,7 @@ void Gio::set_out(uint32_t out) {
 }
 
 void Gio::read_input(uint8_t which) {
-  bool value = digtalRead(limnmoco_logic_in[which]);
+  bool value = !digitalRead(limnmoco_gio_in[which]);
 
   if (value) {
     in_debounce[which]++;
@@ -65,7 +66,7 @@ void Gio::read_input(uint8_t which) {
   } else {
     in_debounce[which]--;
 
-    if (in_debounc[which] <= -5) {
+    if (in_debounce[which] <= -5) {
       in_debounce[which] = -5;
       change = BIT(in, which) ? true : false;
       BIT_CLR(in, which);
@@ -80,7 +81,7 @@ void Gio::read_input() {
 }
 
 void Gio::write_output(uint8_t which) {
-  digitalWrite(limnmoco_logic_out[which], BIT(out, which) ? HIGH : LOW);
+  digitalWrite(limnmoco_gio_out[which], BIT(out, which) ? HIGH : LOW);
 }
 
 void Gio::write_output() {

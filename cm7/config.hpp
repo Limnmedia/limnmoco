@@ -14,6 +14,8 @@
 #ifndef LIMNMOCO_CM7_CONFIG_HPP
 #define LIMNMOCO_CM7_CONFIG_HPP
 
+#include <Arduino.h>
+
 #ifdef ARDUINO_ARCH_MBED_GIGA
 
 #define LIMNMOCO_DEBUG
@@ -39,11 +41,11 @@
 //   Using a transistor to isolate the chip from large current draw is highly reccommended.
 #define LIMNMOCO_LOGIC_OUT_0 D40
 #define LIMNMOCO_LOGIC_OUT_1 D41
-uint8_t limnmoco_logic_out[LIMNMOCO_GIO_OUT] = { D40, D41 };
+extern uint8_t *limnmoco_gio_out;
 
 // #NOTE: logic input uses internal pull-up, so switch needs to connect to ground.
 #define LIMNMOCO_LOGIC_IN_0 D49
-uint8_t limnmoco_logic_in[LIMNMOCO_GIO_IN] = { D49 };
+extern uint8_t *limnmoco_gio_in;
 
 // #NOTE: e-stop input uses internal pull-up, so switch needs to connect to ground.
 #define LIMNMOCO_KILL_SWITCH D48
@@ -56,6 +58,10 @@ uint8_t limnmoco_logic_in[LIMNMOCO_GIO_IN] = { D49 };
 #else
 #error "Board not supported for limnmoco sketch"
 #endif // !ARDUINO_ARCH_MBED_GIGA
+
+#ifndef CORE_CM7
+#error "Make sure to target the core M4 co-processor with flash memory split 1.5MiB CM7 + 0.5MiB CM4"
+#endif
 
 #endif // !LIMNMOCO_CM7_CONFIG_HPP
 

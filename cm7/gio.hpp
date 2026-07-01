@@ -5,6 +5,8 @@
 
 #include <cstdint>
 
+#include "config.hpp"
+
 class Gio {
 public:
   Gio();

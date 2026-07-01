@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: GPL_3.0-or-later
 
+//#include <RPC.h>
+
 #include "config.hpp"
 #include "dmc_bus.hpp"
-
-DmcBus dmc_bus;
-Gio gio;
+#include "global.hpp"
+#include "shared.hpp"
 
 void setup() {
+  SharedData::begin();
+
 #ifndef LIMNMOCO_DEBUG
   Serial.begin(LIMNMOCO_SERIAL_BAUD);
 #endif // !LIMNMOCO_DEBUG
@@ -18,15 +21,12 @@ void setup() {
   dmc_bus.bindPrint(Serial);
 #endif // !LIMNMOCO_DEBUG
 
+//  RPC.begin();
+//  RPC.bind("get_shared_data", get_shared_data);
+
 }
 
-
 void loop() {
-  dmc_bus.receive();
-  dmc_bus.transmit();
-#ifdef LIMNMOCO_DEBUG
-  dmc_bus.transmitPrint();
-#endif // !LIMNMOCO_DEBUG
-
-
+  dmc_bus.update();
+  global.update();
 }
