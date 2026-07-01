@@ -232,6 +232,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     uint8_t nextCameraPosition;
     if (speed[MOTOR_COUNT])
     {
+      //
       sharedDataPtr->accum[MOTOR_COUNT] += speed[MOTOR_COUNT];
       uint32_t camPos = (sharedDataPtr->accum[MOTOR_COUNT] >> 32) & 0xFFF;
       nextCameraPosition = (camPos >= cameraOpenAngle && camPos <= cameraCloseAngle) ? 0x3 : 0x0;
