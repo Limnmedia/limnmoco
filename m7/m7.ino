@@ -17,6 +17,7 @@
 #include "dfx.h"
 #include "dmc_msg.h"
 #include "motion.h"
+#include "ik.h"
 
 #include <RPC.h>
 
@@ -212,7 +213,7 @@ int32_t msg_virt_get_position(uint32_t msg_id);
 
 void virt_update_positions();
 void virt_kinematics();
-void virt_inverse_kinematics();
+int32_t virt_inverse_kinematics();
 
 void initMotor(Motor *m);
 int32_t updateMotorVelocity(Motor *m, float timeSegment);
@@ -808,7 +809,10 @@ void loop()
               motorPtr->limitHighEnabled = dmc_msg_read_byte();
               motorPtr->limitHigh = dmc_msg_read_dword();
 
-              dmc_msg_read_byte(); // limit set
+              dmc_msg_read_byte(); // HW_SET: physical limit switch input this motor is wired to
+                                   // (0 = none, 1-127 = input #N, 0x80 flag swaps high/low sense
+                                   // for reversed motor orientation). Skipped — no dedicated
+                                   // hardware limit inputs on this board.
             }
           }
           else if (cmd == DMC_MSG_MOTOR_GET_POSITION)
@@ -1214,13 +1218,13 @@ void loop()
               _virtual.roll          = (float)(dmc_msg_read_dword() / VIRT_SCALE);
               motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
-              _virtual.boomLength    = (float)dmc_msg_read_dword();
-              _virtual.boomExtension = (float)dmc_msg_read_dword();
+              _virtual.boomLength    = (float)dmc_msg_read_dword() / 1000.0f;
+              _virtual.boomExtension = (float)dmc_msg_read_dword() / 1000.0f;
               _virtual.boomDisplacement = _virtual.boomLength + _virtual.boomExtension;
 
-              _virtual.nodalOffsetX = (float)dmc_msg_read_dword();
-              _virtual.nodalOffsetY = (float)dmc_msg_read_dword();
-              _virtual.nodalOffsetZ = (float)dmc_msg_read_dword();
+              _virtual.nodalOffsetX = (float)dmc_msg_read_dword() / 1000.0f;
+              _virtual.nodalOffsetY = (float)dmc_msg_read_dword() / 1000.0f;
+              _virtual.nodalOffsetZ = (float)dmc_msg_read_dword() / 1000.0f;
 
               if (!dmc_msg_read_at_end()) {
                 // read boom compensation table
@@ -1414,28 +1418,30 @@ void virt_kinematics() {
 
 }
 
-void virt_inverse_kinematics() {
-  // we need some condition to run through the math or not.
-  // the obvious move is to check if the values have changed
-  // since the last iteration.
-  // we could store duplicates of each position and rotation.
-  // we could store a flag which gets updated on receiving a move command.
-  //
-  // and on another note, how do we keep jogging the motor in sync with
-  // the virtual position?
-  _virtual.b = asinf(_virtual.NS / _virtual.boomDisplacement);
-  _virtual.s = asinf(_virtual.EW / (_virtual.boomDisplacement * cosf(_virtual.b)));
-  _virtual.T = _virtual.track - _virtual.boomDisplacement * cosf(_virtual.s) * cosf(_virtual.b);
-  _virtual.p = _virtual.pan - _virtual.s;
+int32_t virt_inverse_kinematics() {
+  CraneSolveResult result = solve_ik(
+    VirtualPose{_virtual.track, _virtual.EW, _virtual.NS,
+                _virtual.pan, _virtual.tilt, _virtual.roll},
+    CraneGeometry{_virtual.boomLength, _virtual.boomExtension,
+                  _virtual.nodalOffsetX, _virtual.nodalOffsetY, _virtual.nodalOffsetZ});
+
+  if (result.boomClamped || result.swingClamped) {
+    return DMC_ACK_ERR_RANGE;
+  }
+
+  _virtual.T = result.track;
+  _virtual.s = result.swingDeg;
+  _virtual.b = result.boomDeg;
+  _virtual.p = _virtual.pan - result.swingDeg;
   _virtual.t = _virtual.tilt;
   _virtual.r = _virtual.roll;
 
   Motor *trackMotor = &motors[_virtual.trackIndex];
   Motor *swingMotor = &motors[_virtual.swingIndex];
   Motor *boomMotor  = &motors[_virtual.boomIndex];
-  Motor *panMotor = &motors[_virtual.panIndex];
-  Motor *tiltMotor = &motors[_virtual.tiltIndex];
-  Motor *rollMotor = &motors[_virtual.rollIndex];
+  Motor *panMotor   = &motors[_virtual.panIndex];
+  Motor *tiltMotor  = &motors[_virtual.tiltIndex];
+  Motor *rollMotor  = &motors[_virtual.rollIndex];
 
   msg_motor_move(_virtual.trackIndex, (int32_t)(_virtual.T * trackMotor->SPU));
   msg_motor_move(_virtual.swingIndex, (int32_t)(_virtual.s * swingMotor->SPU));
@@ -1443,38 +1449,30 @@ void virt_inverse_kinematics() {
   msg_motor_move(_virtual.panIndex,   (int32_t)(_virtual.p * panMotor->SPU));
   msg_motor_move(_virtual.tiltIndex,  (int32_t)(_virtual.t * tiltMotor->SPU));
   msg_motor_move(_virtual.rollIndex,  (int32_t)(_virtual.r * rollMotor->SPU));
+
+  return DMC_ACK_OK;
 }
 
+// TODO: follow up with Dyami about adding a virtual move upload message so a
+// full 6-DOF pose can be validated against the current crane configuration in
+// one batch, rather than per-axis MSG_VIRT_MOVE calls.
 int32_t msg_virt_move(uint8_t motor, int32_t position) {
   float target = ((float)position / VIRT_SCALE);
   if (motor == DMC_VIRT_TRACK) {
-    _virtual.track    = target;
+    _virtual.track = target;
+  } else if (motor == DMC_VIRT_EW) {
+    _virtual.EW    = target;
+  } else if (motor == DMC_VIRT_NS) {
+    _virtual.NS    = target;
+  } else if (motor == DMC_VIRT_PAN) {
+    _virtual.pan   = target;
+  } else if (motor == DMC_VIRT_TILT) {
+    _virtual.tilt  = target;
+  } else if (motor == DMC_VIRT_ROLL) {
+    _virtual.roll  = target;
   }
 
-  if (motor == DMC_VIRT_EW) {
-    _virtual.track    = target;
-    _virtual.EW       = target;
-  }
-
-  if (motor == DMC_VIRT_NS) {
-    _virtual.track    = target;
-    _virtual.NS       = target;
-  }
-
-  if (motor == DMC_VIRT_PAN) {
-    _virtual.pan    = target;
-  }
-
-  if (motor == DMC_VIRT_TILT) {
-    _virtual.tilt    = target;
-  }
-
-  if (motor == DMC_VIRT_ROLL) {
-    _virtual.roll    = target;
-  }
-
-  virt_inverse_kinematics();
-  return DMC_ACK_OK;
+  return virt_inverse_kinematics();
 }
 
 int32_t msg_virt_stop(uint8_t motor) {
@@ -1797,7 +1795,6 @@ void sendMotorPositions()
 }
 
 void sendVirtualPositions() {
-  dbg_1();
   dmc_msg_prepare(DMC_MSG_VIRT_GET_POSITION, 0);
   dmc_msg_out_dword((int32_t)(_virtual.track * VIRT_SCALE));
   dmc_msg_out_dword((int32_t)(_virtual.EW * VIRT_SCALE));
