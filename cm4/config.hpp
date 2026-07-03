@@ -15,6 +15,8 @@
 #ifndef LIMNMOCO_CM4_CONFIG_HPP
 #define LIMNMOCO_CM4_CONFIG_HPP
 
+#include <cstdint>
+
 #ifdef ARDUINO_ARCH_MBED_GIGA
 
 // #NOTE: ensure pins do not overlap with pins used by the CM7 main processor

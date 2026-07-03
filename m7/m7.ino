@@ -151,9 +151,72 @@ int8_t switchInput;
 int8_t switchInputCounter = 0;
 uint8_t motorsMoving = 0;
 
+
 /*
- * Virtual globals
+ * Virtuals
  */
+
+static float degrees(float n) {
+  return (n * 180.0f) / M_PI;
+}
+
+static float radians(float n) {
+  return (n * M_PI) / 180.0f;
+}
+
+static float clamp(float n, float low, float high) {
+  return (n < low) ? low : ((n > high) ? high : n);
+}
+
+struct Vec3 {
+  float x;
+  float y;
+  float z;
+
+  float length() const {
+    return std::sqrtf(x * x + y * y + z * z);
+  }
+
+  Vec3 operator-(Vec3 const &other) const {
+    return Vec3{x - other.x, y - other.y, z - other.z};
+  }
+};
+
+static Vec3 rotate_offset(Vec3 v, float pan, float tilt, float roll) {
+  // The physical crane does not place the nodal point of the camera
+  // it places the pan center. The center of the pan rotator.
+  //
+  // in order to rotate around the cameras nodal point we have to apply
+  // the rotations as usual, and then displace that target point of the 
+  // crane to place the pan center such that the nodal point of the camera 
+  // lands at the virtual coordinates.
+
+  // Pan rotate around Y up
+  float c_pan = cosf(pan);
+  float s_pan = sinf(pan);
+
+  float x1 = v.x * c_pan + v.z * s_pan;
+  float y1 = v.y;
+  float z1 = -v.x * s_pan + v.z * c_pan;
+
+  // Tilt rotate around X left/right
+  float c_tilt = cosf(tilt);
+  float s_tilt = sinf(tilt);
+
+  float x2 = x1;
+  float y2 = y1 * c_tilt - z1 * s_tilt;
+  float z2 = y1 * s_tilt + z1 * c_tilt;
+
+  // Roll rotate around Z forward/reverse
+  float c_roll = cosf(roll);
+  float s_roll = sinf(roll);
+
+  float x3 = x2 * c_roll - y2 * s_roll;
+  float y3 = x2 * s_roll + y2 * c_roll;
+  float z3 = z2;
+
+  return Vec3{x3, y3, z3};
+}
 
 struct Virtual {
   uint8_t boomIndex;
@@ -180,6 +243,7 @@ struct Virtual {
   float pan;
   float tilt;
   float roll;
+
   float prevTrack;
   float prevEW;
   float prevNS;
@@ -1423,12 +1487,23 @@ void virt_inverse_kinematics() {
   //
   // and on another note, how do we keep jogging the motor in sync with
   // the virtual position?
-  _virtual.b = asinf(_virtual.NS / _virtual.boomDisplacement);
-  _virtual.s = asinf(_virtual.EW / (_virtual.boomDisplacement * cosf(_virtual.b)));
-  _virtual.T = _virtual.track - _virtual.boomDisplacement * cosf(_virtual.s) * cosf(_virtual.b);
-  _virtual.p = _virtual.pan - _virtual.s;
-  _virtual.t = _virtual.tilt;
-  _virtual.r = _virtual.roll;
+  //_virtual.b = asinf(_virtual.NS / _virtual.boomDisplacement);
+  //_virtual.s = asinf(_virtual.EW / (_virtual.boomDisplacement * cosf(_virtual.b)));
+  //_virtual.T = _virtual.track - _virtual.boomDisplacement * cosf(_virtual.s) * cosf(_virtual.b);
+  //_virtual.p = _virtual.pan - _virtual.s;
+  //_virtual.t = _virtual.tilt;
+  //_virtual.r = _virtual.roll;
+
+  Vec3 target = {_virtual.EW, _virtual.track, _virtual.NS};
+  Vec3 offset = {_virtual.nodalOffsetX, _virtual.nodalOffsetY, _virtual.nodalOffsetZ};
+  Vec3 r_offset = rotate_offset(offset, radians(_virtual.pan), radians(_virtual.tilt), radians(_virtual.roll));
+
+  Vec3 pan_center = target - r_offset;
+
+  float boom_radians = asinf(clamp(pan_center.y / _virtual.boomLength, -1.0f, 1.0f));
+  float boom_horizontal = _virtual.boomLength * cosf(boom_radians);
+
+
 
   Motor *trackMotor = &motors[_virtual.trackIndex];
   Motor *swingMotor = &motors[_virtual.swingIndex];
@@ -1556,7 +1631,7 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
 }
 
 int32_t msg_virt_get_position(uint32_t msg_id) {
-    dmc_msg_prepare(DMC_MSG_VIRT_GET_POSITION | DMC_MSG_FLAG_ACK, msg_id);
+    dmc_msg_prepare(DMC_MSG_VIRT_GET_POSITION, msg_id);
     dmc_msg_out_dword((int32_t)(_virtual.track * VIRT_SCALE));
     dmc_msg_out_dword((int32_t)(_virtual.EW * VIRT_SCALE));
     dmc_msg_out_dword((int32_t)(_virtual.NS * VIRT_SCALE));

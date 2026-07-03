@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include <Arduino.h>
+
 #include "motors.hpp"
 #include "shared.hpp"
 #include "utility.hpp"

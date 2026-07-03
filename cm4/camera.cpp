@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <Arduino.h>
+
 #include "camera.hpp"
 #include "config.hpp"
 #include "global.hpp"
@@ -31,7 +33,7 @@ void Camera::update() {
 void Camera::pulse_start() {
     accumulator += velocity;
     if (accumulator >= LIMNMOCO_MOTOR_MAX_VELOCITY) {
-        digitalWrite(
+        digitalWrite();
     }
 }
 

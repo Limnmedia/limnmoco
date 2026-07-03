@@ -12,7 +12,7 @@ void Timer::begin() {
 void Timer::on_time() {
     global.motors.pulse_start();
 
-    delayMicroseconds(3);
+    //delayMicroseconds(3);
 
     global.motors.pulse_end();
 }
