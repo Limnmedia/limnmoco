@@ -14,26 +14,30 @@
 namespace limnmoco {
 
 struct Vec3 {
-  double x;
-  double y;
-  double z;
+  float x;
+  float y;
+  float z;
+};
+
+struct Mat3 {
+  float m[3][3];
 };
 
 struct VirtualPose {
-  double vtrack;
-  double vew;
-  double vheight;
-  double vpanDeg;
-  double vtiltDeg;
-  double vrollDeg;
+  float vtrack;
+  float vew;
+  float vheight;
+  float vpanDeg;
+  float vtiltDeg;
+  float vrollDeg;
 };
 
 struct CraneGeometry {
-  double boomLength;
-  double extensionLength;
-  double offsetX;
-  double offsetY;
-  double offsetZ;
+  float boomLength;
+  float extensionLength;
+  float offsetX;
+  float offsetY;
+  float offsetZ;
 };
 
 struct CraneSolveResult {
@@ -45,16 +49,16 @@ struct CraneSolveResult {
   Vec3 panCenter;
   Vec3 nodal;
   Vec3 error;
-  double errorLength;
-  double track;
-  double swingDeg;
-  double boomDeg;
+  float errorLength;
+  float track;
+  float swingDeg;
+  float boomDeg;
   bool boomClamped;
   bool swingClamped;
 };
 
-double degrees(double radians);
-double radians(double degrees);
+float degrees(float radians);
+float radians(float degrees);
 CraneSolveResult solveLimnmocoCrane(const VirtualPose &pose, const CraneGeometry &geometry);
 
 } // namespace limnmoco

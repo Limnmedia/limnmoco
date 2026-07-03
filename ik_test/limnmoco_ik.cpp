@@ -8,13 +8,9 @@
 namespace limnmoco {
 namespace {
 
-constexpr double kPi = 3.141592653589793238462643383279502884;
+constexpr float kPi = 3.14159265f;
 
-struct Mat3 {
-  double m[3][3];
-};
-
-double clamp(double value, double lo, double hi) {
+float clamp(float value, float lo, float hi) {
   return std::max(lo, std::min(hi, value));
 }
 
@@ -26,7 +22,7 @@ Vec3 sub(Vec3 a, Vec3 b) {
   return Vec3{a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
-double length(Vec3 v) {
+float length(Vec3 v) {
   return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
@@ -49,37 +45,37 @@ Vec3 multiply(Mat3 matrix, Vec3 v) {
   };
 }
 
-Mat3 rotationZ(double angle) {
-  const double c = std::cos(angle);
-  const double s = std::sin(angle);
-  return Mat3{{{c, -s, 0.0}, {s, c, 0.0}, {0.0, 0.0, 1.0}}};
+Mat3 rotationZ(float angle) {
+  const float c = std::cos(angle);
+  const float s = std::sin(angle);
+  return Mat3{{{c, -s, 0.0f}, {s, c, 0.0f}, {0.0f, 0.0f, 1.0f}}};
 }
 
-Mat3 rotationX(double angle) {
-  const double c = std::cos(angle);
-  const double s = std::sin(angle);
-  return Mat3{{{1.0, 0.0, 0.0}, {0.0, c, -s}, {0.0, s, c}}};
+Mat3 rotationX(float angle) {
+  const float c = std::cos(angle);
+  const float s = std::sin(angle);
+  return Mat3{{{1.0f, 0.0f, 0.0f}, {0.0f, c, -s}, {0.0f, s, c}}};
 }
 
-Mat3 rotationY(double angle) {
-  const double c = std::cos(angle);
-  const double s = std::sin(angle);
-  return Mat3{{{c, 0.0, s}, {0.0, 1.0, 0.0}, {-s, 0.0, c}}};
+Mat3 rotationY(float angle) {
+  const float c = std::cos(angle);
+  const float s = std::sin(angle);
+  return Mat3{{{c, 0.0f, s}, {0.0f, 1.0f, 0.0f}, {-s, 0.0f, c}}};
 }
 
-Mat3 rotationMatrixFromVirtualAxes(double vpanDeg, double vtiltDeg, double vrollDeg) {
+Mat3 rotationMatrixFromVirtualAxes(float vpanDeg, float vtiltDeg, float vrollDeg) {
   return multiply(multiply(rotationZ(radians(vpanDeg)), rotationX(radians(vtiltDeg))),
                   rotationY(radians(vrollDeg)));
 }
 
 } // namespace
 
-double degrees(double radiansValue) {
-  return radiansValue * 180.0 / kPi;
+float degrees(float radiansValue) {
+  return radiansValue * 180.0f / kPi;
 }
 
-double radians(double degreesValue) {
-  return degreesValue * kPi / 180.0;
+float radians(float degreesValue) {
+  return degreesValue * kPi / 180.0f;
 }
 
 CraneSolveResult solveLimnmocoCrane(const VirtualPose &pose, const CraneGeometry &geometry) {
@@ -101,27 +97,27 @@ CraneSolveResult solveLimnmocoCrane(const VirtualPose &pose, const CraneGeometry
   result.offsetWorld = multiply(rotation, offsetLocal);
   result.panTarget = sub(result.target, result.offsetWorld);
 
-  const double boomLength = std::max(0.001, geometry.boomLength);
-  const double boomRawRatio = result.panTarget.z / boomLength;
-  const double boomRatio = clamp(boomRawRatio, -1.0, 1.0);
-  const double boomRad = std::asin(boomRatio);
+  const float boomLength = std::max(0.001f, geometry.boomLength);
+  const float boomRawRatio = result.panTarget.z / boomLength;
+  const float boomRatio = clamp(boomRawRatio, -1.0f, 1.0f);
+  const float boomRad = std::asin(boomRatio);
   result.boomClamped = boomRawRatio != boomRatio;
 
-  double horizontalReach = boomLength * std::cos(boomRad) + geometry.extensionLength;
-  if (std::abs(horizontalReach) < 0.000001) {
-    horizontalReach = 0.000001;
+  float horizontalReach = boomLength * std::cos(boomRad) + geometry.extensionLength;
+  if (std::abs(horizontalReach) < 0.000001f) {
+    horizontalReach = 0.000001f;
   }
 
-  const double swingRawRatio = result.panTarget.x / horizontalReach;
-  const double swingRatio = clamp(swingRawRatio, -1.0, 1.0);
-  const double swingRad = std::asin(swingRatio);
+  const float swingRawRatio = result.panTarget.x / horizontalReach;
+  const float swingRatio = clamp(swingRawRatio, -1.0f, 1.0f);
+  const float swingRad = std::asin(swingRatio);
   result.swingClamped = swingRawRatio != swingRatio;
 
   result.track = result.panTarget.y - horizontalReach * std::cos(swingRad);
   result.swingDeg = degrees(swingRad);
   result.boomDeg = degrees(boomRad);
 
-  result.base = Vec3{0.0, result.track, 0.0};
+  result.base = Vec3{0.0f, result.track, 0.0f};
   result.armTip = Vec3{
       boomLength * std::sin(swingRad) * std::cos(boomRad),
       result.track + boomLength * std::cos(swingRad) * std::cos(boomRad),
@@ -131,7 +127,7 @@ CraneSolveResult solveLimnmocoCrane(const VirtualPose &pose, const CraneGeometry
   const Vec3 levelExtensionVector = Vec3{
       geometry.extensionLength * std::sin(swingRad),
       geometry.extensionLength * std::cos(swingRad),
-      0.0,
+      0.0f,
   };
 
   result.panCenter = add(result.armTip, levelExtensionVector);

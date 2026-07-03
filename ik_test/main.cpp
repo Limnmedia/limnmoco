@@ -14,14 +14,14 @@ struct TestCase {
   std::string name;
   limnmoco::VirtualPose pose;
   limnmoco::CraneGeometry geometry;
-  double expectedTrack;
-  double expectedSwingDeg;
-  double expectedBoomDeg;
+  float expectedTrack;
+  float expectedSwingDeg;
+  float expectedBoomDeg;
   bool checkExactAxes;
   bool expectClamp;
 };
 
-bool near(double actual, double expected, double tolerance) {
+bool near(float actual, float expected, float tolerance) {
   return std::abs(actual - expected) <= tolerance;
 }
 
@@ -30,8 +30,8 @@ void printVec(const char *label, limnmoco::Vec3 v) {
 }
 
 bool runTest(const TestCase &test) {
-  constexpr double kAxisTolerance = 1e-6;
-  constexpr double kErrorTolerance = 1e-6;
+  constexpr float kAxisTolerance = 1e-5f;
+  constexpr float kErrorTolerance = 1e-5f;
 
   const limnmoco::CraneSolveResult result = limnmoco::solveLimnmocoCrane(test.pose, test.geometry);
 
@@ -46,7 +46,7 @@ bool runTest(const TestCase &test) {
   ok = ok && ((result.boomClamped || result.swingClamped) == test.expectClamp);
 
   std::cout << (ok ? "[PASS] " : "[FAIL] ") << test.name << "\n";
-  std::cout << std::fixed << std::setprecision(8);
+  std::cout << std::fixed << std::setprecision(6);
   std::cout << "  track: " << result.track << "\n";
   std::cout << "  swingDeg: " << result.swingDeg << "\n";
   std::cout << "  boomDeg: " << result.boomDeg << "\n";
@@ -83,9 +83,9 @@ int main() {
               0.0, // vrollDeg
           },
           defaultGeometry,
-          -4.17623075008637,
-          9.32779500976675,
-          17.4576031237221,
+          -4.17623f,
+          9.32780f,
+          17.4576f,
           true,
           false,
       },
