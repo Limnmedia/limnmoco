@@ -42,5 +42,8 @@ struct CraneSolveResult {
 float ik_degrees(float radiansValue);
 float ik_radians(float degreesValue);
 CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry);
+VirtualPose solve_fk(float boomDeg, float swingDeg, float track,
+                     float panDeg, float tiltDeg, float rollDeg,
+                     const CraneGeometry &geometry);
 
 #endif // M7_IK_H_

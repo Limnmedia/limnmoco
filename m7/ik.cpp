@@ -90,3 +90,35 @@ CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry
 
   return result;
 }
+
+VirtualPose solve_fk(float boomDeg, float swingDeg, float track,
+                     float panDeg, float tiltDeg, float rollDeg,
+                     const CraneGeometry &geometry) {
+  const float boomRad = ik_radians(boomDeg);
+  const float swingRad = ik_radians(swingDeg);
+
+  Vec3 armTip;
+  armTip.x = geometry.boomLength * std::sin(swingRad) * std::cos(boomRad);
+  armTip.y = track + geometry.boomLength * std::cos(swingRad) * std::cos(boomRad);
+  armTip.z = geometry.boomLength * std::sin(boomRad);
+
+  Vec3 levelExtension;
+  levelExtension.x = geometry.extensionLength * std::sin(swingRad);
+  levelExtension.y = geometry.extensionLength * std::cos(swingRad);
+  levelExtension.z = 0.0f;
+
+  Vec3 panCenter = vec3_add(armTip, levelExtension);
+
+  const Mat3 rotation = rotationMatrixFromVirtualAxes(panDeg, tiltDeg, rollDeg);
+  const Vec3 offsetLocal = Vec3{
+      geometry.offsetX,
+      geometry.offsetY,
+      geometry.offsetZ,
+  };
+
+  Vec3 offsetWorld = mat3_multiply_v(rotation, offsetLocal);
+  Vec3 nodal = vec3_add(panCenter, offsetWorld);
+
+  return VirtualPose{nodal.y, nodal.x, nodal.z,
+                     panDeg, tiltDeg, rollDeg};
+}
