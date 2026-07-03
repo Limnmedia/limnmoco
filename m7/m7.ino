@@ -1415,7 +1415,31 @@ int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest) {
 }
 
 void virt_kinematics() {
+  Motor *trackMotor = &motors[_virtual.trackIndex];
+  Motor *swingMotor = &motors[_virtual.swingIndex];
+  Motor *boomMotor  = &motors[_virtual.boomIndex];
+  Motor *panMotor   = &motors[_virtual.panIndex];
+  Motor *tiltMotor  = &motors[_virtual.tiltIndex];
+  Motor *rollMotor  = &motors[_virtual.rollIndex];
 
+  float swingDeg = (float)(swingMotor->position / swingMotor->SPU);
+  float boomDeg  = (float)(boomMotor->position / boomMotor->SPU);
+  float track    = (float)(trackMotor->position / trackMotor->SPU);
+  float panDeg   = (float)(panMotor->position / panMotor->SPU);
+  float tiltDeg  = (float)(tiltMotor->position / tiltMotor->SPU);
+  float rollDeg  = (float)(rollMotor->position / rollMotor->SPU);
+
+  VirtualPose fk = solve_fk(
+    boomDeg, swingDeg, track, panDeg, tiltDeg, rollDeg,
+    CraneGeometry{_virtual.boomLength, _virtual.boomExtension,
+                  _virtual.nodalOffsetX, _virtual.nodalOffsetY, _virtual.nodalOffsetZ});
+
+  _virtual.track = fk.vtrack;
+  _virtual.EW    = fk.vew;
+  _virtual.NS    = fk.vheight;
+  _virtual.pan   = fk.vpanDeg;
+  _virtual.tilt  = fk.vtiltDeg;
+  _virtual.roll  = fk.vrollDeg;
 }
 
 int32_t virt_inverse_kinematics() {
@@ -1554,6 +1578,7 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
 }
 
 int32_t msg_virt_get_position(uint32_t msg_id) {
+    virt_kinematics();
     dmc_msg_prepare(DMC_MSG_VIRT_GET_POSITION | DMC_MSG_FLAG_ACK, msg_id);
     dmc_msg_out_dword((int32_t)(_virtual.track * VIRT_SCALE));
     dmc_msg_out_dword((int32_t)(_virtual.EW * VIRT_SCALE));
@@ -1563,21 +1588,6 @@ int32_t msg_virt_get_position(uint32_t msg_id) {
     dmc_msg_out_dword((int32_t)(_virtual.roll * VIRT_SCALE));
     writeOutputMessage();
 }
-
-// void virt_update_positions() {
-//   Motor *motor = &motors[_virtual.trackIndex];
-//   _virtual.track = (motor->position / motor->SPU);
-//   motor = &motors[_virtual.boomIndex];
-//   _virtual.NS = (motor->position / motor->SPU);
-//   motor = &motors[_virtual.swingIndex];
-//   _virtual.EW = (motor->position / motor->SPU);
-//   motor = &motors[_virtual.panIndex];
-//   _virtual.pan = (motor->position / motor->SPU);
-//   motor = &motors[_virtual.tiltIndex];
-//   _virtual.tilt = (motor->position / motor->SPU);
-//   motor = &motors[_virtual.rollIndex];
-//   _virtual.roll = (motor->position / motor->SPU);
-// }
 
 void initMotor(Motor *m)
 {
