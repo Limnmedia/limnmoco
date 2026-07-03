@@ -226,7 +226,6 @@ void go(uint8_t *motorsMoving);
 int32_t updateMotorVelocities();
 int32_t stopMotor(Motor *motor, int32_t motorIndex, int8_t emergency);
 void sendMotorPositions();
-void sendVirtualPositions();
 void clearGomoMove(GoMotionMove *move);
 void setCamera(uint8_t cameraValue);
 void setMotorDir(int32_t motorIndex, float dir);
@@ -1270,11 +1269,10 @@ void loop()
             responseCode = msg_virt_stop(motor);
           }
           else if (cmd == DMC_MSG_VIRT_JOG) {
-            //uint8_t motor  = dmc_msg_read_byte();
-            //uint16_t speed = dmc_msg_read_word();
-            //int32_t dest   = dmc_msg_read_dword();
-            //responseCode = msg_virt_jog(motor, speed, dest);
-            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+            uint8_t motor  = dmc_msg_read_byte();
+            uint16_t speed = dmc_msg_read_word();
+            int32_t dest   = dmc_msg_read_dword();
+            responseCode = msg_virt_jog(motor, speed, dest);
           }
           else if (cmd == DMC_MSG_VIRT_GET_POSITION) {
               responseCode = msg_virt_get_position(msgId);
@@ -1801,17 +1799,6 @@ void sendMotorPositions()
   dmc_msg_out_dword((uint32_t)(frameTimeMotor.position / 100));
   for (i = 0; i < MOTOR_COUNT; ++i)
     dmc_msg_out_dword((int32_t)(motors[i].position));
-  writeOutputMessage();
-}
-
-void sendVirtualPositions() {
-  dmc_msg_prepare(DMC_MSG_VIRT_GET_POSITION, 0);
-  dmc_msg_out_dword((int32_t)(_virtual.track * VIRT_SCALE));
-  dmc_msg_out_dword((int32_t)(_virtual.EW * VIRT_SCALE));
-  dmc_msg_out_dword((int32_t)(_virtual.NS * VIRT_SCALE));
-  dmc_msg_out_dword((int32_t)(_virtual.pan * VIRT_SCALE));
-  dmc_msg_out_dword((int32_t)(_virtual.tilt * VIRT_SCALE));
-  dmc_msg_out_dword((int32_t)(_virtual.roll * VIRT_SCALE));
   writeOutputMessage();
 }
 
