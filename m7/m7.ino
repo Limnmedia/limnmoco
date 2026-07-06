@@ -1577,7 +1577,7 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
 
 int32_t msg_virt_get_position(uint32_t msg_id) {
     virt_kinematics();
-    dmc_msg_prepare(DMC_MSG_VIRT_GET_POSITION | DMC_MSG_FLAG_ACK, msg_id);
+    dmc_msg_prepare(DMC_MSG_VIRT_GET_POSITION, msg_id);
     dmc_msg_out_dword((int32_t)(_virtual.track * VIRT_SCALE));
     dmc_msg_out_dword((int32_t)(_virtual.EW * VIRT_SCALE));
     dmc_msg_out_dword((int32_t)(_virtual.NS * VIRT_SCALE));

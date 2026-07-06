@@ -138,4 +138,7 @@ CraneSolveResult solveLimnmocoCrane(const VirtualPose &pose, const CraneGeometry
   return result;
 }
 
+Vec3 fk(const CranePositions &pos, const CraneGeometry &geo) {
+}
+
 } // namespace limnmoco

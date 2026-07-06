@@ -32,6 +32,15 @@ struct VirtualPose {
   float vrollDeg;
 };
 
+struct CranePositions {
+  float boom;
+  float swing;
+  float track;
+  float pan;
+  float tilt;
+  float roll;
+};
+
 struct CraneGeometry {
   float boomLength;
   float extensionLength;
@@ -60,6 +69,8 @@ struct CraneSolveResult {
 float degrees(float radians);
 float radians(float degrees);
 CraneSolveResult solveLimnmocoCrane(const VirtualPose &pose, const CraneGeometry &geometry);
+
+Vec3 fk(const CranePositions &pos, const CraneGeometry &geometry);
 
 } // namespace limnmoco
 
