@@ -18,6 +18,7 @@
 #include "dmc_msg.h"
 #include "motion.h"
 #include "ik.h"
+#include "dbg.h"
 
 #include <RPC.h>
 
@@ -280,53 +281,6 @@ void setCamera(uint8_t val)
 }
 
 
-void dbg_0() {
-  digitalWrite(PIN_DBG_0, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PIN_DBG_0, LOW);
-}
-
-void dbg_1() {
-  digitalWrite(PIN_DBG_1, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PIN_DBG_1, LOW);
-}
-
-void dbg_2() {
-  digitalWrite(PIN_DBG_2, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PIN_DBG_2, LOW);
-}
-
-void dbg_3() {
-  digitalWrite(PIN_DBG_3, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PIN_DBG_3, LOW);
-}
-
-void dbg_4() {
-  digitalWrite(PIN_DBG_4, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PIN_DBG_4, LOW);
-}
-
-void dbg_5() {
-  digitalWrite(PIN_DBG_5, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PIN_DBG_5, LOW);
-}
-
-void dbg_6() {
-  digitalWrite(PIN_DBG_6, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PIN_DBG_6, LOW);
-}
-
-void dbg_7() {
-  digitalWrite(PIN_DBG_7, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PIN_DBG_7, LOW);
-}
 
 void setup()
 {
@@ -337,14 +291,14 @@ void setup()
 
   Serial.begin(115200);
 
-  pinMode(PIN_DBG_0, OUTPUT);
-  pinMode(PIN_DBG_1, OUTPUT);
-  pinMode(PIN_DBG_2, OUTPUT);
-  pinMode(PIN_DBG_3, OUTPUT);
-  pinMode(PIN_DBG_4, OUTPUT);
-  pinMode(PIN_DBG_5, OUTPUT);
-  pinMode(PIN_DBG_6, OUTPUT);
-  pinMode(PIN_DBG_7, OUTPUT);
+  dbg_pin(PIN_DBG_0);
+  dbg_pin(PIN_DBG_1);
+  dbg_pin(PIN_DBG_2);
+  dbg_pin(PIN_DBG_3);
+  dbg_pin(PIN_DBG_4);
+  dbg_pin(PIN_DBG_5);
+  dbg_pin(PIN_DBG_6);
+  dbg_pin(PIN_DBG_7);
 
   pinMode(LEDR, OUTPUT);
   pinMode(LEDG, OUTPUT);
@@ -1181,69 +1135,93 @@ void loop()
               memset(&_virtual, 0, sizeof(Virtual));
             }
             else if (type == DMC_VIRT_TYPE_BOOM_SWING_TRACK) {
-              _virtual.boomIndex     = (uint8_t)dmc_msg_read_dword();
-              Motor *motorPtr        = &motors[_virtual.boomIndex];
-              motorPtr->SPU          = (float)dmc_msg_read_dword();
-              _virtual.NS            = (float)(dmc_msg_read_dword() / VIRT_SCALE);
-              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
-
-              _virtual.swingIndex    = (uint8_t)dmc_msg_read_dword();
-              motorPtr               = &motors[_virtual.swingIndex];
-              motorPtr->SPU          = (float)dmc_msg_read_dword();
-              _virtual.EW            = (float)(dmc_msg_read_dword() / VIRT_SCALE);
-              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
-
-              _virtual.trackIndex    = (uint8_t)dmc_msg_read_dword();
-              motorPtr               = &motors[_virtual.trackIndex];
-              motorPtr->SPU          = (float)dmc_msg_read_dword();
-              _virtual.track         = (float)(dmc_msg_read_dword() / VIRT_SCALE);
-              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
-
-              _virtual.panIndex      = (uint8_t)dmc_msg_read_dword();
-              motorPtr               = &motors[_virtual.panIndex];
-              motorPtr->SPU          = (float)dmc_msg_read_dword();
-              _virtual.pan           = (float)(dmc_msg_read_dword() / VIRT_SCALE);
-              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
-
-              _virtual.tiltIndex     = (uint8_t)dmc_msg_read_dword();
-              motorPtr               = &motors[_virtual.tiltIndex];
-              motorPtr->SPU          = (float)dmc_msg_read_dword();
-              _virtual.tilt          = (float)(dmc_msg_read_dword() / VIRT_SCALE);
-              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
-
-              _virtual.rollIndex     = (uint8_t)dmc_msg_read_dword();
-              motorPtr               = &motors[_virtual.rollIndex];
-              motorPtr->SPU          = (float)dmc_msg_read_dword();
-              _virtual.roll          = (float)(dmc_msg_read_dword() / VIRT_SCALE);
-              motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
-
-              _virtual.boomLength    = (float)dmc_msg_read_dword() / 1000.0f;
-              _virtual.boomExtension = (float)dmc_msg_read_dword() / 1000.0f;
-              _virtual.boomDisplacement = _virtual.boomLength + _virtual.boomExtension;
-
-              _virtual.nodalOffsetX = (float)dmc_msg_read_dword() / 1000.0f;
-              _virtual.nodalOffsetY = (float)dmc_msg_read_dword() / 1000.0f;
-              _virtual.nodalOffsetZ = (float)dmc_msg_read_dword() / 1000.0f;
-
-              if (!dmc_msg_read_at_end()) {
-                // read boom compensation table
-                for (int i = 0; i < BOOM_COMPENSATION_ANGLES; ++i) {
-                  _virtual.boomCompensation[i] = (float)dmc_msg_read_dword();
+              // #TODO: add range validation to motor indices.
+              bool config_good = false;
+              do {
+                _virtual.boomIndex     = (uint8_t)dmc_msg_read_dword();
+                if (!IN_RANGE(_virtual.boomIndex, 1, MOTOR_COUNT)) {
+                  break;
                 }
-              }
+                Motor *motorPtr        = &motors[_virtual.boomIndex];
+                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                _virtual.NS            = (float)(dmc_msg_read_dword() / VIRT_SCALE);
+                motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
-              if (!dmc_msg_read_at_end()) {
-                // read safe distance
-                _virtual.safeDistance = (float)(dmc_msg_read_dword() / 1000);
-              }
+                _virtual.swingIndex    = (uint8_t)dmc_msg_read_dword();
+                if (!IN_RANGE(_virtual.swingIndex, 1, MOTOR_COUNT)) {
+                  break;
+                }
+                motorPtr               = &motors[_virtual.swingIndex];
+                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                _virtual.EW            = (float)(dmc_msg_read_dword() / VIRT_SCALE);
+                motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
-              // #TODO: support camera aim point
-              _virtual.aimX = 0;
-              _virtual.aimY = 0;
-              _virtual.aimZ = 0;
-              _virtual.aimEnabled = 0;
+                _virtual.trackIndex    = (uint8_t)dmc_msg_read_dword();
+                if (!IN_RANGE(_virtual.trackIndex, 1, MOTOR_COUNT)) {
+                  break;
+                }
+                motorPtr               = &motors[_virtual.trackIndex];
+                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                _virtual.track         = (float)(dmc_msg_read_dword() / VIRT_SCALE);
+                motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
-              responseCode = DMC_ACK_OK;
+                _virtual.panIndex      = (uint8_t)dmc_msg_read_dword();
+                if (!IN_RANGE(_virtual.panIndex, 1, MOTOR_COUNT)) {
+                  break;
+                }
+                motorPtr               = &motors[_virtual.panIndex];
+                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                _virtual.pan           = (float)(dmc_msg_read_dword() / VIRT_SCALE);
+                motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
+
+                _virtual.tiltIndex     = (uint8_t)dmc_msg_read_dword();
+                if (!IN_RANGE(_virtual.tiltIndex, 1, MOTOR_COUNT)) {
+                  break;
+                }
+                motorPtr               = &motors[_virtual.tiltIndex];
+                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                _virtual.tilt          = (float)(dmc_msg_read_dword() / VIRT_SCALE);
+                motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
+
+                _virtual.rollIndex     = (uint8_t)dmc_msg_read_dword();
+                if (!IN_RANGE(_virtual.rollIndex, 1, MOTOR_COUNT)) {
+                  break;
+                }
+                motorPtr               = &motors[_virtual.rollIndex];
+                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                _virtual.roll          = (float)(dmc_msg_read_dword() / VIRT_SCALE);
+                motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
+
+                _virtual.boomLength    = (float)dmc_msg_read_dword() / 1000.0f;
+                _virtual.boomExtension = (float)dmc_msg_read_dword() / 1000.0f;
+                _virtual.boomDisplacement = _virtual.boomLength + _virtual.boomExtension;
+  
+                _virtual.nodalOffsetX = (float)dmc_msg_read_dword() / 1000.0f;
+                _virtual.nodalOffsetY = (float)dmc_msg_read_dword() / 1000.0f;
+                _virtual.nodalOffsetZ = (float)dmc_msg_read_dword() / 1000.0f;
+
+                if (!dmc_msg_read_at_end()) {
+                  // read boom compensation table
+                  for (int i = 0; i < BOOM_COMPENSATION_ANGLES; ++i) {
+                    _virtual.boomCompensation[i] = (float)dmc_msg_read_dword();
+                  }
+                }
+
+                if (!dmc_msg_read_at_end()) {
+                  // read safe distance
+                  _virtual.safeDistance = (float)(dmc_msg_read_dword() / 1000);
+                }
+
+                // #TODO: support camera aim point
+                _virtual.aimX = 0;
+                _virtual.aimY = 0;
+                _virtual.aimZ = 0;
+                _virtual.aimEnabled = 0;
+
+                config_good = true;
+              } while (false);
+
+              responseCode = config_good ? DMC_ACK_OK : DMC_ACK_ERR_GENERAL;
             } else {
               // we don't support:
               // DMC_VIRT_TYPE_SWING_PAN
@@ -1260,22 +1238,25 @@ void loop()
             // we just need to consider which motors are involved
             // in the virtual move, and then translate that into
             // motor move commands for the involved motors.
+            dbg(PIN_DBG_0);
             int32_t motor = dmc_msg_read_byte();
             int32_t position = dmc_msg_read_dword();
             responseCode = msg_virt_move(motor, position);
           }
           else if (cmd == DMC_MSG_VIRT_STOP) {
+            dbg(PIN_DBG_1);
             uint8_t motor = dmc_msg_read_byte();
             responseCode = msg_virt_stop(motor);
           }
           else if (cmd == DMC_MSG_VIRT_JOG) {
+            dbg(PIN_DBG_2);
             uint8_t motor  = dmc_msg_read_byte();
             uint16_t speed = dmc_msg_read_word();
             int32_t dest   = dmc_msg_read_dword();
             responseCode = msg_virt_jog(motor, speed, dest);
           }
           else if (cmd == DMC_MSG_VIRT_GET_POSITION) {
-              responseCode = msg_virt_get_position(msgId);
+              msg_virt_get_position(msgId);
           }
           else if (cmd == DMC_MSG_VIRT_JOG_ON_LINE) {
             // #TODO:
@@ -1448,6 +1429,12 @@ int32_t virt_inverse_kinematics() {
                   _virtual.nodalOffsetX, _virtual.nodalOffsetY, _virtual.nodalOffsetZ});
 
   if (result.boomClamped || result.swingClamped) {
+    dbg(PIN_DBG_5); // #BUG: checking if we are not moving the motors due to clamping
+                    //       it is worth noting that we are well within the range of 
+    //                       the motion of the motors here, so any clamping points to 
+    //                       an error in the IK solver.
+    //
+    //                       we are in fact clamping on each call to the IK.
     return DMC_ACK_ERR_RANGE;
   }
 
@@ -1494,10 +1481,19 @@ int32_t msg_virt_move(uint8_t motor, int32_t position) {
     _virtual.roll  = target;
   }
 
+  // #BUG: This code does not move the motors!, we appear to receive the virt move
+  //       command, and we call into solve_ik as expected. however the motors do not
+  //       move. this is unexpected, given our calls to update all of the positions 
+  //       within the crane simultaneously within virt_inverse_kinematics.
+  //       we use motor_move with limited efficacy in virtual jog, so why does the 
+  //       same technique not at least cause motor motion here?
   return virt_inverse_kinematics();
 }
 
 int32_t msg_virt_stop(uint8_t motor) {
+  // #NOTE: this code seems to work just fine. we are trying to reuse diyamis'
+  //        code as much as possible, and interfacing with the stop command of 
+  //        the motors within virtual movement appears to be fine for now.
   if (motor == DMC_VIRT_TRACK) {
     msg_motor_stop(_virtual.trackIndex);
     return DMC_ACK_OK;
@@ -1534,12 +1530,21 @@ int32_t msg_virt_stop(uint8_t motor) {
 }
 
 int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
-  // these functions work in so far as the physical motors are jogged
-  // when we ask to jog in a virtual direction. however we are not
-  // updating our virtual position when we jog along in a virtual
-  // direction. we could keep the virtual position in step with the
-  // physical position by solving the forward kinematics equations
-  // on each time step.
+  // These functions cause the motors to move, and we are keeping the virtual 
+  // position locked in step with the physical position. however, the motor 
+  // movement is not coordinated between joined motors such that the 
+  // camera is jogging along the requested axis.
+  //
+  // when we are in the jogging state, we need to cause the motors to move.
+  // this is done by adding velocity to the motors, interfacing with the code running
+  // on the m4. since we cannot go through the preexisting msg_motor_jog code, 
+  // we will have to actually understand how to interface with the jogging state
+  // of the motors.
+  //
+  // #TODO: find out how jogging works, at least as much as needed to write 
+  //        virtual jogging on top of the existing code.
+  //
+  //
   if (motor == DMC_VIRT_TRACK) {
     msg_motor_jog(_virtual.trackIndex, speed, dest);
     return DMC_ACK_OK;

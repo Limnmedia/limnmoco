@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "mat3.h"
+#include "dbg.h"
 
 namespace {
 
@@ -32,6 +33,9 @@ float ik_radians(float degreesValue) {
 }
 
 CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry) {
+  dbg(PIN_DBG_3);
+  // #BUG: each call to the IK solvers is clamping, even though the movement is well 
+  //       within the range of motion of the crane.
   CraneSolveResult result{};
 
   result.target = Vec3{
@@ -57,7 +61,7 @@ CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry
   result.boomClamped = boomRawRatio != boomRatio;
 
   float horizontalReach = boomLength * std::cos(boomRad) + geometry.extensionLength;
-  if (std::abs(horizontalReach) < 0.000001f) {
+  if (abs(horizontalReach) < 0.000001f) {
     horizontalReach = 0.000001f;
   }
 
@@ -94,6 +98,7 @@ CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry
 VirtualPose solve_fk(float boomDeg, float swingDeg, float track,
                      float panDeg, float tiltDeg, float rollDeg,
                      const CraneGeometry &geometry) {
+  dbg(PIN_DBG_4);
   const float boomRad = ik_radians(boomDeg);
   const float swingRad = ik_radians(swingDeg);
 
