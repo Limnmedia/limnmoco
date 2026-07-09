@@ -31,8 +31,6 @@
 #define LIMNMOCO_PIN_STEP_6 34
 #define LIMNMOCO_PIN_STEP_7 36
 
-extern uint8_t *limnmoco_pin_step;
-
 #define LIMNMOCO_PIN_DIRECTION_0 23
 #define LIMNMOCO_PIN_DIRECTION_1 25
 #define LIMNMOCO_PIN_DIRECTION_2 27
@@ -41,8 +39,6 @@ extern uint8_t *limnmoco_pin_step;
 #define LIMNMOCO_PIN_DIRECTION_5 33
 #define LIMNMOCO_PIN_DIRECTION_6 35
 #define LIMNMOCO_PIN_DIRECTION_7 37
-
-extern uint8_t *limnmoco_pin_direction;
 
 #define LIMNMOCO_PIN_CAMERA_METER   52
 #define LIMNMOCO_PIN_CAMERA_SHUTTER 53

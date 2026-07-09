@@ -4,28 +4,45 @@
 #define LIMNMOCO_CM7_SHARED_HPP
 
 #include <cstdint>
+#include <bitset>
 
 #include "config.hpp"
 
 // #NOTE: Keep in sync with cm4/shared.hpp
 
-struct SharedData {
-  static void begin();
-  static SharedData *get();
-  static SharedData *ptr;
+namespace shared {
 
-  volatile int64_t  motor_next_speed[LIMNMOCO_MOTOR_COUNT];
-  volatile int64_t  motor_accumulator[LIMNMOCO_MOTOR_COUNT];
-  volatile uint32_t motor_data_loaded;
-  volatile uint32_t motor_direction;
-  volatile int64_t  camera_next_speed;
-  volatile int64_t  camera_accumulator;
-  volatile uint16_t camera_open_angle;
-  volatile uint16_t camera_close_angle;
-  volatile uint8_t  camera_value;
+using Direction = std::bitset<LIMNMOCO_MOTOR_COUNT>;
+
+struct Data {
+  volatile Direction motor_direction;
+  volatile uint32_t  motor_velocity[LIMNMOCO_MOTOR_COUNT];
+  volatile uint32_t  motor_acceleration[LIMNMOCO_MOTOR_COUNT];
 };
 
-uintptr_t get_shared_data();
+void begin();
+extern Data *ptr;
+
+} // namespace shared
+
+
+
+// #NOTE: kept the old definition around for reference
+//  perhaps we will integrate camera controls again someday...
+//  struct SharedData {
+//    static void begin();
+//    static SharedData *ptr;
+//    volatile uint32_t motor_velocity[LIMNMOCO_MOTOR_COUNT];
+//    volatile uint32_t motor_direction;
+//    volatile int64_t  motor_accumulator[LIMNMOCO_MOTOR_COUNT];
+//    volatile uint32_t motor_data_loaded;
+//    volatile int64_t  camera_next_speed;
+//    volatile int64_t  camera_accumulator;
+//    volatile uint16_t camera_open_angle;
+//    volatile uint16_t camera_close_angle;
+//    volatile uint8_t  camera_value;
+//  };
+//  uintptr_t get_shared_data();
 
 #endif // !LIMNMOCO_CM7_SHARED_HPP
 

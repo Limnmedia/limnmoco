@@ -8,28 +8,20 @@
  * and the flash memory split is 1.5MiB CM7 + 0.5MiB CM4
  */
 
-#include <RPC.h>
+//#include <RPC.h>
 
-#include "config.hpp"
 #include "shared.hpp"
-#include "timer.hpp"
-#include "global.hpp"
-
+#include "motors.hpp"
 
 void setup() {
-  SharedData::begin();
-  Timer::begin();
+  RPC.begin();
+  RPC.bind("set_direction", motor::set_direction);
 
-  global.begin();
-
-  // why the RPC if the shared data is placed into a static memory location
-  // that is hard coded between the cores?
-  //RPC.begin();
-  //RPC.call("get_shared_data").as<uintptr_t>();
+  shared::begin();
+  motors::begin();
 }
 
-
 void loop() {
-  global.update();
+  delay(1);
 }
 

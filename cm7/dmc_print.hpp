@@ -64,7 +64,7 @@ private:
     void enqueue(int32_t data);
     void enqueue(float data);
     void enqueue(char const *data);
-    
+
     void enqueue(char const *field, uint8_t data);
     void enqueue(char const *field, uint32_t data);
     void enqueue(char const *field, int32_t data);
@@ -78,7 +78,7 @@ private:
     void enqueue(char const *field, char const *value);
 
     void enqueue(DmcHeader *header);
-    
+
     Stream *stream;
 
     static const uint32_t tx_length = 2048;

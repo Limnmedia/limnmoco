@@ -2,18 +2,25 @@
 
 #include "shared.hpp"
 
-SharedData *SharedData::ptr;
+namespace shared {
+Data *ptr;
 
-void SharedData::begin() {
-  ptr = (SharedData *)0x3800FD00;
-  memset(ptr, 0, sizeof(SharedData));
+void begin() {
+    ptr = (Data *)0x3800FD00;
+    memset(ptr, 0, sizeof(Data));
 }
+} // namespace shared
 
-SharedData *SharedData::get() {
-  return ptr;
-}
-
-uintptr_t get_shared_data() {
-  return (uintptr_t)SharedData::get();
-}
+// #NOTE: kept the old definition around for reference
+//SharedData *SharedData::ptr;
+//void SharedData::begin() {
+//  ptr = (SharedData *)0x3800FD00;
+//  memset(ptr, 0, sizeof(SharedData));
+//}
+//SharedData *SharedData::get() {
+//  return ptr;
+//}
+//uintptr_t get_shared_data() {
+//  return (uintptr_t)SharedData::get();
+//}
 

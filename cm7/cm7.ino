@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL_3.0-or-later
 
-//#include <RPC.h>
+#include <RPC.h>
 
 #include "config.hpp"
 #include "dmc_bus.hpp"
@@ -8,7 +8,9 @@
 #include "shared.hpp"
 
 void setup() {
-  SharedData::begin();
+  RPC.begin(); // this contains the code to boot the m4 core
+
+  shared::begin();
 
 #ifndef LIMNMOCO_DEBUG
   Serial.begin(LIMNMOCO_SERIAL_BAUD);
@@ -20,10 +22,6 @@ void setup() {
 #ifndef LIMNMOCO_DEBUG
   dmc_bus.bindPrint(Serial);
 #endif // !LIMNMOCO_DEBUG
-
-//  RPC.begin();
-//  RPC.bind("get_shared_data", get_shared_data);
-
 }
 
 void loop() {

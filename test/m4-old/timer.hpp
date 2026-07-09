@@ -5,12 +5,13 @@
 
 #include <mbed.h>
 
-struct Timer {
-    static void begin();
-    static void on_time();
+#include "status.hpp"
 
-    static Ticker timer;
-};
+namespace Timer {
+
+Status begin();
+
+} // namespace Timer
 
 #endif // !LIMNMOCO_CM4_TIMER_HPP
 
