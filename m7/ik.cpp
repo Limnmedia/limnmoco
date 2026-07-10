@@ -11,6 +11,7 @@
 namespace {
 
 constexpr float kPi = 3.14159265f;
+constexpr float kEpsilon = 1e-6f;
 
 float clamp(float value, float lo, float hi) {
   return std::max(lo, std::min(hi, value));
@@ -58,17 +59,17 @@ CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry
   const float boomRawRatio = result.panTarget.z / boomLength;
   const float boomRatio = clamp(boomRawRatio, -1.0f, 1.0f);
   const float boomRad = std::asin(boomRatio);
-  result.boomClamped = boomRawRatio != boomRatio;
+  result.boomClamped = abs(boomRawRatio - boomRatio) > kEpsilon;
 
   float horizontalReach = boomLength * std::cos(boomRad) + geometry.extensionLength;
-  if (abs(horizontalReach) < 0.000001f) {
-    horizontalReach = 0.000001f;
+  if (abs(horizontalReach) < kEpsilon) {
+    horizontalReach = kEpsilon;
   }
 
   const float swingRawRatio = result.panTarget.x / horizontalReach;
   const float swingRatio = clamp(swingRawRatio, -1.0f, 1.0f);
   const float swingRad = std::asin(swingRatio);
-  result.swingClamped = swingRawRatio != swingRatio;
+  result.swingClamped = abs(swingRawRatio - swingRatio) > kEpsilon;
 
   result.track = result.panTarget.y - horizontalReach * std::cos(swingRad);
   result.swingDeg = ik_degrees(swingRad);
