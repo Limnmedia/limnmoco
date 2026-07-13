@@ -53,12 +53,7 @@ void calculatePointToPoint(Motor *motor, int32_t destination, float minTime)
   // we don't want to stall the entire system over it.
   if (motor->maxAcceleration == 0)
   {
-    i = 0;
-    while (1)
-    {
-      i++;
-      // IOWR_32DIRECT(LED_BASE, 0, (i >> 8) );//leds);
-    }
+    return;
   }
 
   float tmax = maxV * maxAInverse;

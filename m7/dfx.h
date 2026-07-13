@@ -37,7 +37,8 @@
 #define MOVE_STATE_SHOOT 12
 #define MOVE_STATE_ALL_JOG 100
 
-#define VIRT_SCALE 100000u
+#define VIRT_SCALE 100000.0f
+#define LEN_SCALE  1000.0f
 
 struct MotorMove
 {
