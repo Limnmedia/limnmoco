@@ -117,7 +117,12 @@
 
 #define BOOM_COMPENSATION_ANGLES 121 // -60, -59, ... 0, ... 59, 60
 
-
+#define DMC_VIRT_TRACK 1
+#define DMC_VIRT_EW    2
+#define DMC_VIRT_NS    3
+#define DMC_VIRT_PAN   4
+#define DMC_VIRT_TILT  5
+#define DMC_VIRT_ROLL  6
 
 // allocate internally used resources
 void dmc_msg_init();

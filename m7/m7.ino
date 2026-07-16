@@ -1413,17 +1413,17 @@ int32_t virt_inverse_kinematics() {
 // one batch, rather than per-axis MSG_VIRT_MOVE calls.
 int32_t msg_virt_move(uint8_t motor, int32_t position) {
   float target = ((float)position / VIRT_SCALE);
-  if (motor == _virtual.trackIndex) {
+  if (motor == DMC_VIRT_TRACK) {
     _virtual.track = target;
-  } else if (motor == _virtual.swingIndex) {
+  } else if (motor == DMC_VIRT_EW) {
     _virtual.EW    = target;
-  } else if (motor == _virtual.boomIndex) {
+  } else if (motor == DMC_VIRT_NS) {
     _virtual.NS    = target;
-  } else if (motor == _virtual.panIndex) {
+  } else if (motor == DMC_VIRT_PAN) {
     _virtual.pan   = target;
-  } else if (motor == _virtual.tiltIndex) {
+  } else if (motor == DMC_VIRT_TILT) {
     _virtual.tilt  = target;
-  } else if (motor == _virtual.rollIndex) {
+  } else if (motor == DMC_VIRT_ROLL) {
     _virtual.roll  = target;
   }
 
@@ -1434,34 +1434,34 @@ int32_t msg_virt_stop(uint8_t motor) {
   // #NOTE: this code seems to work just fine. we are trying to reuse diyamis'
   //        code as much as possible, and interfacing with the stop command of 
   //        the motors within virtual movement appears to be fine for now.
-  if (motor == _virtual.trackIndex) {
+  if (motor == DMC_VIRT_TRACK) {
     msg_motor_stop(_virtual.trackIndex);
     return DMC_ACK_OK;
   }
 
-  if (motor == _virtual.boomIndex) {
-    msg_motor_stop(_virtual.boomIndex);
-    msg_motor_stop(_virtual.trackIndex);
-    return DMC_ACK_OK;
-  }
-
-  if (motor == _virtual.swingIndex) {
+  if (motor == DMC_VIRT_EW) {
     msg_motor_stop(_virtual.swingIndex);
     msg_motor_stop(_virtual.trackIndex);
     return DMC_ACK_OK;
   }
 
-  if (motor == _virtual.panIndex) {
+  if (motor == DMC_VIRT_NS) {
+    msg_motor_stop(_virtual.boomIndex);
+    msg_motor_stop(_virtual.trackIndex);
+    return DMC_ACK_OK;
+  }
+
+  if (motor == DMC_VIRT_PAN) {
     msg_motor_stop(_virtual.panIndex);
     return DMC_ACK_OK;
   }
 
-  if (motor == _virtual.tiltIndex) {
+  if (motor == DMC_VIRT_TILT) {
     msg_motor_stop(_virtual.tiltIndex);
     return DMC_ACK_OK;
   }
 
-  if (motor == _virtual.rollIndex) {
+  if (motor == DMC_VIRT_ROLL) {
     msg_motor_stop(_virtual.rollIndex);
     return DMC_ACK_OK;
   }
@@ -1485,34 +1485,34 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   //        virtual jogging on top of the existing code.
   //
   //
-  if (motor == _virtual.trackIndex) {
+  if (motor == DMC_VIRT_TRACK) {
     msg_motor_jog(_virtual.trackIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
-  if (motor == _virtual.boomIndex) {
+  if (motor == DMC_VIRT_NS) {
     msg_motor_jog(_virtual.boomIndex, speed, dest);
     msg_motor_jog(_virtual.trackIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
-  if (motor == _virtual.swingIndex) {
+  if (motor == DMC_VIRT_EW) {
     msg_motor_jog(_virtual.swingIndex, speed, dest);
     msg_motor_jog(_virtual.trackIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
-  if (motor == _virtual.panIndex) {
+  if (motor == DMC_VIRT_PAN) {
     msg_motor_jog(_virtual.panIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
-  if (motor == _virtual.tiltIndex) {
+  if (motor == DMC_VIRT_TILT) {
     msg_motor_jog(_virtual.tiltIndex, speed, dest);
     return DMC_ACK_OK;
   }
 
-  if (motor == _virtual.rollIndex) {
+  if (motor == DMC_VIRT_ROLL) {
     msg_motor_jog(_virtual.rollIndex, speed, dest);
     return DMC_ACK_OK;
   }
