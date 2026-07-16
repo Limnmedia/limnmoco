@@ -1085,6 +1085,10 @@ void loop()
             if (type == DMC_VIRT_TYPE_NONE) {
               // no config data. reset virtual state
               memset(&_virtual, 0, sizeof(Virtual));
+              for (uint32_t index = 0; index < MOTOR_COUNT; ++index) {
+                Motor *motor  = &motors[index];
+                motor->config &= ~(DMC_MOTOR_CONFIG_VIRT);
+              }
             }
             else if (type == DMC_VIRT_TYPE_BOOM_SWING_TRACK) {
               // #TODO: add range validation to motor indices.
