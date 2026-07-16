@@ -162,6 +162,8 @@ int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest);
 int32_t msg_virt_move(uint8_t motor, int32_t position);
 int32_t msg_virt_stop(uint8_t motor);
 int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest);
+int32_t msg_virt_jog_on_line(uint8_t axis, uint16_t speed);
+int32_t msg_virt_aim_point();
 int32_t msg_virt_get_position(uint32_t msg_id);
 
 void virt_update_positions();
@@ -1158,7 +1160,7 @@ void loop()
 
                 if (!dmc_msg_read_at_end()) {
                   // read boom compensation table
-                  for (int i = 0; i < BOOM_COMPENSATION_ANGLES; ++i) {
+                  for (int i = 0; i < DMC_VIRT_CONFIG_BOOM_COMPENSATION_ANGLES; ++i) {
                     _virtual.boomCompensation[i] = (float)dmc_msg_read_dword();
                   }
                 }
@@ -1216,22 +1218,28 @@ void loop()
           }
           else if (cmd == DMC_MSG_VIRT_JOG_ON_LINE) {
             // #TODO:
-            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+            uint8_t  axis  = dmc_msg_read_byte();
+            uint16_t speed = dmc_msg_read_word();
+
+            msg_virt_jog_on_line(axis, speed);
+
+            responseCode = DMC_ACK_OK;
           }
           else if (cmd == DMC_MSG_VIRT_AIM_POINT) {
-            // #TODO: when we support aimPoint
-            // _virtual.aimEnabled = dmc_msg_read_byte();
-            // _virtual.aimX = dmc_msg_read_dword();
-            // _virtual.aimY = dmc_msg_read_dword();
-            // _virtual.aimZ = dmc_msg_read_dword();
-            //
-            // dmc_msg_prepare(cmd | DMC_MSG_FLAG_ACK, msgId);
-            // dmc_msg_out_dword(_virtual.aimEnabled);
-            // dmc_msg_out_dword(_virtual.aimX);
-            // dmc_msg_out_dword(_virtual.aimY);
-            // dmc_msg_out_dword(_virtual.aimZ);
-            // writeOutputMessage();
-            responseCode = DMC_ACK_ERR_UNSUPPORTED;
+            _virtual.aimEnabled = dmc_msg_read_byte();
+            _virtual.aimX = dmc_msg_read_dword();
+            _virtual.aimY = dmc_msg_read_dword();
+            _virtual.aimZ = dmc_msg_read_dword();
+
+            msg_virt_aim_point();
+
+            dmc_msg_prepare(cmd, msgId);
+            dmc_msg_out_dword(_virtual.aimEnabled);
+            dmc_msg_out_dword(_virtual.aimX);
+            dmc_msg_out_dword(_virtual.aimY);
+            dmc_msg_out_dword(_virtual.aimZ);
+            writeOutputMessage();
+            responseCode = 0; // #NOTE: aim point response has already been written
           }
           else // unsupported
           {
@@ -1522,6 +1530,46 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   }
 
   return DMC_ACK_ERR_GENERAL;
+}
+
+int32_t msg_virt_jog_on_line(uint8_t axis, uint16_t speed) {
+  switch(axis) {
+    case DMC_VIRT_JOG_ON_LINE_AXIS_X:
+      // jogging in the X axis is equivalent to a East West move
+      break;
+
+    case DMC_VIRT_JOG_ON_LINE_AXIS_Y:
+      // jogging in the Y axis is equivalent to a North SOuth move
+      break;
+
+    case DMC_VIRT_JOG_ON_LINE_AXIS_Z:
+      // jogging in the Z axis is equivalent to a Forward Backward move
+      break;
+
+    case DMC_VIRT_JOG_ON_LINE_AXIS_PAN:
+      // jogging along pan? does that mean a rotation about pan?
+      // or is it another way of saying East west?
+      break;
+
+    case DMC_VIRT_JOG_ON_LINE_AXIS_TILT:
+      // jogging along tilt? same questions as pan, tilt moves in 
+      // the north south direction. 
+      // if it's just rotate the camera, can't dragonframe just send a 
+      // motor_move packet?
+      // if it's move in the north south direction, can't dragonframe 
+      // just send a jog with DMC_VIRT_NS as the target?
+      // if it's a crane movement distinct from either, then how is the crane 
+      // expected to move? 
+      break;
+
+    default:
+      break;
+  }
+
+  return 0;
+}
+
+int32_t msg_virt_aim_point() {
 }
 
 int32_t msg_virt_get_position(uint32_t msg_id) {

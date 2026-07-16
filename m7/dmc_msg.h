@@ -108,14 +108,22 @@
 #define DMC_RT_CAMERA_VIDEO       0x0010
 #define DMC_RT_CAMERA_STILLS      0x0020
 
-// virtuals support types
+// virtual config support types
 #define DMC_VIRT_TYPE_NONE             0x0000
 #define DMC_VIRT_TYPE_BOOM_SWING_TRACK 0x0001
 #define DMC_VIRT_TYPE_SWING_PAN        0x0002
 #define DMC_VIRT_TYPE_Y_SWING_TRACK    0x0004
 #define DMC_VIRT_TYPE_X_Y_Z            0x0008
 
-#define BOOM_COMPENSATION_ANGLES 121 // -60, -59, ... 0, ... 59, 60
+// Jog on line axis numberings
+#define DMC_VIRT_JOG_ON_LINE_AXIS_X    0
+#define DMC_VIRT_JOG_ON_LINE_AXIS_Y    1
+#define DMC_VIRT_JOG_ON_LINE_AXIS_Z    2
+#define DMC_VIRT_JOG_ON_LINE_AXIS_PAN  3
+#define DMC_VIRT_JOG_ON_LINE_AXIS_TILT 4
+
+// the number of entries in the boom compensation table
+#define DMC_VIRT_CONFIG_BOOM_COMPENSATION_ANGLES 121 // -60, -59, ... 0, ... 59, 60
 
 #define DMC_VIRT_TRACK 1
 #define DMC_VIRT_EW    2
@@ -123,6 +131,8 @@
 #define DMC_VIRT_PAN   4
 #define DMC_VIRT_TILT  5
 #define DMC_VIRT_ROLL  6
+
+
 
 // allocate internally used resources
 void dmc_msg_init();
