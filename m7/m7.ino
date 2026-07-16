@@ -1214,7 +1214,8 @@ void loop()
             responseCode = msg_virt_jog(motor, speed, dest);
           }
           else if (cmd == DMC_MSG_VIRT_GET_POSITION) {
-              msg_virt_get_position(msgId);
+            msg_virt_get_position(msgId);
+            responseCode = 0;
           }
           else if (cmd == DMC_MSG_VIRT_JOG_ON_LINE) {
             // #TODO:
@@ -1234,7 +1235,7 @@ void loop()
             msg_virt_aim_point();
 
             dmc_msg_prepare(cmd, msgId);
-            dmc_msg_out_dword(_virtual.aimEnabled);
+            dmc_msg_out_byte(_virtual.aimEnabled);
             dmc_msg_out_dword(_virtual.aimX);
             dmc_msg_out_dword(_virtual.aimY);
             dmc_msg_out_dword(_virtual.aimZ);
