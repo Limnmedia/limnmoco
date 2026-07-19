@@ -3,39 +3,60 @@
 #ifndef LIMNMOCO_CM4_MOTORS_HPP
 #define LIMNMOCO_CM4_MOTORS_HPP
 
-#include "status.h"
+#include <array>
+#include <cstring>
 
-// okay, given that:
-// 1. we only control N motors
-// 2. we control all motors with the same update step
-// 3. we are working on a single piece of hardware. that we would need major lifting to port elsewhere
-//      (unless it's built around the same chipset, yada yada.)
-// 
-// why use classes at all? what organization does it bring?
-// we could use a class for a single motor. but then, how do 
-// we use a single bitset for all motor directions w/o breaking 
-// encapsulation? 
-// if we are using a single array for motors direction/veloctiy/acceleration
-// then what use is it placing that code into a class?
-// A namespace gives us the same overhead as a class, without the construction 
-// issues. We can call all constructors in the main setup, which will stop hiding 
-// away initialization across multiple files.:
+#include <Arduino.h>
+#include <drivers/Ticker.h>
 
-namespace motors {
+#include "config.hpp"
+#include "common.hpp"
+#include "shared.hpp"
+#include "status.hpp"
 
-/**
- * \brief initialize global state for the motors and begin heartbeat
- */
-void begin();
+class Motors {
+public:
+    using Pins         = std::array<uint8_t, LIMNMOCO_MOTOR_COUNT>;
+    using Accumulators = std::array<uint32_t, LIMNMOCO_MOTOR_COUNT>;
 
-/**
- * \brief set each available motor direction
- *
- * \note direction is a bitset of the motor direction booleans.
- */
-int32_t set_direction(uint32_t direction);
+    Motors();
 
-} // namespace motors
+    void begin();
+
+    Status update_motor_directions();
+
+private:
+    void beat();
+    void up();
+    void down();
+
+    static constexpr Pins m_step_pins = {
+        LIMNMOCO_PIN_STEP_0,
+        LIMNMOCO_PIN_STEP_1,
+        LIMNMOCO_PIN_STEP_2,
+        LIMNMOCO_PIN_STEP_3,
+        LIMNMOCO_PIN_STEP_4,
+        LIMNMOCO_PIN_STEP_5,
+        LIMNMOCO_PIN_STEP_6,
+        LIMNMOCO_PIN_STEP_7,
+    };
+
+    static constexpr Pins m_direction_pins = {
+        LIMNMOCO_PIN_DIRECTION_0,
+        LIMNMOCO_PIN_DIRECTION_1,
+        LIMNMOCO_PIN_DIRECTION_2,
+        LIMNMOCO_PIN_DIRECTION_3,
+        LIMNMOCO_PIN_DIRECTION_4,
+        LIMNMOCO_PIN_DIRECTION_5,
+        LIMNMOCO_PIN_DIRECTION_6,
+        LIMNMOCO_PIN_DIRECTION_7,
+    };
+
+
+    mbed::Ticker m_heart;
+    Directions   m_directions;
+    Accumulators m_motor_accumulators;
+};
 
 #endif // !LIMNMOCO_CM4_MOTORS_HPP
 

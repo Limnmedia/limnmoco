@@ -6,6 +6,7 @@
 #include <cstdint>
 
 enum Status : int32_t {
+    STATUS_ERR_RANGE  = -2,
     STATUS_ERR_MOVING = -1,
     STATUS_OK         = 0,
 };

@@ -1,26 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <cstring>
+
 #include "shared.hpp"
 
-namespace shared {
-Data *ptr;
-
-void begin() {
-    ptr = (Data *)0x3800FD00;
-    memset(ptr, 0, sizeof(Data));
+Shared::Shared()
+  : m_directions{0} {
+  m_motor_targets.fill(0);
+  m_motor_positions.fill(0);
+  m_motor_velocities.fill(0);
+  m_motor_accelerations.fill(0);
 }
-} // namespace shared
 
-// #NOTE: kept the old definition around for reference
-//SharedData *SharedData::ptr;
-//void SharedData::begin() {
-//  ptr = (SharedData *)0x3800FD00;
-//  memset(ptr, 0, sizeof(SharedData));
-//}
-//SharedData *SharedData::get() {
-//  return ptr;
-//}
-//uintptr_t get_shared_data() {
-//  return (uintptr_t)SharedData::get();
-//}
+// static
+void Shared::begin() {
+  m_ptr = new ((Shared *)LIMNMOCO_SHARED_DATA_ADDRESS) Shared();
+}
 
+// static
+Direction Shared::get_direction() {
+  return m_ptr->m_direction;
+}

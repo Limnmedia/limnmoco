@@ -4,7 +4,6 @@
 
 #include "config.hpp"
 #include "dmc_bus.hpp"
-#include "global.hpp"
 #include "shared.hpp"
 
 void setup() {
@@ -26,5 +25,4 @@ void setup() {
 
 void loop() {
   dmc_bus.update();
-  global.update();
 }

@@ -53,6 +53,8 @@
 // #NOTE:the maximum number of steps per second for a given motor
 #define LIMNMOCO_MOTOR_MAX_VELOCITY 200'000
 
+#define LIMNMOCO_SHARED_DATA_ADDRESS 0x3800FD00
+
 #else
 #error "Board unsupported for arduino sketch"
 #endif // !ARDUINO_ARCH_MBED_GIGA
