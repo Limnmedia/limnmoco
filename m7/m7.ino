@@ -1779,8 +1779,14 @@ void sendHello(uint32_t id)
   dmc_msg_out_byte(GIO_INPUTS);  // GIO IN count
   dmc_msg_out_byte(0);           // HW LIMIT SET count
   dmc_msg_out_dword(FRAME_COUNT);
+  // NOTE: Monday July 20, 2026:
+  //       Dragonframe rejects the device as not supporting virtuals when only DMC_CAP_VIRTUAL_BOOM_SWING_TRACK is
+  //       set in the capabilities field. The current workaround is to report support for all virtuals flags, which 
+  //       while it works, does imply that the device is more feature rich that it actually is. We need to follow 
+  //       up with Diyami about what is going on in Dragonframe so we can provide a more specific capabilities response.
   dmc_msg_out_dword(DMC_CAP_REAL_TIME | DMC_CAP_GO_MOTION | DMC_CAP_GO_MOTION2 | DMC_CAP_COUPLE_MOTORS |
-                    DMC_CAP_REAL_TIME_LOOP | DMC_CAP_REAL_TIME_CAMERA | DMC_CAP_VIRTUAL_BOOM_SWING_TRACK); // capabilities
+                    DMC_CAP_REAL_TIME_LOOP | DMC_CAP_REAL_TIME_CAMERA | DMC_CAP_VIRTUAL_BOOM_SWING_TRACK |
+                    DMC_CAP_VIRTUAL_SWING_PAN | DMC_CAP_VIRTUAL_Y_SWING_TRACK | DMC_CAP_VIRTUAL_X_Y_Z); // capabilities
   dmc_msg_out_word(2); // protocol version
 
   writeOutputMessage();
