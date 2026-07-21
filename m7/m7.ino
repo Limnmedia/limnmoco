@@ -244,6 +244,7 @@ void setup()
   memset(sharedData, 0, sizeof(DmcSharedData));
 
   Serial.begin(115200);
+  Serial2.begin(115200);
 
   dbg_pin(PIN_DBG_0);
   dbg_pin(PIN_DBG_1);
@@ -1864,6 +1865,7 @@ void transmitMessages()
   {
     uint32_t c = messageBuffer.read_char();
     Serial.write(c);
+    Serial2.write(c);
   }
 }
 
