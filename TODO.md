@@ -9,7 +9,7 @@
 - virtual motor moves cause continuous movement (fix: ???)
     THis is now no longer happening, Im' not exactly sure what changed.
 - virtuals are reported as unsupported (fix: 0x095c8bf)
-- boom and track are swapped. 
+- boom and track are swapped. (fix: dragonframe motor assignment)
     This is still happening, It was fixed temporarily, and is back again. (regression)
 - Track reports a large value when starting a jog, (580mm) which is strange, the other 
     virtual axis report resonable values. We need to see when this is happening in the device. 

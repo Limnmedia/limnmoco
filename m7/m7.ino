@@ -244,6 +244,7 @@ void setup()
   memset(sharedData, 0, sizeof(DmcSharedData));
 
   Serial.begin(115200);
+  Serial1.begin(115200);
   Serial2.begin(115200);
 
   dbg_pin(PIN_DBG_0);
@@ -548,6 +549,7 @@ void loop()
     {
 
       int readData = Serial.read();
+      Serial1.write(readData);
 
       --len;
 
