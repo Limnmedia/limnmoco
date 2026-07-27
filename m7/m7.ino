@@ -134,12 +134,21 @@ struct Virtual {
   float pan;
   float tilt;
   float roll;
-  float prevTrack;
-  float prevEW;
-  float prevNS;
-  float prevPan;
-  float prevTilt;
-  float prevRoll;
+
+  //float prevTrack;
+  //float prevEW;
+  //float prevNS;
+  //float prevPan;
+  //float prevTilt;
+  //1float prevRoll;
+
+  // The virtual pose is relative to the pose at the time the virtual
+  // configuration is accepted.  fkOrigin is the corresponding absolute FK
+  // result, so static boom reach and nodal offsets do not become virtual
+  // movement.
+  VirtualPose virtualOrigin;
+  VirtualPose fkOrigin;
+  uint8_t fkOriginValid;
 
   float aimX;
   float aimY;
@@ -246,6 +255,7 @@ void setup()
   Serial.begin(115200);
   Serial1.begin(115200);
   Serial2.begin(115200);
+  Serial4.begin(115200);
 
   dbg_pin(PIN_DBG_0);
   dbg_pin(PIN_DBG_1);
@@ -1179,6 +1189,28 @@ void loop()
                 _virtual.aimZ = 0;
                 _virtual.aimEnabled = 0;
 
+                _virtual.virtualOrigin = VirtualPose{
+                  _virtual.track, _virtual.EW, _virtual.NS,
+                  _virtual.pan, _virtual.tilt, _virtual.roll};
+
+                _virtual.fkOrigin = solve_fk(
+                  (float)(motors[_virtual.boomIndex - 1].position /
+                          motors[_virtual.boomIndex - 1].SPU),
+                  (float)(motors[_virtual.swingIndex - 1].position /
+                          motors[_virtual.swingIndex - 1].SPU),
+                  (float)(motors[_virtual.trackIndex - 1].position /
+                          motors[_virtual.trackIndex - 1].SPU),
+                  (float)(motors[_virtual.panIndex - 1].position /
+                          motors[_virtual.panIndex - 1].SPU),
+                  (float)(motors[_virtual.tiltIndex - 1].position /
+                          motors[_virtual.tiltIndex - 1].SPU),
+                  (float)(motors[_virtual.rollIndex - 1].position /
+                          motors[_virtual.rollIndex - 1].SPU),
+                  CraneGeometry{_virtual.boomLength, _virtual.boomExtension,
+                                _virtual.nodalOffsetX, _virtual.nodalOffsetY,
+                                _virtual.nodalOffsetZ});
+                _virtual.fkOriginValid = 1;
+
                 config_good = true;
               } while (false);
 
@@ -1211,6 +1243,7 @@ void loop()
           }
           else if (cmd == DMC_MSG_VIRT_JOG) {
             dbg(PIN_DBG_2);
+            Serial4.write(0xA0);
             uint8_t motor  = dmc_msg_read_byte();
             uint16_t speed = dmc_msg_read_word();
             int32_t dest   = dmc_msg_read_dword();
@@ -1376,20 +1409,105 @@ void virt_kinematics() {
   float tiltDeg  = (float)(tiltMotor->position / tiltMotor->SPU);
   float rollDeg  = (float)(rollMotor->position / rollMotor->SPU);
 
+  Serial4.print("BFK");
+  Serial4.print("sp");
+  Serial4.print(swingMotor->position);
+  Serial4.print("bp");
+  Serial4.print(boomMotor->position);
+  Serial4.print("Tp");
+  Serial4.print(trackMotor->position);
+  Serial4.print("pp");
+  Serial4.print(panMotor->position);
+  Serial4.print("tp");
+  Serial4.print(tiltMotor->position);
+  Serial4.print("rp");
+  Serial4.print(rollMotor->position);
+  Serial4.print("su");
+  Serial4.print(swingMotor->SPU);
+  Serial4.print("bu");
+  Serial4.print(boomMotor->SPU);
+  Serial4.print("Tu");
+  Serial4.print(trackMotor->SPU);
+  Serial4.print("pu");
+  Serial4.print(panMotor->SPU);
+  Serial4.print("tu");
+  Serial4.print(tiltMotor->SPU);
+  Serial4.print("ru");
+  Serial4.print(rollMotor->SPU);
+  Serial4.print("vT");
+  Serial4.print(_virtual.track);
+  Serial4.print("EW");
+  Serial4.print(_virtual.EW);
+  Serial4.print("NS");
+  Serial4.print(_virtual.NS);
+  Serial4.print("vp");
+  Serial4.print(_virtual.pan);
+  Serial4.print("vt");
+  Serial4.print(_virtual.tilt);
+  Serial4.print("vr");
+  Serial4.print(_virtual.roll);
+
   VirtualPose fk = solve_fk(
     boomDeg, swingDeg, track, panDeg, tiltDeg, rollDeg,
     CraneGeometry{_virtual.boomLength, _virtual.boomExtension,
                   _virtual.nodalOffsetX, _virtual.nodalOffsetY, _virtual.nodalOffsetZ});
 
-  _virtual.track = fk.vtrack;
-  _virtual.EW    = fk.vew;
-  _virtual.NS    = fk.vheight;
-  _virtual.pan   = fk.vpanDeg;
-  _virtual.tilt  = fk.vtiltDeg;
-  _virtual.roll  = fk.vrollDeg;
+  if (_virtual.fkOriginValid) {
+    _virtual.track = _virtual.virtualOrigin.vtrack +
+                     (fk.vtrack - _virtual.fkOrigin.vtrack);
+    _virtual.EW    = _virtual.virtualOrigin.vew +
+                     (fk.vew - _virtual.fkOrigin.vew);
+    _virtual.NS    = _virtual.virtualOrigin.vheight +
+                     (fk.vheight - _virtual.fkOrigin.vheight);
+    _virtual.pan   = _virtual.virtualOrigin.vpanDeg +
+                     (fk.vpanDeg - _virtual.fkOrigin.vpanDeg);
+    _virtual.tilt  = _virtual.virtualOrigin.vtiltDeg +
+                     (fk.vtiltDeg - _virtual.fkOrigin.vtiltDeg);
+    _virtual.roll  = _virtual.virtualOrigin.vrollDeg +
+                     (fk.vrollDeg - _virtual.fkOrigin.vrollDeg);
+  }
+
+  Serial4.print("AFK");
+  Serial4.print("sp");
+  Serial4.print(swingMotor->position);
+  Serial4.print("bp");
+  Serial4.print(boomMotor->position);
+  Serial4.print("Tp");
+  Serial4.print(trackMotor->position);
+  Serial4.print("pp");
+  Serial4.print(panMotor->position);
+  Serial4.print("tp");
+  Serial4.print(tiltMotor->position);
+  Serial4.print("rp");
+  Serial4.print(rollMotor->position);
+  Serial4.print("su");
+  Serial4.print(swingMotor->SPU);
+  Serial4.print("bu");
+  Serial4.print(boomMotor->SPU);
+  Serial4.print("Tu");
+  Serial4.print(trackMotor->SPU);
+  Serial4.print("pu");
+  Serial4.print(panMotor->SPU);
+  Serial4.print("tu");
+  Serial4.print(tiltMotor->SPU);
+  Serial4.print("ru");
+  Serial4.print(rollMotor->SPU);
+  Serial4.print("vT");
+  Serial4.print(_virtual.track);
+  Serial4.print("EW");
+  Serial4.print(_virtual.EW);
+  Serial4.print("NS");
+  Serial4.print(_virtual.NS);
+  Serial4.print("vp");
+  Serial4.print(_virtual.pan);
+  Serial4.print("vt");
+  Serial4.print(_virtual.tilt);
+  Serial4.print("vr");
+  Serial4.print(_virtual.roll);
 }
 
 int32_t virt_inverse_kinematics() {
+  Serial4.write(0xA1);
   CraneSolveResult result = solve_ik(
     VirtualPose{_virtual.track, _virtual.EW, _virtual.NS,
                 _virtual.pan, _virtual.tilt, _virtual.roll},
@@ -1407,6 +1525,20 @@ int32_t virt_inverse_kinematics() {
   _virtual.t = _virtual.tilt;
   _virtual.r = _virtual.roll;
 
+  Serial4.print("IK");
+  Serial4.print("T");
+  Serial4.print(_virtual.T);
+  Serial4.print("s");
+  Serial4.print(_virtual.s);
+  Serial4.print("b");
+  Serial4.print(_virtual.b);
+  Serial4.print("p");
+  Serial4.print(_virtual.p);
+  Serial4.print("t");
+  Serial4.print(_virtual.t);
+  Serial4.print("r");
+  Serial4.print(_virtual.r);
+
   Motor *trackMotor = &motors[_virtual.trackIndex - 1];
   Motor *swingMotor = &motors[_virtual.swingIndex - 1];
   Motor *boomMotor  = &motors[_virtual.boomIndex  - 1];
@@ -1421,6 +1553,7 @@ int32_t virt_inverse_kinematics() {
   msg_motor_move(_virtual.tiltIndex,  (int32_t)(_virtual.t * tiltMotor->SPU));
   msg_motor_move(_virtual.rollIndex,  (int32_t)(_virtual.r * rollMotor->SPU));
 
+  Serial4.write(0xA2);
   return DMC_ACK_OK;
 }
 

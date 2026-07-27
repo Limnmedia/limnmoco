@@ -69,6 +69,8 @@ struct CraneSolveResult {
 float degrees(float radians);
 float radians(float degrees);
 CraneSolveResult solveLimnmocoCrane(const VirtualPose &pose, const CraneGeometry &geometry);
+VirtualPose solveForwardKinematics(const CranePositions &positions,
+                                   const CraneGeometry &geometry);
 
 Vec3 fk(const CranePositions &pos, const CraneGeometry &geometry);
 

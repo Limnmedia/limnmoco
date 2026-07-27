@@ -25,6 +25,46 @@ bool near(float actual, float expected, float tolerance) {
   return std::abs(actual - expected) <= tolerance;
 }
 
+bool runForwardKinematicsOriginTest() {
+  const limnmoco::CraneGeometry geometry{
+      857.7f,  // boomLength
+      78.0f,   // extensionLength
+      0.0f,    // offsetX
+      0.0f,    // offsetY
+      0.0f,    // offsetZ
+  };
+  const limnmoco::CranePositions zeroPositions{
+      0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  const limnmoco::CranePositions originPositions{
+      0.0f, 0.0f, 0.1f, 0.0f, 0.0f, 0.0f};
+  const limnmoco::VirtualPose configuredOrigin{
+      0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  const limnmoco::VirtualPose zeroAbsolute =
+      limnmoco::solveForwardKinematics(zeroPositions, geometry);
+  const limnmoco::VirtualPose startingAbsolute =
+      limnmoco::solveForwardKinematics(originPositions, geometry);
+
+  const limnmoco::CranePositions movedPositions{
+      0.0f, 0.0f, 12.6f, 0.0f, 0.0f, 0.0f};
+  const limnmoco::VirtualPose movedAbsolute =
+      limnmoco::solveForwardKinematics(movedPositions, geometry);
+  const limnmoco::VirtualPose movedVirtual{
+      configuredOrigin.vtrack + movedAbsolute.vtrack - startingAbsolute.vtrack,
+      configuredOrigin.vew + movedAbsolute.vew - startingAbsolute.vew,
+      configuredOrigin.vheight + movedAbsolute.vheight - startingAbsolute.vheight,
+      configuredOrigin.vpanDeg + movedAbsolute.vpanDeg - startingAbsolute.vpanDeg,
+      configuredOrigin.vtiltDeg + movedAbsolute.vtiltDeg - startingAbsolute.vtiltDeg,
+      configuredOrigin.vrollDeg + movedAbsolute.vrollDeg - startingAbsolute.vrollDeg,
+  };
+
+  const bool ok = near(zeroAbsolute.vtrack, 935.7f, 1e-4f) &&
+                  near(configuredOrigin.vtrack, 0.0f, 1e-6f) &&
+                  near(movedVirtual.vtrack, 12.5f, 1e-4f);
+  std::cout << (ok ? "[PASS] " : "[FAIL] ")
+            << "FK origin normalization removes static boom reach\n";
+  return ok;
+}
+
 void printVec(const char *label, limnmoco::Vec3 v) {
   std::cout << "  " << label << ": (" << v.x << ", " << v.y << ", " << v.z << ")\n";
 }
@@ -132,6 +172,9 @@ int main() {
   };
 
   int failures = 0;
+  if (!runForwardKinematicsOriginTest()) {
+    ++failures;
+  }
   for (const TestCase &test : tests) {
     if (!runTest(test)) {
       ++failures;

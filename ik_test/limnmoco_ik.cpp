@@ -138,6 +138,32 @@ CraneSolveResult solveLimnmocoCrane(const VirtualPose &pose, const CraneGeometry
   return result;
 }
 
+VirtualPose solveForwardKinematics(const CranePositions &positions,
+                                   const CraneGeometry &geometry) {
+  const float boomRad = radians(positions.boom);
+  const float swingRad = radians(positions.swing);
+
+  Vec3 armTip{
+      geometry.boomLength * std::sin(swingRad) * std::cos(boomRad),
+      positions.track + geometry.boomLength * std::cos(swingRad) * std::cos(boomRad),
+      geometry.boomLength * std::sin(boomRad),
+  };
+  Vec3 levelExtension{
+      geometry.extensionLength * std::sin(swingRad),
+      geometry.extensionLength * std::cos(swingRad),
+      0.0f,
+  };
+
+  const Mat3 rotation = rotationMatrixFromVirtualAxes(
+      positions.pan, positions.tilt, positions.roll);
+  const Vec3 offsetWorld = multiply(
+      rotation, Vec3{geometry.offsetX, geometry.offsetY, geometry.offsetZ});
+  const Vec3 nodal = add(add(armTip, levelExtension), offsetWorld);
+
+  return VirtualPose{nodal.y, nodal.x, nodal.z,
+                     positions.pan, positions.tilt, positions.roll};
+}
+
 Vec3 fk(const CranePositions &pos, const CraneGeometry &geo) {
 }
 
