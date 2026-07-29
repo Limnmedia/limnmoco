@@ -27,6 +27,7 @@ With `g++`:
 g++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
   main.cpp limnmoco_ik.cpp ../common/LimnmocoIK/src/LimnmocoIK.cpp \
   ../common/LimnmocoIK/src/Vec3.cpp ../common/LimnmocoIK/src/Mat3.cpp \
+  ../common/LimnmocoIK/src/CoordinatedTrajectory.cpp \
   -o limnmoco_ik_test
 ```
 
@@ -36,13 +37,24 @@ With `clang++`:
 clang++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
   main.cpp limnmoco_ik.cpp ../common/LimnmocoIK/src/LimnmocoIK.cpp \
   ../common/LimnmocoIK/src/Vec3.cpp ../common/LimnmocoIK/src/Mat3.cpp \
+  ../common/LimnmocoIK/src/CoordinatedTrajectory.cpp \
   -o limnmoco_ik_test
 ```
 
 With MSVC Developer PowerShell:
 
 ```powershell
-cl /EHsc /std:c++17 /I..\common\LimnmocoIK\src main.cpp limnmoco_ik.cpp ..\common\LimnmocoIK\src\LimnmocoIK.cpp ..\common\LimnmocoIK\src\Vec3.cpp ..\common\LimnmocoIK\src\Mat3.cpp /Fe:limnmoco_ik_test.exe
+cl /EHsc /std:c++17 /I..\common\LimnmocoIK\src main.cpp limnmoco_ik.cpp ..\common\LimnmocoIK\src\LimnmocoIK.cpp ..\common\LimnmocoIK\src\Vec3.cpp ..\common\LimnmocoIK\src\Mat3.cpp ..\common\LimnmocoIK\src\CoordinatedTrajectory.cpp /Fe:limnmoco_ik_test.exe
+```
+
+The trajectory primitive has a separate focused test:
+
+```sh
+g++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
+  coordinated_trajectory_test.cpp \
+  ../common/LimnmocoIK/src/CoordinatedTrajectory.cpp \
+  -o coordinated_trajectory_test
+./coordinated_trajectory_test
 ```
 
 ## Run
