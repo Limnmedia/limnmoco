@@ -1544,12 +1544,33 @@ int32_t virt_inverse_kinematics() {
   Motor *tiltMotor  = &motors[_virtual.tiltIndex  - 1];
   Motor *rollMotor  = &motors[_virtual.rollIndex  - 1];
 
-  msg_motor_move(_virtual.trackIndex, (int32_t)(_virtual.T * trackMotor->SPU));
-  msg_motor_move(_virtual.swingIndex, (int32_t)(_virtual.s * swingMotor->SPU));
-  msg_motor_move(_virtual.boomIndex,  (int32_t)(_virtual.b * boomMotor->SPU));
-  msg_motor_move(_virtual.panIndex,   (int32_t)(_virtual.p * panMotor->SPU));
-  msg_motor_move(_virtual.tiltIndex,  (int32_t)(_virtual.t * tiltMotor->SPU));
-  msg_motor_move(_virtual.rollIndex,  (int32_t)(_virtual.r * rollMotor->SPU));
+  const CoordinatedMotionAxis axes[] = {
+    {_virtual.trackIndex - 1,
+      {trackMotor->position, _virtual.T * trackMotor->SPU,
+       trackMotor->maxVelocity, trackMotor->maxAcceleration}},
+    {_virtual.swingIndex - 1,
+      {swingMotor->position, _virtual.s * swingMotor->SPU,
+       swingMotor->maxVelocity, swingMotor->maxAcceleration}},
+    {_virtual.boomIndex - 1,
+      {boomMotor->position, _virtual.b * boomMotor->SPU,
+       boomMotor->maxVelocity, boomMotor->maxAcceleration}},
+    {_virtual.panIndex - 1,
+      {panMotor->position, _virtual.p * panMotor->SPU,
+       panMotor->maxVelocity, panMotor->maxAcceleration}},
+    {_virtual.tiltIndex - 1,
+      {tiltMotor->position, _virtual.t * tiltMotor->SPU,
+       tiltMotor->maxVelocity, tiltMotor->maxAcceleration}},
+    {_virtual.rollIndex - 1,
+      {rollMotor->position, _virtual.r * rollMotor->SPU,
+       rollMotor->maxVelocity, rollMotor->maxAcceleration}},
+  };
+
+  if (!coordinated_motion_start(motors, axes, sizeof(axes) / sizeof(axes[0]))) {
+    return DMC_ACK_ERR_RANGE;
+  }
+  moveState = MOVE_STATE_JOG;
+  movePositionFrame = -1;
+  syncTriggers = 0;
 
   Serial4.write(0xA2);
   return DMC_ACK_OK;
