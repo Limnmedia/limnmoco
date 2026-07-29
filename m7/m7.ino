@@ -18,6 +18,7 @@
 #include "dmc_msg.h"
 #include "motion.h"
 #include "ik.h"
+#include "coordinated_motion.h"
 #include "dbg.h"
 
 #include <RPC.h>
@@ -2195,14 +2196,27 @@ int32_t updateMotorVelocities()
 
   if (moveState == MOVE_STATE_JOG || moveState == MOVE_STATE_SHOOT_PREROLL)
   {
-    for (m = 0; m < MOTOR_COUNT; ++m)
+    if (coordinated_motion_active())
     {
-      motor = &motors[m];
-
-      if (motor->moving)
+      int32_t coordinatedDirections[MOTOR_COUNT] = {};
+      coordinated_motion_update(motors, DATA_RATE_TIME_SEGMENT,
+                                 coordinatedDirections);
+      for (m = 0; m < MOTOR_COUNT; ++m)
       {
-        int32_t dir = updateMotorVelocity(motor, DATA_RATE_TIME_SEGMENT);
-        setMotorDir(m, dir);
+        setMotorDir(m, coordinatedDirections[m]);
+      }
+    }
+    else
+    {
+      for (m = 0; m < MOTOR_COUNT; ++m)
+      {
+        motor = &motors[m];
+
+        if (motor->moving)
+        {
+          int32_t dir = updateMotorVelocity(motor, DATA_RATE_TIME_SEGMENT);
+          setMotorDir(m, dir);
+        }
       }
     }
   }
