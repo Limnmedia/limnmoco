@@ -17,7 +17,7 @@
 
 #define DMC_VERSION_MAJOR 0
 #define DMC_VERSION_MINOR 1
-#define DMC_VERSION_REV 0
+#define DMC_VERSION_REV 1
 
 #define MOTOR_COUNT 8
 #define MOTOR_CAM_COUNT 9
