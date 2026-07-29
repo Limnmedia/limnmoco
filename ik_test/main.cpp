@@ -3,8 +3,10 @@
 #include "limnmoco_ik.h"
 
 #include <cmath>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -23,6 +25,115 @@ struct TestCase {
 
 bool near(float actual, float expected, float tolerance) {
   return std::abs(actual - expected) <= tolerance;
+}
+
+std::vector<std::string> splitCsv(const std::string &line) {
+  std::vector<std::string> fields;
+  std::stringstream stream(line);
+  std::string field;
+  while (std::getline(stream, field, ',')) {
+    fields.push_back(field);
+  }
+  return fields;
+}
+
+bool openFixture(const std::string &name, std::ifstream *file) {
+  file->open(name);
+  if (file->is_open()) {
+    return true;
+  }
+
+  file->clear();
+  file->open("ik_test/" + name);
+  return file->is_open();
+}
+
+bool runCompensationFixture(const std::string &name,
+                            const limnmoco::CraneGeometry &geometry,
+                            bool rotationalFixture,
+                            std::size_t expectedRows) {
+  std::ifstream file;
+  if (!openFixture(name, &file)) {
+    std::cerr << "[FAIL] Could not open IK fixture: " << name << "\n";
+    return false;
+  }
+
+  std::string line;
+  std::getline(file, line); // header
+  const limnmoco::CraneSolveResult baseline =
+      limnmoco::solveLimnmocoCrane(
+          limnmoco::VirtualPose{0, 0, 0, 0, 0, 0}, geometry);
+  const float baselinePan = -baseline.swingDeg;
+
+  bool ok = true;
+  std::size_t rowCount = 0;
+  while (std::getline(file, line)) {
+    if (line.empty()) {
+      continue;
+    }
+
+    ++rowCount;
+    const std::vector<std::string> fields = splitCsv(line);
+    const std::size_t expectedFieldCount = rotationalFixture ? 17 : 14;
+    if (fields.size() != expectedFieldCount) {
+      std::cerr << "[FAIL] " << name << ": row " << rowCount
+                << " has " << fields.size() << " fields, expected "
+                << expectedFieldCount << "\n";
+      ok = false;
+      continue;
+    }
+
+    auto value = [&fields](std::size_t index) {
+      return std::stof(fields[index]);
+    };
+
+    const limnmoco::VirtualPose pose{
+        value(4), value(2), value(3),
+        rotationalFixture ? value(5) : 0.0f,
+        rotationalFixture ? value(6) : 0.0f,
+        rotationalFixture ? value(7) : 0.0f};
+    const limnmoco::CraneSolveResult result =
+        limnmoco::solveLimnmocoCrane(pose, geometry);
+
+    const std::size_t expectedStart = rotationalFixture ? 8 : 5;
+    const float actualCompensations[] = {
+        result.boomDeg - baseline.boomDeg,
+        result.swingDeg - baseline.swingDeg,
+        result.track - baseline.track,
+        (pose.vpanDeg - result.swingDeg) - baselinePan,
+        pose.vtiltDeg,
+        pose.vrollDeg,
+    };
+    for (std::size_t axis = 0; axis < 6; ++axis) {
+      if (!near(actualCompensations[axis], value(expectedStart + axis),
+                rotationalFixture ? 0.0002f : 0.0001f)) {
+        std::cerr << "[FAIL] " << name << ": row " << rowCount
+                  << ", compensation column " << axis << "\n";
+        ok = false;
+      }
+    }
+
+    const bool expectedBoomClamp = value(rotationalFixture ? 14 : 11) != 0.0f;
+    const bool expectedSwingClamp = value(rotationalFixture ? 15 : 12) != 0.0f;
+    if (result.boomClamped != expectedBoomClamp ||
+        result.swingClamped != expectedSwingClamp ||
+        !near(result.errorLength, value(rotationalFixture ? 16 : 13),
+              0.0001f)) {
+      std::cerr << "[FAIL] " << name << ": row " << rowCount
+                << ", solver status or reconstruction error\n";
+      ok = false;
+    }
+  }
+
+  if (rowCount != expectedRows) {
+    std::cerr << "[FAIL] " << name << ": found " << rowCount
+              << " rows, expected " << expectedRows << "\n";
+    ok = false;
+  }
+
+  std::cout << (ok ? "[PASS] " : "[FAIL] ")
+            << "CSV IK fixture: " << name << " (" << rowCount << " rows)\n";
+  return ok;
 }
 
 bool runForwardKinematicsOriginTest() {
@@ -57,11 +168,47 @@ bool runForwardKinematicsOriginTest() {
       configuredOrigin.vrollDeg + movedAbsolute.vrollDeg - startingAbsolute.vrollDeg,
   };
 
+  const limnmoco::VirtualPose directTrackTarget{
+      zeroAbsolute.vtrack + 1.0f,
+      zeroAbsolute.vew,
+      zeroAbsolute.vheight,
+      zeroAbsolute.vpanDeg,
+      zeroAbsolute.vtiltDeg,
+      zeroAbsolute.vrollDeg};
+  const limnmoco::CraneSolveResult directTrackResult =
+      limnmoco::solveLimnmocoCrane(directTrackTarget, geometry);
+
   const bool ok = near(zeroAbsolute.vtrack, 935.7f, 1e-4f) &&
                   near(configuredOrigin.vtrack, 0.0f, 1e-6f) &&
-                  near(movedVirtual.vtrack, 12.5f, 1e-4f);
+                  near(movedVirtual.vtrack, 12.5f, 1e-4f) &&
+                  near(directTrackResult.track, 1.0f, 1e-4f);
   std::cout << (ok ? "[PASS] " : "[FAIL] ")
             << "FK origin normalization removes static boom reach\n";
+  return ok;
+}
+
+bool runEastWestCompensationTest() {
+  const limnmoco::CraneGeometry geometry{
+      857.7f, 78.0f, 0.0f, 0.0f, 0.0f};
+  const limnmoco::CranePositions currentPositions{
+      0.0f, 2.5f, 0.0f, 0.0f, 0.0f, 0.0f};
+  const limnmoco::VirtualPose current =
+      limnmoco::solveForwardKinematics(currentPositions, geometry);
+  const limnmoco::VirtualPose target{
+      current.vtrack,
+      current.vew + 0.502f,
+      current.vheight,
+      current.vpanDeg,
+      current.vtiltDeg,
+      current.vrollDeg};
+  const limnmoco::CraneSolveResult result =
+      limnmoco::solveLimnmocoCrane(target, geometry);
+
+  const bool ok = near(result.track, 0.0219f, 0.001f) &&
+                  near(result.errorLength, 0.0f, 1e-4f) &&
+                  !result.boomClamped && !result.swingClamped;
+  std::cout << (ok ? "[PASS] " : "[FAIL] ")
+            << "EW jog computes track compensation without NS motion\n";
   return ok;
 }
 
@@ -173,6 +320,27 @@ int main() {
 
   int failures = 0;
   if (!runForwardKinematicsOriginTest()) {
+    ++failures;
+  }
+  if (!runEastWestCompensationTest()) {
+    ++failures;
+  }
+  if (!runCompensationFixture(
+          "expected_virtual_displacements.csv",
+          limnmoco::CraneGeometry{857.7f, 78.0f, 0.0f, 0.0f, 0.0f},
+          false, 63)) {
+    ++failures;
+  }
+  if (!runCompensationFixture(
+          "expected_virtual_rotation_displacements_with_offsets.csv",
+          limnmoco::CraneGeometry{857.7f, 78.0f, -0.2727f, -0.1463f, 0.3179f},
+          true, 57)) {
+    ++failures;
+  }
+  if (!runCompensationFixture(
+          "expected_virtual_rotation_displacements.csv",
+          limnmoco::CraneGeometry{857.7f, 78.0f, 0.0f, 0.0f, 0.0f},
+          true, 57)) {
     ++failures;
   }
   for (const TestCase &test : tests) {

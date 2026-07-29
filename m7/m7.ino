@@ -177,11 +177,15 @@ int32_t msg_virt_get_position(uint32_t msg_id);
 
 void virt_update_positions();
 void virt_kinematics();
+VirtualPose virtualPoseForIk(const VirtualPose &pose);
 int32_t virt_inverse_kinematics();
 
 void initMotor(Motor *m);
 int32_t updateMotorVelocity(Motor *m, float timeSegment);
 void clearAxisMove(AxisMoveData *axis);
+int32_t calculateJogDestination(Motor *motor, int32_t target, bool *reverse);
+void scheduleVirtualJogMotor(Motor *motor, int32_t target, uint16_t speed,
+                             int32_t motorIndex);
 void stopAll(uint8_t emergency);
 void jogMotor(Motor *m, int32_t target, int32_t motorIndex);
 void setMovePositionFrame(int32_t frame);
@@ -1506,11 +1510,27 @@ void virt_kinematics() {
   Serial4.print(_virtual.roll);
 }
 
+VirtualPose virtualPoseForIk(const VirtualPose &pose) {
+  if (!_virtual.fkOriginValid) {
+    return pose;
+  }
+
+  return VirtualPose{
+    _virtual.fkOrigin.vtrack + (pose.vtrack - _virtual.virtualOrigin.vtrack),
+    _virtual.fkOrigin.vew + (pose.vew - _virtual.virtualOrigin.vew),
+    _virtual.fkOrigin.vheight + (pose.vheight - _virtual.virtualOrigin.vheight),
+    _virtual.fkOrigin.vpanDeg + (pose.vpanDeg - _virtual.virtualOrigin.vpanDeg),
+    _virtual.fkOrigin.vtiltDeg + (pose.vtiltDeg - _virtual.virtualOrigin.vtiltDeg),
+    _virtual.fkOrigin.vrollDeg + (pose.vrollDeg - _virtual.virtualOrigin.vrollDeg),
+  };
+}
+
 int32_t virt_inverse_kinematics() {
   Serial4.write(0xA1);
   CraneSolveResult result = solve_ik(
-    VirtualPose{_virtual.track, _virtual.EW, _virtual.NS,
-                _virtual.pan, _virtual.tilt, _virtual.roll},
+    virtualPoseForIk(VirtualPose{
+      _virtual.track, _virtual.EW, _virtual.NS,
+      _virtual.pan, _virtual.tilt, _virtual.roll}),
     CraneGeometry{_virtual.boomLength, _virtual.boomExtension,
                   _virtual.nodalOffsetX, _virtual.nodalOffsetY, _virtual.nodalOffsetZ});
 
@@ -1591,6 +1611,7 @@ int32_t msg_virt_stop(uint8_t motor) {
   if (motor == DMC_VIRT_EW) {
     msg_motor_stop(_virtual.swingIndex);
     msg_motor_stop(_virtual.trackIndex);
+    msg_motor_stop(_virtual.panIndex);
     return DMC_ACK_OK;
   }
 
@@ -1619,54 +1640,162 @@ int32_t msg_virt_stop(uint8_t motor) {
 }
 
 int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
-  // These functions cause the motors to move, and we are keeping the virtual 
-  // position locked in step with the physical position. however, the motor 
-  // movement is not coordinated between joined motors such that the 
-  // camera is jogging along the requested axis.
-  //
-  // when we are in the jogging state, we need to cause the motors to move.
-  // this is done by adding velocity to the motors, interfacing with the code running
-  // on the m4. since we cannot go through the preexisting msg_motor_jog code, 
-  // we will have to actually understand how to interface with the jogging state
-  // of the motors.
-  //
-  // #TODO: find out how jogging works, at least as much as needed to write 
-  //        virtual jogging on top of the existing code.
-  //
-  //
+  if (speed == 0 || !IN_RANGE(motor, DMC_VIRT_TRACK, DMC_VIRT_ROLL)) {
+    return DMC_ACK_ERR_RANGE;
+  }
+
+  // Refresh the virtual pose from measured motor positions before choosing
+  // the next look-ahead target. DESTINATION is a step target on the primary
+  // physical axis; SPEED selects the existing jog velocity profile.
+  virt_kinematics();
+
+  Motor *primaryMotor = nullptr;
+  uint8_t primaryIndex = 0;
   if (motor == DMC_VIRT_TRACK) {
-    msg_motor_jog(_virtual.trackIndex, speed, dest);
+    primaryIndex = _virtual.trackIndex;
+  } else if (motor == DMC_VIRT_NS) {
+    primaryIndex = _virtual.boomIndex;
+  } else if (motor == DMC_VIRT_EW) {
+    primaryIndex = _virtual.swingIndex;
+  } else if (motor == DMC_VIRT_PAN) {
+    primaryIndex = _virtual.panIndex;
+  } else if (motor == DMC_VIRT_TILT) {
+    primaryIndex = _virtual.tiltIndex;
+  } else if (motor == DMC_VIRT_ROLL) {
+    primaryIndex = _virtual.rollIndex;
+  }
+  primaryMotor = &motors[primaryIndex - 1];
+
+  const float primaryMaxVelocity = primaryMotor->maxVelocity;
+  const float primaryMaxAcceleration = primaryMotor->maxAcceleration;
+  const float primaryAccelSeconds =
+    primaryMaxVelocity / primaryMaxAcceleration;
+  const float speedAdjustment = speed * 0.0001f;
+  primaryMotor->maxVelocity =
+    fmaxf(4.0f, primaryMaxVelocity * speedAdjustment);
+  primaryMotor->maxAcceleration =
+    fmaxf(4.0f, primaryMaxAcceleration * speedAdjustment);
+  primaryMotor->maxAcceleration = fmaxf(
+    primaryMotor->maxAcceleration,
+    fabsf(primaryMotor->currentVelocity) / primaryAccelSeconds);
+
+  bool reverse = false;
+  const int32_t primaryTarget =
+    calculateJogDestination(primaryMotor, dest, &reverse);
+  primaryMotor->maxVelocity = primaryMaxVelocity;
+  primaryMotor->maxAcceleration = primaryMaxAcceleration;
+  if (reverse) {
+    msg_virt_stop(motor);
     return DMC_ACK_OK;
   }
 
-  if (motor == DMC_VIRT_NS) {
-    msg_motor_jog(_virtual.boomIndex, speed, dest);
-    msg_motor_jog(_virtual.trackIndex, speed, dest);
-    return DMC_ACK_OK;
+  Motor *trackMotor = &motors[_virtual.trackIndex - 1];
+  Motor *swingMotor = &motors[_virtual.swingIndex - 1];
+  Motor *boomMotor  = &motors[_virtual.boomIndex  - 1];
+  Motor *panMotor   = &motors[_virtual.panIndex   - 1];
+  Motor *tiltMotor  = &motors[_virtual.tiltIndex  - 1];
+  Motor *rollMotor  = &motors[_virtual.rollIndex  - 1];
+
+  const float currentSwing = (float)(swingMotor->position / swingMotor->SPU);
+  const float currentBoom  = (float)(boomMotor->position / boomMotor->SPU);
+  const float currentTrack = (float)(trackMotor->position / trackMotor->SPU);
+  const float currentPan   = (float)(panMotor->position / panMotor->SPU);
+  const float currentTilt  = (float)(tiltMotor->position / tiltMotor->SPU);
+  const float currentRoll  = (float)(rollMotor->position / rollMotor->SPU);
+
+  const CraneGeometry geometry{
+    _virtual.boomLength, _virtual.boomExtension,
+    _virtual.nodalOffsetX, _virtual.nodalOffsetY, _virtual.nodalOffsetZ};
+  const VirtualPose currentAbsolute = solve_fk(
+    currentBoom, currentSwing, currentTrack,
+    currentPan, currentTilt, currentRoll, geometry);
+
+  float targetSwing = currentSwing;
+  float targetBoom  = currentBoom;
+  float targetTrack = currentTrack;
+  float targetPan   = currentPan;
+  float targetTilt  = currentTilt;
+  float targetRoll  = currentRoll;
+  if (motor == DMC_VIRT_TRACK) {
+    targetTrack = (float)(primaryTarget / trackMotor->SPU);
+  } else if (motor == DMC_VIRT_NS) {
+    targetBoom = (float)(primaryTarget / boomMotor->SPU);
+  } else if (motor == DMC_VIRT_EW) {
+    targetSwing = (float)(primaryTarget / swingMotor->SPU);
+  } else if (motor == DMC_VIRT_PAN) {
+    targetPan = (float)(primaryTarget / panMotor->SPU);
+  } else if (motor == DMC_VIRT_TILT) {
+    targetTilt = (float)(primaryTarget / tiltMotor->SPU);
+  } else if (motor == DMC_VIRT_ROLL) {
+    targetRoll = (float)(primaryTarget / rollMotor->SPU);
   }
 
-  if (motor == DMC_VIRT_EW) {
-    msg_motor_jog(_virtual.swingIndex, speed, dest);
-    msg_motor_jog(_virtual.trackIndex, speed, dest);
-    return DMC_ACK_OK;
+  const VirtualPose targetAbsolute = solve_fk(
+    targetBoom, targetSwing, targetTrack,
+    targetPan, targetTilt, targetRoll, geometry);
+  VirtualPose targetVirtual = VirtualPose{
+    _virtual.track, _virtual.EW, _virtual.NS,
+    _virtual.pan, _virtual.tilt, _virtual.roll};
+
+  // Change only the requested virtual coordinate. IK then supplies the
+  // compensating physical axes needed to keep the other virtual coordinates
+  // fixed while the crane follows that virtual axis.
+  if (motor == DMC_VIRT_TRACK) {
+    targetVirtual.vtrack += targetAbsolute.vtrack - currentAbsolute.vtrack;
+  } else if (motor == DMC_VIRT_EW) {
+    targetVirtual.vew += targetAbsolute.vew - currentAbsolute.vew;
+  } else if (motor == DMC_VIRT_NS) {
+    targetVirtual.vheight += targetAbsolute.vheight - currentAbsolute.vheight;
+  } else if (motor == DMC_VIRT_PAN) {
+    targetVirtual.vpanDeg += targetPan - currentPan;
+  } else if (motor == DMC_VIRT_TILT) {
+    targetVirtual.vtiltDeg += targetTilt - currentTilt;
+  } else if (motor == DMC_VIRT_ROLL) {
+    targetVirtual.vrollDeg += targetRoll - currentRoll;
   }
 
-  if (motor == DMC_VIRT_PAN) {
-    msg_motor_jog(_virtual.panIndex, speed, dest);
-    return DMC_ACK_OK;
+  const CraneSolveResult result =
+    solve_ik(virtualPoseForIk(targetVirtual), geometry);
+  if (result.boomClamped || result.swingClamped) {
+    return DMC_ACK_ERR_RANGE;
   }
 
-  if (motor == DMC_VIRT_TILT) {
-    msg_motor_jog(_virtual.tiltIndex, speed, dest);
-    return DMC_ACK_OK;
+  if (motor == DMC_VIRT_TRACK) {
+    scheduleVirtualJogMotor(trackMotor,
+      (int32_t)(result.track * trackMotor->SPU), speed,
+      _virtual.trackIndex - 1);
+  } else if (motor == DMC_VIRT_NS) {
+    scheduleVirtualJogMotor(boomMotor,
+      (int32_t)(result.boomDeg * boomMotor->SPU), speed,
+      _virtual.boomIndex - 1);
+    scheduleVirtualJogMotor(trackMotor,
+      (int32_t)(result.track * trackMotor->SPU), speed,
+      _virtual.trackIndex - 1);
+  } else if (motor == DMC_VIRT_EW) {
+    scheduleVirtualJogMotor(swingMotor,
+      (int32_t)(result.swingDeg * swingMotor->SPU), speed,
+      _virtual.swingIndex - 1);
+    scheduleVirtualJogMotor(trackMotor,
+      (int32_t)(result.track * trackMotor->SPU), speed,
+      _virtual.trackIndex - 1);
+    scheduleVirtualJogMotor(panMotor,
+      (int32_t)((targetVirtual.vpanDeg - result.swingDeg) * panMotor->SPU), speed,
+      _virtual.panIndex - 1);
+  } else if (motor == DMC_VIRT_PAN) {
+    scheduleVirtualJogMotor(panMotor,
+      (int32_t)((targetVirtual.vpanDeg - result.swingDeg) * panMotor->SPU), speed,
+      _virtual.panIndex - 1);
+  } else if (motor == DMC_VIRT_TILT) {
+    scheduleVirtualJogMotor(tiltMotor,
+      (int32_t)(targetVirtual.vtiltDeg * tiltMotor->SPU), speed,
+      _virtual.tiltIndex - 1);
+  } else if (motor == DMC_VIRT_ROLL) {
+    scheduleVirtualJogMotor(rollMotor,
+      (int32_t)(targetVirtual.vrollDeg * rollMotor->SPU), speed,
+      _virtual.rollIndex - 1);
   }
 
-  if (motor == DMC_VIRT_ROLL) {
-    msg_motor_jog(_virtual.rollIndex, speed, dest);
-    return DMC_ACK_OK;
-  }
-
-  return DMC_ACK_ERR_GENERAL;
+  return DMC_ACK_OK;
 }
 
 int32_t msg_virt_jog_on_line(uint8_t axis, uint16_t speed) {
@@ -1739,24 +1868,19 @@ void clearAxisMove(AxisMoveData *axisData)
   memset(axisData, 0, sizeof(AxisMoveData));
 }
 
-void jogMotor(Motor *motor, int32_t target, int32_t motorIndex)
+int32_t calculateJogDestination(Motor *motor, int32_t target, bool *reverse)
 {
-  // ideally send motor to distance where decel happens after 2 seconds
   float maxVelocity = motor->maxVelocity;
   float maxAcceleration = motor->maxAcceleration;
   float vi = motor->currentVelocity;
 
   int32_t dir = (target > motor->position) ? 1 : -1;
-  // if switching direction, just stop
-  if (vi * dir < 0)
-  {
-    stopMotor(motor, motorIndex, 0);
-    return;
-  }
+  *reverse = vi * dir < 0;
+  if (*reverse)
+    return motor->position;
+
   if (fabsf(target - motor->position) < 0.001f)
-  {
-    return;
-  }
+    return motor->position;
 
   // given current velocity vi
   // compute distance so that decel starts after 0.5 seconds
@@ -1794,6 +1918,48 @@ void jogMotor(Motor *motor, int32_t target, int32_t motorIndex)
   {
     dest = target;
   }
+
+  return dest;
+}
+
+void scheduleVirtualJogMotor(Motor *motor, int32_t target, uint16_t speed,
+                             int32_t motorIndex)
+{
+  if (fabsf(target - motor->position) < 0.001f)
+    return;
+
+  float maxVelocity = motor->maxVelocity;
+  float maxAcceleration = motor->maxAcceleration;
+  float accelSeconds = maxVelocity / maxAcceleration;
+  float speedAdjustment = speed * 0.0001f;
+
+  motor->maxVelocity = fmaxf(4.0f, maxVelocity * speedAdjustment);
+  motor->maxAcceleration = fmaxf(4.0f, maxAcceleration * speedAdjustment);
+  motor->maxAcceleration = fmaxf(
+    motor->maxAcceleration, fabsf(motor->currentVelocity) / accelSeconds);
+
+  calculatePointToPoint(motor, target, 0.0f);
+
+  motor->maxVelocity = maxVelocity;
+  motor->maxAcceleration = maxAcceleration;
+  moveState = MOVE_STATE_JOG;
+  movePositionFrame = -1;
+  syncTriggers = 0;
+  (void)motorIndex;
+}
+
+void jogMotor(Motor *motor, int32_t target, int32_t motorIndex)
+{
+  bool reverse = false;
+  int32_t dest = calculateJogDestination(motor, target, &reverse);
+  if (reverse)
+  {
+    stopMotor(motor, motorIndex, 0);
+    return;
+  }
+
+  if (dest == motor->position)
+    return;
 
   calculatePointToPoint(motor, dest, 0.0f);
 }

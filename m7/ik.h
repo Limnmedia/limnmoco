@@ -3,47 +3,21 @@
 #ifndef M7_IK_H_
 #define M7_IK_H_
 
-#include "vec3.h"
+#include <LimnmocoIK.h>
 
-struct VirtualPose {
-  float vtrack;
-  float vew;
-  float vheight;
-  float vpanDeg;
-  float vtiltDeg;
-  float vrollDeg;
-};
+using limnmoco::CraneGeometry;
+using limnmoco::CraneSolveResult;
+using limnmoco::Vec3;
+using limnmoco::VirtualPose;
+using limnmoco::solve_fk;
+using limnmoco::solve_ik;
 
-struct CraneGeometry {
-  float boomLength;
-  float extensionLength;
-  float offsetX;
-  float offsetY;
-  float offsetZ;
-};
+inline float ik_degrees(float radiansValue) {
+  return limnmoco::angle_degrees(radiansValue);
+}
 
-struct CraneSolveResult {
-  Vec3 target;
-  Vec3 offsetWorld;
-  Vec3 panTarget;
-  Vec3 base;
-  Vec3 armTip;
-  Vec3 panCenter;
-  Vec3 nodal;
-  Vec3 error;
-  float errorLength;
-  float track;
-  float swingDeg;
-  float boomDeg;
-  bool boomClamped;
-  bool swingClamped;
-};
-
-float ik_degrees(float radiansValue);
-float ik_radians(float degreesValue);
-CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry);
-VirtualPose solve_fk(float boomDeg, float swingDeg, float track,
-                     float panDeg, float tiltDeg, float rollDeg,
-                     const CraneGeometry &geometry);
+inline float ik_radians(float degreesValue) {
+  return limnmoco::angle_radians(degreesValue);
+}
 
 #endif // M7_IK_H_

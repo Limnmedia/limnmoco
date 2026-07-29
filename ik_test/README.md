@@ -6,14 +6,15 @@ This folder contains a standalone C++ port of the Blender reference solver from:
 limnmoco-blender-addon/LIMNMOCO_CG_RIG/rigs/limnmoco_crane.py
 ```
 
-The harness has no Arduino or Blender dependencies. Its purpose is to validate the Swing-Boom-Track crane IK math before the solver is wired into the legacy `m7` firmware.
+The harness has no Arduino or Blender dependencies. It validates the same shared Swing-Boom-Track crane IK/FK library used by the `m7` firmware.
 
 ## Files
 
 ```text
-limnmoco_ik.h    Plain C++ solver types and function declarations
-limnmoco_ik.cpp  Plain C++ solver implementation
+limnmoco_ik.h    Test-facing adapters and host-only types
+limnmoco_ik.cpp  Test-facing adapters
 main.cpp         Console test runner with deterministic sanity cases
+../common/LimnmocoIK/  Shared IK/FK library used by firmware and host tests
 ```
 
 ## Build
@@ -23,19 +24,23 @@ Use any C++17 compiler.
 With `g++`:
 
 ```sh
-g++ -std=c++17 -Wall -Wextra -pedantic main.cpp limnmoco_ik.cpp -o limnmoco_ik_test
+g++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
+  main.cpp limnmoco_ik.cpp ../common/LimnmocoIK/src/LimnmocoIK.cpp \
+  -o limnmoco_ik_test
 ```
 
 With `clang++`:
 
 ```sh
-clang++ -std=c++17 -Wall -Wextra -pedantic main.cpp limnmoco_ik.cpp -o limnmoco_ik_test
+clang++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
+  main.cpp limnmoco_ik.cpp ../common/LimnmocoIK/src/LimnmocoIK.cpp \
+  -o limnmoco_ik_test
 ```
 
 With MSVC Developer PowerShell:
 
 ```powershell
-cl /EHsc /std:c++17 main.cpp limnmoco_ik.cpp /Fe:limnmoco_ik_test.exe
+cl /EHsc /std:c++17 /I..\common\LimnmocoIK\src main.cpp limnmoco_ik.cpp ..\common\LimnmocoIK\src\LimnmocoIK.cpp /Fe:limnmoco_ik_test.exe
 ```
 
 ## Run
@@ -64,6 +69,9 @@ On Windows PowerShell:
   - `Offset = 0, 0, 0`
 - Centered target with no offset.
 - Rotated nodal offset sanity case.
+- CSV fixture sweeps for linear vEW/vNS/vTrack displacement.
+- CSV fixture sweeps for vPAN/vTilt/vRoll with nodal offsets
+  `(-0.2727, -0.1463, 0.3179) mm`.
 
 The first two cases check exact solved axis values. All cases check reconstruction error.
 
