@@ -3,17 +3,9 @@
 #ifndef LIMNMOCO_IK_H_
 #define LIMNMOCO_IK_H_
 
+#include "Mat3.h"
+
 namespace limnmoco {
-
-struct Vec3 {
-  float x;
-  float y;
-  float z;
-};
-
-struct Mat3 {
-  float m[3][3];
-};
 
 struct VirtualPose {
   float vtrack;

@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
-#ifndef M7_MAT3_H_
-#define M7_MAT3_H_
+#ifndef LIMNMOCO_MAT3_H_
+#define LIMNMOCO_MAT3_H_
 
-#include <Mat3.h>
+#include "Vec3.h"
 
-using limnmoco::Mat3;
-using limnmoco::Vec3;
+namespace limnmoco {
+
+struct Mat3 {
+  float m[3][3];
+};
 
 Mat3 mat3_multiply(Mat3 a, Mat3 b);
 Vec3 mat3_multiply_v(Mat3 matrix, Vec3 v);
@@ -14,4 +17,6 @@ Mat3 mat3_rotation_z(float angle);
 Mat3 mat3_rotation_x(float angle);
 Mat3 mat3_rotation_y(float angle);
 
-#endif // M7_MAT3_H_
+} // namespace limnmoco
+
+#endif // LIMNMOCO_MAT3_H_

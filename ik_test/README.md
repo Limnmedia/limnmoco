@@ -26,6 +26,7 @@ With `g++`:
 ```sh
 g++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
   main.cpp limnmoco_ik.cpp ../common/LimnmocoIK/src/LimnmocoIK.cpp \
+  ../common/LimnmocoIK/src/Vec3.cpp ../common/LimnmocoIK/src/Mat3.cpp \
   -o limnmoco_ik_test
 ```
 
@@ -34,13 +35,14 @@ With `clang++`:
 ```sh
 clang++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
   main.cpp limnmoco_ik.cpp ../common/LimnmocoIK/src/LimnmocoIK.cpp \
+  ../common/LimnmocoIK/src/Vec3.cpp ../common/LimnmocoIK/src/Mat3.cpp \
   -o limnmoco_ik_test
 ```
 
 With MSVC Developer PowerShell:
 
 ```powershell
-cl /EHsc /std:c++17 /I..\common\LimnmocoIK\src main.cpp limnmoco_ik.cpp ..\common\LimnmocoIK\src\LimnmocoIK.cpp /Fe:limnmoco_ik_test.exe
+cl /EHsc /std:c++17 /I..\common\LimnmocoIK\src main.cpp limnmoco_ik.cpp ..\common\LimnmocoIK\src\LimnmocoIK.cpp ..\common\LimnmocoIK\src\Vec3.cpp ..\common\LimnmocoIK\src\Mat3.cpp /Fe:limnmoco_ik_test.exe
 ```
 
 ## Run
@@ -87,3 +89,6 @@ The solver intentionally mirrors the Blender reference model:
 - `VRoll` rotates around Y.
 
 The harness reports when a solve clamps boom or swing input ratios to keep `asin()` in range. That behavior matches the current Blender reference solver, but the firmware integration still needs a developer decision on whether unreachable targets should clamp, reject, or report an error.
+
+The shared library also exposes the `Vec3` and `Mat3` types and their vector,
+matrix, and rotation operations for other host or firmware modules.

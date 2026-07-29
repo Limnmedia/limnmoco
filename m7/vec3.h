@@ -3,11 +3,9 @@
 #ifndef M7_VEC3_H_
 #define M7_VEC3_H_
 
-struct Vec3 {
-  float x;
-  float y;
-  float z;
-};
+#include <Vec3.h>
+
+using limnmoco::Vec3;
 
 Vec3 vec3_add(Vec3 a, Vec3 b);
 Vec3 vec3_sub(Vec3 a, Vec3 b);

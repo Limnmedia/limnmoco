@@ -15,60 +15,11 @@ float clamp(float value, float lo, float hi) {
   return std::max(lo, std::min(hi, value));
 }
 
-Vec3 add(Vec3 a, Vec3 b) {
-  return Vec3{a.x + b.x, a.y + b.y, a.z + b.z};
-}
-
-Vec3 sub(Vec3 a, Vec3 b) {
-  return Vec3{a.x - b.x, a.y - b.y, a.z - b.z};
-}
-
-float length(Vec3 v) {
-  return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-}
-
-Mat3 multiply(Mat3 a, Mat3 b) {
-  Mat3 out{};
-  for (int row = 0; row < 3; ++row) {
-    for (int col = 0; col < 3; ++col) {
-      out.m[row][col] = a.m[row][0] * b.m[0][col] +
-                        a.m[row][1] * b.m[1][col] +
-                        a.m[row][2] * b.m[2][col];
-    }
-  }
-  return out;
-}
-
-Vec3 multiply(Mat3 matrix, Vec3 v) {
-  return Vec3{
-      matrix.m[0][0] * v.x + matrix.m[0][1] * v.y + matrix.m[0][2] * v.z,
-      matrix.m[1][0] * v.x + matrix.m[1][1] * v.y + matrix.m[1][2] * v.z,
-      matrix.m[2][0] * v.x + matrix.m[2][1] * v.y + matrix.m[2][2] * v.z,
-  };
-}
-
-Mat3 rotationX(float angle) {
-  const float c = std::cos(angle);
-  const float s = std::sin(angle);
-  return Mat3{{{1.0f, 0.0f, 0.0f}, {0.0f, c, -s}, {0.0f, s, c}}};
-}
-
-Mat3 rotationY(float angle) {
-  const float c = std::cos(angle);
-  const float s = std::sin(angle);
-  return Mat3{{{c, 0.0f, s}, {0.0f, 1.0f, 0.0f}, {-s, 0.0f, c}}};
-}
-
-Mat3 rotationZ(float angle) {
-  const float c = std::cos(angle);
-  const float s = std::sin(angle);
-  return Mat3{{{c, -s, 0.0f}, {s, c, 0.0f}, {0.0f, 0.0f, 1.0f}}};
-}
-
 Mat3 rotationMatrixFromVirtualAxes(float vpanDeg, float vtiltDeg, float vrollDeg) {
-  return multiply(multiply(rotationZ(angle_radians(vpanDeg)),
-                           rotationX(angle_radians(vtiltDeg))),
-                  rotationY(angle_radians(vrollDeg)));
+  return mat3_multiply(mat3_multiply(
+      mat3_rotation_z(angle_radians(vpanDeg)),
+      mat3_rotation_x(angle_radians(vtiltDeg))),
+      mat3_rotation_y(angle_radians(vrollDeg)));
 }
 
 } // namespace
@@ -87,9 +38,9 @@ CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry
 
   const Mat3 rotation = rotationMatrixFromVirtualAxes(
       pose.vpanDeg, pose.vtiltDeg, pose.vrollDeg);
-  result.offsetWorld = multiply(rotation, Vec3{
+  result.offsetWorld = mat3_multiply_v(rotation, Vec3{
       geometry.offsetX, geometry.offsetY, geometry.offsetZ});
-  result.panTarget = sub(result.target, result.offsetWorld);
+  result.panTarget = vec3_sub(result.target, result.offsetWorld);
 
   const float boomLength = std::max(0.001f, geometry.boomLength);
   const float boomRawRatio = result.panTarget.z / boomLength;
@@ -116,12 +67,12 @@ CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry
       result.track + boomLength * std::cos(swingRad) * std::cos(boomRad),
       boomLength * std::sin(boomRad),
   };
-  result.panCenter = add(result.armTip, Vec3{
+  result.panCenter = vec3_add(result.armTip, Vec3{
       geometry.extensionLength * std::sin(swingRad),
       geometry.extensionLength * std::cos(swingRad), 0.0f});
-  result.nodal = add(result.panCenter, result.offsetWorld);
-  result.error = sub(result.target, result.nodal);
-  result.errorLength = length(result.error);
+  result.nodal = vec3_add(result.panCenter, result.offsetWorld);
+  result.error = vec3_sub(result.target, result.nodal);
+  result.errorLength = vec3_length(result.error);
   return result;
 }
 
@@ -141,9 +92,9 @@ VirtualPose solve_fk(float boomDeg, float swingDeg, float track,
   const float virtualPanDeg = panDeg + swingDeg;
   const Mat3 rotation = rotationMatrixFromVirtualAxes(
       virtualPanDeg, tiltDeg, rollDeg);
-  const Vec3 offsetWorld = multiply(rotation, Vec3{
+  const Vec3 offsetWorld = mat3_multiply_v(rotation, Vec3{
       geometry.offsetX, geometry.offsetY, geometry.offsetZ});
-  const Vec3 nodal = add(add(armTip, levelExtension), offsetWorld);
+  const Vec3 nodal = vec3_add(vec3_add(armTip, levelExtension), offsetWorld);
   return VirtualPose{nodal.y, nodal.x, nodal.z,
                      virtualPanDeg, tiltDeg, rollDeg};
 }
