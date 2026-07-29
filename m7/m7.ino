@@ -187,6 +187,8 @@ void clearAxisMove(AxisMoveData *axis);
 int32_t calculateJogDestination(Motor *motor, int32_t target, bool *reverse);
 void scheduleVirtualJogMotor(Motor *motor, int32_t target, uint16_t speed,
                              int32_t motorIndex);
+CoordinatedMotionAxis makeCoordinatedJogAxis(Motor *motor, float target,
+                                             uint16_t speed, uint8_t index);
 void stopAll(uint8_t emergency);
 void jogMotor(Motor *m, int32_t target, int32_t motorIndex);
 void setMovePositionFrame(int32_t frame);
@@ -1602,6 +1604,10 @@ int32_t msg_virt_stop(uint8_t motor) {
   // #NOTE: this code seems to work just fine. we are trying to reuse diyamis'
   //        code as much as possible, and interfacing with the stop command of 
   //        the motors within virtual movement appears to be fine for now.
+  if (coordinated_motion_active()) {
+    coordinated_motion_reset();
+  }
+
   if (motor == DMC_VIRT_TRACK) {
     msg_motor_stop(_virtual.trackIndex);
     return DMC_ACK_OK;
@@ -1759,40 +1765,49 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
     return DMC_ACK_ERR_RANGE;
   }
 
+  CoordinatedMotionAxis axes[3]{};
+  uint8_t axisCount = 0;
   if (motor == DMC_VIRT_TRACK) {
-    scheduleVirtualJogMotor(trackMotor,
-      (int32_t)(result.track * trackMotor->SPU), speed,
+    axes[axisCount++] = makeCoordinatedJogAxis(
+      trackMotor, result.track * trackMotor->SPU, speed,
       _virtual.trackIndex - 1);
   } else if (motor == DMC_VIRT_NS) {
-    scheduleVirtualJogMotor(boomMotor,
-      (int32_t)(result.boomDeg * boomMotor->SPU), speed,
+    axes[axisCount++] = makeCoordinatedJogAxis(
+      boomMotor, result.boomDeg * boomMotor->SPU, speed,
       _virtual.boomIndex - 1);
-    scheduleVirtualJogMotor(trackMotor,
-      (int32_t)(result.track * trackMotor->SPU), speed,
+    axes[axisCount++] = makeCoordinatedJogAxis(
+      trackMotor, result.track * trackMotor->SPU, speed,
       _virtual.trackIndex - 1);
   } else if (motor == DMC_VIRT_EW) {
-    scheduleVirtualJogMotor(swingMotor,
-      (int32_t)(result.swingDeg * swingMotor->SPU), speed,
+    axes[axisCount++] = makeCoordinatedJogAxis(
+      swingMotor, result.swingDeg * swingMotor->SPU, speed,
       _virtual.swingIndex - 1);
-    scheduleVirtualJogMotor(trackMotor,
-      (int32_t)(result.track * trackMotor->SPU), speed,
+    axes[axisCount++] = makeCoordinatedJogAxis(
+      trackMotor, result.track * trackMotor->SPU, speed,
       _virtual.trackIndex - 1);
-    scheduleVirtualJogMotor(panMotor,
-      (int32_t)((targetVirtual.vpanDeg - result.swingDeg) * panMotor->SPU), speed,
-      _virtual.panIndex - 1);
+    axes[axisCount++] = makeCoordinatedJogAxis(
+      panMotor, (targetVirtual.vpanDeg - result.swingDeg) * panMotor->SPU,
+      speed, _virtual.panIndex - 1);
   } else if (motor == DMC_VIRT_PAN) {
-    scheduleVirtualJogMotor(panMotor,
-      (int32_t)((targetVirtual.vpanDeg - result.swingDeg) * panMotor->SPU), speed,
-      _virtual.panIndex - 1);
+    axes[axisCount++] = makeCoordinatedJogAxis(
+      panMotor, (targetVirtual.vpanDeg - result.swingDeg) * panMotor->SPU,
+      speed, _virtual.panIndex - 1);
   } else if (motor == DMC_VIRT_TILT) {
-    scheduleVirtualJogMotor(tiltMotor,
-      (int32_t)(targetVirtual.vtiltDeg * tiltMotor->SPU), speed,
+    axes[axisCount++] = makeCoordinatedJogAxis(
+      tiltMotor, targetVirtual.vtiltDeg * tiltMotor->SPU, speed,
       _virtual.tiltIndex - 1);
   } else if (motor == DMC_VIRT_ROLL) {
-    scheduleVirtualJogMotor(rollMotor,
-      (int32_t)(targetVirtual.vrollDeg * rollMotor->SPU), speed,
+    axes[axisCount++] = makeCoordinatedJogAxis(
+      rollMotor, targetVirtual.vrollDeg * rollMotor->SPU, speed,
       _virtual.rollIndex - 1);
   }
+
+  if (!coordinated_motion_start(motors, axes, axisCount)) {
+    return DMC_ACK_ERR_RANGE;
+  }
+  moveState = MOVE_STATE_JOG;
+  movePositionFrame = -1;
+  syncTriggers = 0;
 
   return DMC_ACK_OK;
 }
@@ -1945,6 +1960,17 @@ void scheduleVirtualJogMotor(Motor *motor, int32_t target, uint16_t speed,
   movePositionFrame = -1;
   syncTriggers = 0;
   (void)motorIndex;
+}
+
+CoordinatedMotionAxis makeCoordinatedJogAxis(Motor *motor, float target,
+                                             uint16_t speed, uint8_t index)
+{
+  const float speedAdjustment = speed * 0.0001f;
+  return CoordinatedMotionAxis{
+    index,
+    {motor->position, target,
+     fmaxf(4.0f, motor->maxVelocity * speedAdjustment),
+     fmaxf(4.0f, motor->maxAcceleration * speedAdjustment)}};
 }
 
 void jogMotor(Motor *motor, int32_t target, int32_t motorIndex)
