@@ -43,7 +43,7 @@ make a note of the port for uploading
 **compile subprojects:**
 
 ```
-    arduino-cli compile --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm7 m7
+    arduino-cli compile --libraries common --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm7 m7
     arduino-cli compile --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm4 m4
 ```
 
