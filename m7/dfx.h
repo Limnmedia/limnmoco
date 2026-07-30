@@ -39,6 +39,9 @@
 
 #define VIRT_SCALE 100000.0f
 #define LEN_SCALE  1000.0f
+// Dragonframe sends MSG_VIRT_CONFIG steps-per-unit fields in thousandths.
+// This fixed-point scale is not documented in DMC-Protocol-2024-02-13.
+#define VIRT_SPU_SCALE 1000.0f
 
 struct MotorMove
 {

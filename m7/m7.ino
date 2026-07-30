@@ -1121,7 +1121,7 @@ void loop()
                   break;
                 }
                 Motor *motorPtr        = &motors[_virtual.boomIndex - 1];
-                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                motorPtr->SPU          = (float)dmc_msg_read_dword() / VIRT_SPU_SCALE;
                 _virtual.NS            = (float)dmc_msg_read_dword() / VIRT_SCALE;
                 motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
@@ -1130,7 +1130,7 @@ void loop()
                   break;
                 }
                 motorPtr               = &motors[_virtual.swingIndex - 1];
-                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                motorPtr->SPU          = (float)dmc_msg_read_dword() / VIRT_SPU_SCALE;
                 _virtual.EW            = (float)dmc_msg_read_dword() / VIRT_SCALE;
                 motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
@@ -1139,7 +1139,7 @@ void loop()
                   break;
                 }
                 motorPtr               = &motors[_virtual.trackIndex - 1];
-                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                motorPtr->SPU          = (float)dmc_msg_read_dword() / VIRT_SPU_SCALE;
                 _virtual.track         = (float)dmc_msg_read_dword() / VIRT_SCALE;
                 motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
@@ -1148,7 +1148,7 @@ void loop()
                   break;
                 }
                 motorPtr               = &motors[_virtual.panIndex - 1];
-                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                motorPtr->SPU          = (float)dmc_msg_read_dword() / VIRT_SPU_SCALE;
                 _virtual.pan           = (float)dmc_msg_read_dword() / VIRT_SCALE;
                 motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
@@ -1157,7 +1157,7 @@ void loop()
                   break;
                 }
                 motorPtr               = &motors[_virtual.tiltIndex - 1];
-                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                motorPtr->SPU          = (float)dmc_msg_read_dword() / VIRT_SPU_SCALE;
                 _virtual.tilt          = (float)dmc_msg_read_dword() / VIRT_SCALE;
                 motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
@@ -1166,7 +1166,7 @@ void loop()
                   break;
                 }
                 motorPtr               = &motors[_virtual.rollIndex - 1];
-                motorPtr->SPU          = (float)dmc_msg_read_dword();
+                motorPtr->SPU          = (float)dmc_msg_read_dword() / VIRT_SPU_SCALE;
                 _virtual.roll          = (float)dmc_msg_read_dword() / VIRT_SCALE;
                 motorPtr->config      |= DMC_MOTOR_CONFIG_VIRT;
 
