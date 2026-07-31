@@ -4,9 +4,11 @@
 #define M7_IK_H_
 
 #include <LimnmocoIK.h>
+#include <BoomCompensation.h>
 
 using limnmoco::CraneGeometry;
 using limnmoco::CraneSolveResult;
+using limnmoco::BoomCompensationTable;
 using limnmoco::Vec3;
 using limnmoco::VirtualPose;
 using limnmoco::solve_fk;

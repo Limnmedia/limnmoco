@@ -126,7 +126,8 @@ struct Virtual {
   float nodalOffsetY;
   float nodalOffsetZ;
 
-  float boomCompensation[121];
+  BoomCompensationTable boomCompensation;
+  uint8_t boomCompensationEnabled;
   float safeDistance;
 
   float track;
@@ -180,6 +181,8 @@ void virt_update_positions();
 void virt_kinematics();
 VirtualPose virtualPoseForIk(const VirtualPose &pose);
 int32_t virt_inverse_kinematics();
+bool boomMotorUnitsToGeometricAngle(float motorUnits, float *boomDegrees);
+bool boomGeometricAngleToMotorUnits(float boomDegrees, float *motorUnits);
 
 void initMotor(Motor *m);
 int32_t updateMotorVelocity(Motor *m, float timeSegment);
@@ -1178,16 +1181,29 @@ void loop()
                 _virtual.nodalOffsetY = (float)dmc_msg_read_dword() / LEN_SCALE;
                 _virtual.nodalOffsetZ = (float)dmc_msg_read_dword() / LEN_SCALE;
 
-                if (!dmc_msg_read_at_end()) {
-                  // read boom compensation table
+                _virtual.boomCompensationEnabled = 0;
+                const int32_t compensationBytes =
+                  DMC_VIRT_CONFIG_BOOM_COMPENSATION_ANGLES * (int32_t)sizeof(uint32_t);
+                if (dmc_msg_read_left() >= compensationBytes) {
+                  // Dragonframe sends signed boom motor-axis positions in
+                  // VIRT_SCALE fixed-point units for -60 through +60 degrees.
                   for (int i = 0; i < DMC_VIRT_CONFIG_BOOM_COMPENSATION_ANGLES; ++i) {
-                    _virtual.boomCompensation[i] = (float)dmc_msg_read_dword();
+                    _virtual.boomCompensation.motorUnits[i] =
+                      (float)(int32_t)dmc_msg_read_dword() / VIRT_SCALE;
                   }
+                  if (!limnmoco::boom_compensation_table_is_valid(
+                        _virtual.boomCompensation)) {
+                    break;
+                  }
+                  _virtual.boomCompensationEnabled = 1;
                 }
 
-                if (!dmc_msg_read_at_end()) {
+                if (dmc_msg_read_left() >= (int32_t)sizeof(uint32_t)) {
                   // read safe distance
                   _virtual.safeDistance = (float)dmc_msg_read_dword() / LEN_SCALE;
+                }
+                if (!dmc_msg_read_at_end()) {
+                  break;
                 }
 
                 // #TODO: support camera aim point
@@ -1200,9 +1216,15 @@ void loop()
                   _virtual.track, _virtual.EW, _virtual.NS,
                   _virtual.pan, _virtual.tilt, _virtual.roll};
 
+                float originBoomDegrees = 0.0f;
+                if (!boomMotorUnitsToGeometricAngle(
+                      (float)(motors[_virtual.boomIndex - 1].position /
+                              motors[_virtual.boomIndex - 1].SPU),
+                      &originBoomDegrees)) {
+                  break;
+                }
                 _virtual.fkOrigin = solve_fk(
-                  (float)(motors[_virtual.boomIndex - 1].position /
-                          motors[_virtual.boomIndex - 1].SPU),
+                  originBoomDegrees,
                   (float)(motors[_virtual.swingIndex - 1].position /
                           motors[_virtual.swingIndex - 1].SPU),
                   (float)(motors[_virtual.trackIndex - 1].position /
@@ -1410,7 +1432,11 @@ void virt_kinematics() {
   Motor *rollMotor  = &motors[_virtual.rollIndex  - 1];
 
   float swingDeg = (float)(swingMotor->position / swingMotor->SPU);
-  float boomDeg  = (float)(boomMotor->position / boomMotor->SPU);
+  float boomDeg = 0.0f;
+  if (!boomMotorUnitsToGeometricAngle(
+        (float)(boomMotor->position / boomMotor->SPU), &boomDeg)) {
+    return;
+  }
   float track    = (float)(trackMotor->position / trackMotor->SPU);
   float panDeg   = (float)(panMotor->position / panMotor->SPU);
   float tiltDeg  = (float)(tiltMotor->position / tiltMotor->SPU);
@@ -1489,6 +1515,24 @@ void virt_kinematics() {
   Serial4.print("\n");
 }
 
+bool boomMotorUnitsToGeometricAngle(float motorUnits, float *boomDegrees) {
+  if (!_virtual.boomCompensationEnabled) {
+    *boomDegrees = motorUnits;
+    return true;
+  }
+  return limnmoco::boom_motor_units_to_angle(
+    _virtual.boomCompensation, motorUnits, boomDegrees);
+}
+
+bool boomGeometricAngleToMotorUnits(float boomDegrees, float *motorUnits) {
+  if (!_virtual.boomCompensationEnabled) {
+    *motorUnits = boomDegrees;
+    return true;
+  }
+  return limnmoco::boom_angle_to_motor_units(
+    _virtual.boomCompensation, boomDegrees, motorUnits);
+}
+
 VirtualPose virtualPoseForIk(const VirtualPose &pose) {
   if (!_virtual.fkOriginValid) {
     return pose;
@@ -1546,6 +1590,11 @@ int32_t virt_inverse_kinematics() {
   Motor *tiltMotor  = &motors[_virtual.tiltIndex  - 1];
   Motor *rollMotor  = &motors[_virtual.rollIndex  - 1];
 
+  float boomMotorUnits = 0.0f;
+  if (!boomGeometricAngleToMotorUnits(_virtual.b, &boomMotorUnits)) {
+    return DMC_ACK_ERR_RANGE;
+  }
+
   const CoordinatedMotionAxis axes[] = {
     {_virtual.trackIndex - 1,
       {trackMotor->position, _virtual.T * trackMotor->SPU,
@@ -1554,7 +1603,7 @@ int32_t virt_inverse_kinematics() {
       {swingMotor->position, _virtual.s * swingMotor->SPU,
        swingMotor->maxVelocity, swingMotor->maxAcceleration}},
     {_virtual.boomIndex - 1,
-      {boomMotor->position, _virtual.b * boomMotor->SPU,
+      {boomMotor->position, boomMotorUnits * boomMotor->SPU,
        boomMotor->maxVelocity, boomMotor->maxAcceleration}},
     {_virtual.panIndex - 1,
       {panMotor->position, _virtual.p * panMotor->SPU,
@@ -1702,7 +1751,11 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   Motor *rollMotor  = &motors[_virtual.rollIndex  - 1];
 
   const float currentSwing = (float)(swingMotor->position / swingMotor->SPU);
-  const float currentBoom  = (float)(boomMotor->position / boomMotor->SPU);
+  float currentBoom = 0.0f;
+  if (!boomMotorUnitsToGeometricAngle(
+        (float)(boomMotor->position / boomMotor->SPU), &currentBoom)) {
+    return DMC_ACK_ERR_RANGE;
+  }
   const float currentTrack = (float)(trackMotor->position / trackMotor->SPU);
   const float currentPan   = (float)(panMotor->position / panMotor->SPU);
   const float currentTilt  = (float)(tiltMotor->position / tiltMotor->SPU);
@@ -1724,7 +1777,10 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   if (motor == DMC_VIRT_TRACK) {
     targetTrack = (float)(primaryTarget / trackMotor->SPU);
   } else if (motor == DMC_VIRT_NS) {
-    targetBoom = (float)(primaryTarget / boomMotor->SPU);
+    if (!boomMotorUnitsToGeometricAngle(
+          (float)(primaryTarget / boomMotor->SPU), &targetBoom)) {
+      return DMC_ACK_ERR_RANGE;
+    }
   } else if (motor == DMC_VIRT_EW) {
     targetSwing = (float)(primaryTarget / swingMotor->SPU);
   } else if (motor == DMC_VIRT_PAN) {
@@ -1772,8 +1828,12 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
       trackMotor, result.track * trackMotor->SPU, speed,
       _virtual.trackIndex - 1);
   } else if (motor == DMC_VIRT_NS) {
+    float boomMotorUnits = 0.0f;
+    if (!boomGeometricAngleToMotorUnits(result.boomDeg, &boomMotorUnits)) {
+      return DMC_ACK_ERR_RANGE;
+    }
     axes[axisCount++] = makeCoordinatedJogAxis(
-      boomMotor, result.boomDeg * boomMotor->SPU, speed,
+      boomMotor, boomMotorUnits * boomMotor->SPU, speed,
       _virtual.boomIndex - 1);
     axes[axisCount++] = makeCoordinatedJogAxis(
       trackMotor, result.track * trackMotor->SPU, speed,
