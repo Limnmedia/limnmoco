@@ -5,6 +5,7 @@
 #include <BoomCompensation.h>
 
 #include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -58,6 +59,20 @@ bool runBoomCompensationTableTest() {
 
   std::cout << (ok ? "[PASS]" : "[FAIL]")
             << " Boom compensation table mapping\n";
+  return ok;
+}
+
+bool runDragonframeBoomCompensationEncodingTest() {
+  // Captured MSG_VIRT_CONFIG entries: -60 degrees is 0xffafdd92
+  // (signed -5,251,694), zero is zero, and +1 degree is 85,557.
+  const uint32_t rawNegativeSixty = 4289715602u;
+  const float negativeSixtyMotorUnits =
+      static_cast<float>(static_cast<int32_t>(rawNegativeSixty)) / 100000.0f;
+  const float positiveOneMotorUnits = 85557.0f / 100000.0f;
+  const bool ok = near(negativeSixtyMotorUnits, -52.51694f, 0.00001f) &&
+                  near(positiveOneMotorUnits, 0.85557f, 0.00001f);
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " Dragonframe boom table fixed-point encoding\n";
   return ok;
 }
 
@@ -360,6 +375,9 @@ int main() {
     ++failures;
   }
   if (!runBoomCompensationTableTest()) {
+    ++failures;
+  }
+  if (!runDragonframeBoomCompensationEncodingTest()) {
     ++failures;
   }
   if (!runCompensationFixture(
