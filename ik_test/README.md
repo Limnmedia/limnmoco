@@ -28,6 +28,7 @@ g++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
   main.cpp limnmoco_ik.cpp ../common/LimnmocoIK/src/LimnmocoIK.cpp \
   ../common/LimnmocoIK/src/Vec3.cpp ../common/LimnmocoIK/src/Mat3.cpp \
   ../common/LimnmocoIK/src/CoordinatedTrajectory.cpp \
+  ../common/LimnmocoIK/src/BoomCompensation.cpp \
   -o limnmoco_ik_test
 ```
 
@@ -38,6 +39,7 @@ clang++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
   main.cpp limnmoco_ik.cpp ../common/LimnmocoIK/src/LimnmocoIK.cpp \
   ../common/LimnmocoIK/src/Vec3.cpp ../common/LimnmocoIK/src/Mat3.cpp \
   ../common/LimnmocoIK/src/CoordinatedTrajectory.cpp \
+  ../common/LimnmocoIK/src/BoomCompensation.cpp \
   -o limnmoco_ik_test
 ```
 

@@ -2,6 +2,8 @@
 
 #include "limnmoco_ik.h"
 
+#include <BoomCompensation.h>
+
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -25,6 +27,38 @@ struct TestCase {
 
 bool near(float actual, float expected, float tolerance) {
   return std::abs(actual - expected) <= tolerance;
+}
+
+bool runBoomCompensationTableTest() {
+  limnmoco::BoomCompensationTable increasing{};
+  limnmoco::BoomCompensationTable decreasing{};
+  for (int index = 0; index < limnmoco::kBoomCompensationEntryCount; ++index) {
+    const float angle = limnmoco::kBoomCompensationMinDegrees + index;
+    increasing.motorUnits[index] = angle * 0.8f +
+        (angle >= 0.0f ? angle * angle * 0.001f : -angle * angle * 0.001f);
+    decreasing.motorUnits[index] = -increasing.motorUnits[index];
+  }
+
+  bool ok = limnmoco::boom_compensation_table_is_valid(increasing) &&
+            limnmoco::boom_compensation_table_is_valid(decreasing);
+  float motorUnits = 0.0f;
+  float angle = 0.0f;
+  ok = ok && limnmoco::boom_angle_to_motor_units(increasing, 10.5f, &motorUnits) &&
+       near(motorUnits, 8.5105f, 0.00001f) &&
+       limnmoco::boom_motor_units_to_angle(increasing, motorUnits, &angle) &&
+       near(angle, 10.5f, 0.00001f) &&
+       limnmoco::boom_angle_to_motor_units(decreasing, -12.25f, &motorUnits) &&
+       limnmoco::boom_motor_units_to_angle(decreasing, motorUnits, &angle) &&
+       near(angle, -12.25f, 0.00001f) &&
+       !limnmoco::boom_angle_to_motor_units(increasing, 60.1f, &motorUnits) &&
+       !limnmoco::boom_motor_units_to_angle(increasing, 1000.0f, &angle);
+
+  increasing.motorUnits[1] = increasing.motorUnits[0];
+  ok = ok && !limnmoco::boom_compensation_table_is_valid(increasing);
+
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " Boom compensation table mapping\n";
+  return ok;
 }
 
 std::vector<std::string> splitCsv(const std::string &line) {
@@ -323,6 +357,9 @@ int main() {
     ++failures;
   }
   if (!runEastWestCompensationTest()) {
+    ++failures;
+  }
+  if (!runBoomCompensationTableTest()) {
     ++failures;
   }
   if (!runCompensationFixture(
