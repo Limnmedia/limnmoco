@@ -1202,9 +1202,9 @@ void loop()
                   // read safe distance
                   _virtual.safeDistance = (float)dmc_msg_read_dword() / LEN_SCALE;
                 }
-                if (!dmc_msg_read_at_end()) {
-                  break;
-                }
+                // Dragonframe may append protocol-extension fields after the known
+                // boom-compensation table and safe-distance fields. They do not
+                // affect this firmware version, so deliberately leave them unread.
 
                 // #TODO: support camera aim point
                 _virtual.aimX = 0;
