@@ -29,6 +29,7 @@ g++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
   ../common/LimnmocoIK/src/Vec3.cpp ../common/LimnmocoIK/src/Mat3.cpp \
   ../common/LimnmocoIK/src/CoordinatedTrajectory.cpp \
   ../common/LimnmocoIK/src/BoomCompensation.cpp \
+  ../common/LimnmocoIK/src/KuperTrackConvention.cpp \
   -o limnmoco_ik_test
 ```
 
@@ -40,13 +41,14 @@ clang++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
   ../common/LimnmocoIK/src/Vec3.cpp ../common/LimnmocoIK/src/Mat3.cpp \
   ../common/LimnmocoIK/src/CoordinatedTrajectory.cpp \
   ../common/LimnmocoIK/src/BoomCompensation.cpp \
+  ../common/LimnmocoIK/src/KuperTrackConvention.cpp \
   -o limnmoco_ik_test
 ```
 
 With MSVC Developer PowerShell:
 
 ```powershell
-cl /EHsc /std:c++17 /I..\common\LimnmocoIK\src main.cpp limnmoco_ik.cpp ..\common\LimnmocoIK\src\LimnmocoIK.cpp ..\common\LimnmocoIK\src\Vec3.cpp ..\common\LimnmocoIK\src\Mat3.cpp ..\common\LimnmocoIK\src\CoordinatedTrajectory.cpp /Fe:limnmoco_ik_test.exe
+cl /EHsc /std:c++17 /I..\common\LimnmocoIK\src main.cpp limnmoco_ik.cpp ..\common\LimnmocoIK\src\LimnmocoIK.cpp ..\common\LimnmocoIK\src\Vec3.cpp ..\common\LimnmocoIK\src\Mat3.cpp ..\common\LimnmocoIK\src\CoordinatedTrajectory.cpp ..\common\LimnmocoIK\src\BoomCompensation.cpp ..\common\LimnmocoIK\src\KuperTrackConvention.cpp /Fe:limnmoco_ik_test.exe
 ```
 
 The trajectory primitive has a separate focused test:

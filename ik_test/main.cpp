@@ -3,6 +3,7 @@
 #include "limnmoco_ik.h"
 
 #include <BoomCompensation.h>
+#include <KuperTrackConvention.h>
 
 #include <cmath>
 #include <cstdint>
@@ -73,6 +74,34 @@ bool runDragonframeBoomCompensationEncodingTest() {
                   near(positiveOneMotorUnits, 0.85557f, 0.00001f);
   std::cout << (ok ? "[PASS]" : "[FAIL]")
             << " Dragonframe boom table fixed-point encoding\n";
+  return ok;
+}
+
+bool runKuperTrackConventionTest() {
+  const limnmoco::VirtualPose kuperPose{
+      -5.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
+  const limnmoco::VirtualPose solverPose =
+      limnmoco::kuper_pose_to_solver(kuperPose);
+  const limnmoco::VirtualPose roundTrip =
+      limnmoco::solver_pose_to_kuper(solverPose);
+
+  const bool ok =
+      near(limnmoco::kuper_track_to_solver(-5.0f), 5.0f, 0.0f) &&
+      near(limnmoco::solver_track_to_kuper(5.0f), -5.0f, 0.0f) &&
+      near(solverPose.vtrack, 5.0f, 0.0f) &&
+      near(solverPose.vew, kuperPose.vew, 0.0f) &&
+      near(solverPose.vheight, kuperPose.vheight, 0.0f) &&
+      near(solverPose.vpanDeg, kuperPose.vpanDeg, 0.0f) &&
+      near(solverPose.vtiltDeg, kuperPose.vtiltDeg, 0.0f) &&
+      near(solverPose.vrollDeg, kuperPose.vrollDeg, 0.0f) &&
+      near(roundTrip.vtrack, kuperPose.vtrack, 0.0f) &&
+      near(roundTrip.vew, kuperPose.vew, 0.0f) &&
+      near(roundTrip.vheight, kuperPose.vheight, 0.0f) &&
+      near(roundTrip.vpanDeg, kuperPose.vpanDeg, 0.0f) &&
+      near(roundTrip.vtiltDeg, kuperPose.vtiltDeg, 0.0f) &&
+      near(roundTrip.vrollDeg, kuperPose.vrollDeg, 0.0f);
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " Kuper track coordinate convention\n";
   return ok;
 }
 
@@ -378,6 +407,9 @@ int main() {
     ++failures;
   }
   if (!runDragonframeBoomCompensationEncodingTest()) {
+    ++failures;
+  }
+  if (!runKuperTrackConventionTest()) {
     ++failures;
   }
   if (!runCompensationFixture(
