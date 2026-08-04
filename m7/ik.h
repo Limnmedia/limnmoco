@@ -5,6 +5,7 @@
 
 #include <LimnmocoIK.h>
 #include <BoomCompensation.h>
+#include <KuperTrackConvention.h>
 
 using limnmoco::CraneGeometry;
 using limnmoco::CraneSolveResult;
@@ -13,6 +14,8 @@ using limnmoco::Vec3;
 using limnmoco::VirtualPose;
 using limnmoco::solve_fk;
 using limnmoco::solve_ik;
+using limnmoco::kuper_track_to_solver;
+using limnmoco::solver_track_to_kuper;
 
 inline float ik_degrees(float radiansValue) {
   return limnmoco::angle_degrees(radiansValue);

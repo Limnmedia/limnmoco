@@ -105,6 +105,31 @@ bool runKuperTrackConventionTest() {
   return ok;
 }
 
+bool runKuperNorthSouthCompensationTest() {
+  const limnmoco::CraneGeometry geometry{
+      857.7f, 78.0f, 0.0f, 0.0f, 0.0f};
+  const limnmoco::VirtualPose origin = limnmoco::solve_fk(
+      0.0f, 0.0f, limnmoco::kuper_track_to_solver(0.0f),
+      0.0f, 0.0f, 0.0f, geometry);
+  const limnmoco::VirtualPose publicTarget{
+      0.0f, 0.0f, 100.0f, 0.0f, 0.0f, 0.0f};
+  limnmoco::VirtualPose solverTarget =
+      limnmoco::kuper_pose_to_solver(publicTarget);
+  solverTarget.vtrack += origin.vtrack;
+  const limnmoco::CraneSolveResult result =
+      limnmoco::solve_ik(solverTarget, geometry);
+  const float rawTrack = limnmoco::solver_track_to_kuper(result.track);
+
+  const bool ok = near(result.track, 5.8494f, 0.001f) &&
+                  near(rawTrack, -5.8494f, 0.001f) &&
+                  near(limnmoco::solver_track_to_kuper(
+                         limnmoco::kuper_track_to_solver(-5.0f)),
+                       -5.0f, 0.0f);
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " Kuper NS compensation commands negative raw track\n";
+  return ok;
+}
+
 std::vector<std::string> splitCsv(const std::string &line) {
   std::vector<std::string> fields;
   std::stringstream stream(line);
@@ -410,6 +435,9 @@ int main() {
     ++failures;
   }
   if (!runKuperTrackConventionTest()) {
+    ++failures;
+  }
+  if (!runKuperNorthSouthCompensationTest()) {
     ++failures;
   }
   if (!runCompensationFixture(

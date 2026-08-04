@@ -1227,8 +1227,9 @@ void loop()
                   originBoomDegrees,
                   (float)(motors[_virtual.swingIndex - 1].position /
                           motors[_virtual.swingIndex - 1].SPU),
-                  (float)(motors[_virtual.trackIndex - 1].position /
-                          motors[_virtual.trackIndex - 1].SPU),
+                  kuper_track_to_solver(
+                    (float)(motors[_virtual.trackIndex - 1].position /
+                            motors[_virtual.trackIndex - 1].SPU)),
                   (float)(motors[_virtual.panIndex - 1].position /
                           motors[_virtual.panIndex - 1].SPU),
                   (float)(motors[_virtual.tiltIndex - 1].position /
@@ -1437,7 +1438,8 @@ void virt_kinematics() {
         (float)(boomMotor->position / boomMotor->SPU), &boomDeg)) {
     return;
   }
-  float track    = (float)(trackMotor->position / trackMotor->SPU);
+  float track    = kuper_track_to_solver(
+    (float)(trackMotor->position / trackMotor->SPU));
   float panDeg   = (float)(panMotor->position / panMotor->SPU);
   float tiltDeg  = (float)(tiltMotor->position / tiltMotor->SPU);
   float rollDeg  = (float)(rollMotor->position / rollMotor->SPU);
@@ -1474,7 +1476,8 @@ void virt_kinematics() {
 
   if (_virtual.fkOriginValid) {
     _virtual.track = _virtual.virtualOrigin.vtrack +
-                     (fk.vtrack - _virtual.fkOrigin.vtrack);
+                     solver_track_to_kuper(
+                       fk.vtrack - _virtual.fkOrigin.vtrack);
     _virtual.EW    = _virtual.virtualOrigin.vew +
                      (fk.vew - _virtual.fkOrigin.vew);
     _virtual.NS    = _virtual.virtualOrigin.vheight +
@@ -1539,7 +1542,8 @@ VirtualPose virtualPoseForIk(const VirtualPose &pose) {
   }
 
   return VirtualPose{
-    _virtual.fkOrigin.vtrack + (pose.vtrack - _virtual.virtualOrigin.vtrack),
+    _virtual.fkOrigin.vtrack + kuper_track_to_solver(
+      pose.vtrack - _virtual.virtualOrigin.vtrack),
     _virtual.fkOrigin.vew + (pose.vew - _virtual.virtualOrigin.vew),
     _virtual.fkOrigin.vheight + (pose.vheight - _virtual.virtualOrigin.vheight),
     _virtual.fkOrigin.vpanDeg + (pose.vpanDeg - _virtual.virtualOrigin.vpanDeg),
@@ -1561,7 +1565,7 @@ int32_t virt_inverse_kinematics() {
     return DMC_ACK_ERR_RANGE;
   }
 
-  _virtual.T = result.track;
+  _virtual.T = solver_track_to_kuper(result.track);
   _virtual.s = result.swingDeg;
   _virtual.b = result.boomDeg;
   _virtual.p = _virtual.pan - result.swingDeg;
@@ -1756,7 +1760,8 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
         (float)(boomMotor->position / boomMotor->SPU), &currentBoom)) {
     return DMC_ACK_ERR_RANGE;
   }
-  const float currentTrack = (float)(trackMotor->position / trackMotor->SPU);
+  const float currentTrack = kuper_track_to_solver(
+    (float)(trackMotor->position / trackMotor->SPU));
   const float currentPan   = (float)(panMotor->position / panMotor->SPU);
   const float currentTilt  = (float)(tiltMotor->position / tiltMotor->SPU);
   const float currentRoll  = (float)(rollMotor->position / rollMotor->SPU);
@@ -1775,7 +1780,8 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   float targetTilt  = currentTilt;
   float targetRoll  = currentRoll;
   if (motor == DMC_VIRT_TRACK) {
-    targetTrack = (float)(primaryTarget / trackMotor->SPU);
+    targetTrack = kuper_track_to_solver(
+      (float)(primaryTarget / trackMotor->SPU));
   } else if (motor == DMC_VIRT_NS) {
     if (!boomMotorUnitsToGeometricAngle(
           (float)(primaryTarget / boomMotor->SPU), &targetBoom)) {
@@ -1802,7 +1808,8 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   // compensating physical axes needed to keep the other virtual coordinates
   // fixed while the crane follows that virtual axis.
   if (motor == DMC_VIRT_TRACK) {
-    targetVirtual.vtrack += targetAbsolute.vtrack - currentAbsolute.vtrack;
+    targetVirtual.vtrack += solver_track_to_kuper(
+      targetAbsolute.vtrack - currentAbsolute.vtrack);
   } else if (motor == DMC_VIRT_EW) {
     targetVirtual.vew += targetAbsolute.vew - currentAbsolute.vew;
   } else if (motor == DMC_VIRT_NS) {
@@ -1825,7 +1832,7 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   uint8_t axisCount = 0;
   if (motor == DMC_VIRT_TRACK) {
     axes[axisCount++] = makeCoordinatedJogAxis(
-      trackMotor, result.track * trackMotor->SPU, speed,
+      trackMotor, solver_track_to_kuper(result.track) * trackMotor->SPU, speed,
       _virtual.trackIndex - 1);
   } else if (motor == DMC_VIRT_NS) {
     float boomMotorUnits = 0.0f;
@@ -1836,14 +1843,14 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
       boomMotor, boomMotorUnits * boomMotor->SPU, speed,
       _virtual.boomIndex - 1);
     axes[axisCount++] = makeCoordinatedJogAxis(
-      trackMotor, result.track * trackMotor->SPU, speed,
+      trackMotor, solver_track_to_kuper(result.track) * trackMotor->SPU, speed,
       _virtual.trackIndex - 1);
   } else if (motor == DMC_VIRT_EW) {
     axes[axisCount++] = makeCoordinatedJogAxis(
       swingMotor, result.swingDeg * swingMotor->SPU, speed,
       _virtual.swingIndex - 1);
     axes[axisCount++] = makeCoordinatedJogAxis(
-      trackMotor, result.track * trackMotor->SPU, speed,
+      trackMotor, solver_track_to_kuper(result.track) * trackMotor->SPU, speed,
       _virtual.trackIndex - 1);
     axes[axisCount++] = makeCoordinatedJogAxis(
       panMotor, (targetVirtual.vpanDeg - result.swingDeg) * panMotor->SPU,
