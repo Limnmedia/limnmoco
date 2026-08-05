@@ -47,10 +47,14 @@ until they are confirmed; their behavior must not be guessed in firmware.
 Confirm which camera-local axis points through the lens. The solver needs one
 explicit convention, likely camera-local `-Z` or `+Z`.
 
+-Z
+
 ### Aim origin
 
 Confirm that the existing nodal-offset model represents the optical/nodal point
 from which the camera should aim, rather than only the pan-axis center.
+
+yes
 
 ### Manual virtual pan and tilt while aiming
 
@@ -62,6 +66,10 @@ Decide what a virtual pan or tilt command does when aim is enabled:
 
 Initial recommendation: direct virtual pan/tilt commands disable aim. This is
 predictable and avoids silently changing the user-selected aim target.
+
+reject tjhe command.
+
+although
 
 ### Aim-point coordinate convention
 
