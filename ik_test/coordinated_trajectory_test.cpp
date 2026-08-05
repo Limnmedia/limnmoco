@@ -87,6 +87,23 @@ int main() {
   requireNear(coordinated_acceleration(shortPlan[0], shortProfile, 0.25f), -4.0f,
               1e-5f, "short move configured signed acceleration");
 
+  const CoordinatedAxisPlan mixedLimitPlans[] = {
+      {0.0f, 100.0f, 100.0f, 100.0f},
+      {0.0f, 10.0f, 1.0f, 0.5f},
+  };
+  const CoordinatedTrajectoryProfile mixedLimitProfile =
+      coordinated_make_profile(mixedLimitPlans, 2);
+  requireNear(mixedLimitProfile.duration, 12.0f, 1e-5f,
+              "mixed limits shared duration");
+  requireNear(coordinated_velocity(mixedLimitPlans[0], mixedLimitProfile, 6.0f),
+              10.0f, 1e-5f, "fast axis is scaled below its velocity limit");
+  requireNear(coordinated_velocity(mixedLimitPlans[1], mixedLimitProfile, 6.0f),
+              1.0f, 1e-5f, "slow axis reaches its velocity limit");
+  requireNear(coordinated_acceleration(mixedLimitPlans[0], mixedLimitProfile, 1.0f),
+              5.0f, 1e-5f, "fast axis is scaled below its acceleration limit");
+  requireNear(coordinated_acceleration(mixedLimitPlans[1], mixedLimitProfile, 1.0f),
+              0.5f, 1e-5f, "slow axis reaches its acceleration limit");
+
   std::cout << "All coordinated trajectory tests passed.\n";
   return EXIT_SUCCESS;
 }

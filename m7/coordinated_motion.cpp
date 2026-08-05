@@ -2,7 +2,6 @@
 
 #include "coordinated_motion.h"
 
-#include <algorithm>
 #include <cmath>
 
 namespace {
@@ -12,7 +11,7 @@ constexpr uint8_t kMaxAxes = MOTOR_COUNT;
 struct CoordinatedMotionState {
   CoordinatedMotionAxis axes[kMaxAxes];
   uint8_t axisCount;
-  float duration;
+  limnmoco::CoordinatedTrajectoryProfile profile;
   float elapsed;
   bool active;
 };
@@ -42,22 +41,23 @@ bool coordinated_motion_start(Motor *motors,
     return false;
   }
 
-  float duration = 0.0f;
   for (uint8_t i = 0; i < axisCount; ++i) {
     const CoordinatedMotionAxis &axis = axes[i];
     if (axis.motorIndex >= MOTOR_COUNT ||
         !targetWithinLimits(motors[axis.motorIndex], axis.plan.target)) {
       return false;
     }
-    duration = std::max(duration, limnmoco::coordinated_minimum_duration(
-        axis.plan.target - axis.plan.start,
-        axis.plan.maxVelocity, axis.plan.maxAcceleration));
   }
 
   state = CoordinatedMotionState{};
   state.axisCount = axisCount;
-  state.duration = duration;
-  state.active = duration > 0.0f;
+  limnmoco::CoordinatedAxisPlan plans[kMaxAxes];
+  for (uint8_t i = 0; i < axisCount; ++i) {
+    plans[i] = axes[i].plan;
+  }
+  state.profile = limnmoco::coordinated_make_profile(
+      plans, axisCount);
+  state.active = state.profile.duration > 0.0f;
 
   for (uint8_t i = 0; i < axisCount; ++i) {
     state.axes[i] = axes[i];
@@ -85,17 +85,18 @@ bool coordinated_motion_update(Motor *motors, float timeSegment,
     return false;
   }
 
-  state.elapsed = std::min(state.duration, state.elapsed + timeSegment);
-  bool complete = state.elapsed >= state.duration;
+  state.elapsed = fminf(
+      state.profile.duration, state.elapsed + timeSegment);
+  bool complete = state.elapsed >= state.profile.duration;
 
   for (uint8_t i = 0; i < state.axisCount; ++i) {
     const CoordinatedMotionAxis &axis = state.axes[i];
     Motor &motor = motors[axis.motorIndex];
-    const float oldPosition = motor.position;
     const float newPosition = limnmoco::coordinated_position(
-        axis.plan, state.duration, state.elapsed);
+        axis.plan, state.profile, state.elapsed);
     motor.position = newPosition;
-    motor.currentVelocity = (newPosition - oldPosition) / timeSegment;
+    motor.currentVelocity = limnmoco::coordinated_velocity(
+        axis.plan, state.profile, state.elapsed);
     directions[axis.motorIndex] = motor.currentVelocity > 0.0001f ? 1 :
                                    motor.currentVelocity < -0.0001f ? -1 : 0;
     motor.moving = complete ? 0 : 1;
