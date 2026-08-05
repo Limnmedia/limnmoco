@@ -39,7 +39,12 @@ the camera body.
 The protocol does not define whether axes 3 and 4 mean direct virtual pan/tilt
 rotation or a translation derived from those rotations. The initial recommended
 behavior is direct virtual pan and tilt jogging. Dragonframe packet captures
-should confirm this assumption.
+should confirm this assumption. 
+
+This initial recommendation seems to be the correct interpretation.
+
+as an aside, it seems like it's a double covering of the behavior of VIRT_MOVE 
+with the PAN or TILT axis selected
 
 ### Speed normalization
 
@@ -47,6 +52,10 @@ Confirm whether a magnitude of 10,000 should use the limiting participating
 physical motor's configured maximum velocity. The initial implementation should
 reuse the existing two-second look-ahead policy to form each coordinated
 segment.
+
+Pretty sure the protocol specifies 10,000 means maximum velocity. which as it is 
+already constrained by the slowest physical participating motor for virtual jog,
+i think it should be so for jog on line
 
 ## Coordinate pipeline
 
