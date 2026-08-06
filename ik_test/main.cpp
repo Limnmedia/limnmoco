@@ -36,26 +36,27 @@ bool runBoomCompensationTableTest() {
   limnmoco::BoomCompensationTable decreasing{};
   for (int index = 0; index < limnmoco::kBoomCompensationEntryCount; ++index) {
     const float angle = limnmoco::kBoomCompensationMinDegrees + index;
-    increasing.motorUnits[index] = angle * 0.8f +
-        (angle >= 0.0f ? angle * angle * 0.001f : -angle * angle * 0.001f);
-    decreasing.motorUnits[index] = -increasing.motorUnits[index];
+    increasing.motorSteps[index] = (angle * 0.8f +
+        (angle >= 0.0f ? angle * angle * 0.001f : -angle * angle * 0.001f)) *
+        10000.0f;
+    decreasing.motorSteps[index] = -increasing.motorSteps[index];
   }
 
   bool ok = limnmoco::boom_compensation_table_is_valid(increasing) &&
             limnmoco::boom_compensation_table_is_valid(decreasing);
-  float motorUnits = 0.0f;
+  float motorSteps = 0.0f;
   float angle = 0.0f;
-  ok = ok && limnmoco::boom_angle_to_motor_units(increasing, 10.5f, &motorUnits) &&
-       near(motorUnits, 8.5105f, 0.00001f) &&
-       limnmoco::boom_motor_units_to_angle(increasing, motorUnits, &angle) &&
+  ok = ok && limnmoco::boom_angle_to_steps(increasing, 10.5f, &motorSteps) &&
+       near(motorSteps, 85105.0f, 0.01f) &&
+       limnmoco::boom_steps_to_angle(increasing, motorSteps, &angle) &&
        near(angle, 10.5f, 0.00001f) &&
-       limnmoco::boom_angle_to_motor_units(decreasing, -12.25f, &motorUnits) &&
-       limnmoco::boom_motor_units_to_angle(decreasing, motorUnits, &angle) &&
+       limnmoco::boom_angle_to_steps(decreasing, -12.25f, &motorSteps) &&
+       limnmoco::boom_steps_to_angle(decreasing, motorSteps, &angle) &&
        near(angle, -12.25f, 0.00001f) &&
-       !limnmoco::boom_angle_to_motor_units(increasing, 60.1f, &motorUnits) &&
-       !limnmoco::boom_motor_units_to_angle(increasing, 1000.0f, &angle);
+       !limnmoco::boom_angle_to_steps(increasing, 60.1f, &motorSteps) &&
+       !limnmoco::boom_steps_to_angle(increasing, 10000000.0f, &angle);
 
-  increasing.motorUnits[1] = increasing.motorUnits[0];
+  increasing.motorSteps[1] = increasing.motorSteps[0];
   ok = ok && !limnmoco::boom_compensation_table_is_valid(increasing);
 
   std::cout << (ok ? "[PASS]" : "[FAIL]")
@@ -64,16 +65,43 @@ bool runBoomCompensationTableTest() {
 }
 
 bool runDragonframeBoomCompensationEncodingTest() {
-  // Captured MSG_VIRT_CONFIG entries: -60 degrees is 0xffafdd92
-  // (signed -5,251,694), zero is zero, and +1 degree is 85,557.
+  // Captured MSG_VIRT_CONFIG entries are signed physical boom step positions.
+  // -60 degrees is 0xffafdd92 (signed -5,251,694), zero is zero,
+  // and +1 degree is 85,557 steps.
   const uint32_t rawNegativeSixty = 4289715602u;
-  const float negativeSixtyMotorUnits =
-      static_cast<float>(static_cast<int32_t>(rawNegativeSixty)) / 100000.0f;
-  const float positiveOneMotorUnits = 85557.0f / 100000.0f;
-  const bool ok = near(negativeSixtyMotorUnits, -52.51694f, 0.00001f) &&
-                  near(positiveOneMotorUnits, 0.85557f, 0.00001f);
+  const float negativeSixtySteps =
+      static_cast<float>(static_cast<int32_t>(rawNegativeSixty));
+  const float positiveOneSteps = 85557.0f;
+  const bool ok = near(negativeSixtySteps, -5251694.0f, 0.1f) &&
+                  near(positiveOneSteps, 85557.0f, 0.1f);
   std::cout << (ok ? "[PASS]" : "[FAIL]")
-            << " Dragonframe boom table fixed-point encoding\n";
+            << " Dragonframe boom table step encoding\n";
+  return ok;
+}
+
+bool runBoomCompensationStepTargetRegressionTest() {
+  limnmoco::BoomCompensationTable table{};
+  for (int index = 0; index < limnmoco::kBoomCompensationEntryCount; ++index) {
+    const float angle = limnmoco::kBoomCompensationMinDegrees + index;
+    table.motorSteps[index] = angle * 8600.0f;
+  }
+
+  // A correctly scaled version of the captured table's +3 and +4 degree
+  // entries. Dragonframe must interpolate this directly to a motor step
+  // target; applying VIRT_SCALE or SPU again would create a 10x-scale error.
+  table.motorSteps[63] = 27620.3f; // +3 degrees
+  table.motorSteps[64] = 37405.6f; // +4 degrees
+
+  float targetSteps = 0.0f;
+  float targetDegrees = 0.0f;
+  const bool ok = limnmoco::boom_angle_to_steps(
+                      table, 3.342f, &targetSteps) &&
+                  near(targetSteps, 30966.87f, 0.1f) &&
+                  limnmoco::boom_steps_to_angle(
+                      table, targetSteps, &targetDegrees) &&
+                  near(targetDegrees, 3.342f, 0.0001f);
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " BCT interpolation produces physical boom steps\n";
   return ok;
 }
 
@@ -432,6 +460,9 @@ int main() {
     ++failures;
   }
   if (!runDragonframeBoomCompensationEncodingTest()) {
+    ++failures;
+  }
+  if (!runBoomCompensationStepTargetRegressionTest()) {
     ++failures;
   }
   if (!runKuperTrackConventionTest()) {
