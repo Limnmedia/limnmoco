@@ -16,8 +16,8 @@ Away from subject   = positive Z / positive vTrack
 ## Required behavior
 
 When aim point is enabled, the vector from the camera nodal point to the aim
-point defines the camera direction. Virtual pan and tilt are derived from that
-direction; virtual roll remains independently controlled.
+point defines the base camera direction. vPAN and vTILT are relative offsets
+from that direction; virtual roll remains independently controlled.
 
 The feature must work with virtual moves and virtual jogs. It must also be
 compatible with the planned `MSG_VIRT_JOG_ON_LINE` feature.
@@ -37,51 +37,17 @@ The response echoes the same data. Once aim support is complete,
 `MSG_VIRT_GET_POSITION` must append the optional aim enabled and aim point
 fields specified by the protocol.
 
-## Unresolved convention decisions
+## Confirmed convention and operator behavior
 
-These decisions must be made before implementation. The feature remains planned
-until they are confirmed; their behavior must not be guessed in firmware.
-
-### Camera-forward axis
-
-Confirm which camera-local axis points through the lens. The solver needs one
-explicit convention, likely camera-local `-Z` or `+Z`.
-
--Z
-
-### Aim origin
-
-Confirm that the existing nodal-offset model represents the optical/nodal point
-from which the camera should aim, rather than only the pan-axis center.
-
-yes
-
-### Manual virtual pan and tilt while aiming
-
-Decide what a virtual pan or tilt command does when aim is enabled:
-
-- reject the command;
-- temporarily disable aim; or
-- reinterpret the command as moving the aim point.
-
-Initial recommendation: direct virtual pan/tilt commands disable aim. This is
-predictable and avoids silently changing the user-selected aim target.
-
-reject tjhe command.
-
-although
-
-### Aim-point coordinate convention
-
-Confirm that packet `AIM-X/Y/Z` values are Kuper world coordinates, with
-negative Z forward. M7 must convert Kuper Z to the solver's local boom-forward
-axis.
-
-### Safe-distance behavior
-
-Virtual configuration contains `SafeDistance`, which is currently stored but
-unused. Decide whether an aim point closer than this distance is rejected or
-clamped. Initial recommendation: reject it with `ERR_RANGE`.
+- Camera-local `-Z` points through the lens.
+- Aim direction originates at the configured optical/nodal point.
+- Kuper X is vEW, Kuper Y is vNS, and Kuper Z is vTrack; negative Z is forward.
+- While aim is enabled, zero vPAN/vTILT points directly at aim. Nonzero values
+  are relative pan/tilt offsets from the aim direction.
+- Only one aim point is active. Dragonframe can send updated aim points over
+  time as aim keyframes change.
+- `SafeDistance` defines the radius of a vertical cylinder around the aim
+  point. The nodal point must remain outside that cylinder.
 
 ## Coordinate pipeline
 
@@ -89,7 +55,8 @@ clamped. Initial recommendation: reject it with `ERR_RANGE`.
 Dragonframe aim point, Kuper world coordinates
   -> convert Kuper Z to solver-local boom-forward coordinate
   -> vector from target camera nodal point to aim point
-  -> derive virtual pan and tilt
+  -> derive aim-base virtual pan and tilt
+  -> apply requested relative vPAN/vTILT offsets
   -> preserve virtual roll
   -> existing IK
   -> coordinated physical targets
@@ -111,9 +78,9 @@ Add shared library functions for:
 
 - Kuper-world point to solver-local point conversion;
 - normalized direction from nodal point to aim point;
-- pan/tilt extraction from the direction, using the confirmed camera-forward
-  convention;
-- safe-distance validation.
+- aim-base pan/tilt extraction from the direction;
+- relative pan/tilt offset application;
+- vertical safe-cylinder validation.
 
 Tests must cover cardinal directions, Kuper forward, roll preservation, and
 invalid zero-length vectors.
@@ -135,7 +102,7 @@ Commit point: protocol parse/echo regression coverage.
 
 ### 3. Add aim-point state transitions
 
-- Enable: validate the point is outside safe distance from the current nodal
+- Enable: validate the point is outside the safe cylinder at the current nodal
   position.
 - Disable: preserve the current virtual orientation and clear active aiming.
 - New virtual configuration: initially clear aim state for safety, unless the
@@ -147,8 +114,8 @@ Before IK, when aim is enabled:
 
 1. Start with requested virtual translation.
 2. Calculate target nodal position.
-3. Derive virtual pan/tilt toward the aim point.
-4. Preserve virtual roll.
+3. Derive aim-base virtual pan/tilt toward the aim point.
+4. Apply requested vPAN/vTILT relative offsets and preserve virtual roll.
 5. Pass the resulting pose through `virtualPoseForIk()` and existing IK.
 
 This must be used consistently by `MSG_VIRT_MOVE` and `MSG_VIRT_JOG`.
@@ -158,15 +125,15 @@ continues to face a fixed aim point.
 
 ### 5. Define manual rotation interaction
 
-Implement the selected behavior for direct virtual pan and tilt commands while
-aim is active. Under the recommended policy, either command disables aim;
-virtual roll remains available while aiming is active.
+Direct virtual pan and tilt commands remain available while aim is active; they
+modify relative offsets from the aim direction. Virtual roll remains available
+and independent while aiming is active.
 
 ### 6. Integrate camera-line jogging
 
-For planned `MSG_VIRT_JOG_ON_LINE`, calculate camera-line direction from the
-current aimed orientation. Recompute aim pan/tilt for every look-ahead target
-before IK.
+For planned `MSG_VIRT_JOG_ON_LINE`, capture the effective camera orientation
+when jogging begins. Recompute aim-base pan/tilt for each look-ahead target,
+but retain vPAN/vTILT offsets and do not bend the captured translation line.
 
 Aim-point support can be implemented and validated with normal virtual moves
 before line jogging exists.
@@ -179,7 +146,7 @@ complete.
 
 ### 8. Safety and failure behavior
 
-- Reject aim points at or inside safe distance.
+- Reject aim points or target nodal positions at or inside the safe cylinder.
 - Reject unreachable derived pan/tilt or IK targets.
 - Do not alter an active physical move if a new aim configuration fails.
 - `MSG_VIRT_STOP` stops motion but does not necessarily disable aim; aim remains
@@ -204,9 +171,9 @@ complete.
 - Enable an aim point ahead of the crane; translate virtual track, EW, and NS
   while the camera remains aimed at it.
 - Verify pan/tilt compensation is smooth and roll remains unchanged.
-- Test the selected direct virtual pan/tilt interaction policy.
+- Verify virtual PAN/TILT act as relative offsets while aiming.
 - Test positive and negative Kuper Z aim points.
-- Test an aim point inside safe distance and confirm no motion begins.
+- Test an aim point or target inside the safe cylinder and confirm no motion
+  begins.
 - Verify `VIRT_GET_POSITION` and aim-point echo use correct signed `* 1000`
   values.
-

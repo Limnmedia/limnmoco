@@ -2,9 +2,10 @@
 
 ## Purpose
 
-Implement `MSG_VIRT_JOG_ON_LINE` so Dragonframe can jog the crane along the
-camera's current local X, Y, or Z direction through the existing virtual IK and
-coordinated-motion system.
+Implement `MSG_VIRT_JOG_ON_LINE` so Dragonframe can jog the crane along a
+camera-relative X, Y, or Z line through the existing virtual IK and
+coordinated-motion system. The effective camera orientation is captured when
+the jog begins and retained until the jog stops.
 
 The feature must preserve the Kuper convention:
 
@@ -26,36 +27,19 @@ The speed value must be interpreted as signed `int16_t`: its sign chooses
 direction and its magnitude selects speed. A line-jog command has no endpoint,
 so the intended behavior is continuous motion until `MSG_VIRT_STOP`.
 
-## Questions requiring a decision
+## Confirmed semantics
 
-### Camera local-axis convention
-
-Confirm the meaning of positive camera-local X, Y, and Z. In particular,
-confirm whether positive local Z is forward through the lens or backward toward
-the camera body.
-
-### PAN and TILT protocol axes
-
-The protocol does not define whether axes 3 and 4 mean direct virtual pan/tilt
-rotation or a translation derived from those rotations. The initial recommended
-behavior is direct virtual pan and tilt jogging. Dragonframe packet captures
-should confirm this assumption. 
-
-This initial recommendation seems to be the correct interpretation.
-
-as an aside, it seems like it's a double covering of the behavior of VIRT_MOVE 
-with the PAN or TILT axis selected
-
-### Speed normalization
-
-Confirm whether a magnitude of 10,000 should use the limiting participating
-physical motor's configured maximum velocity. The initial implementation should
-reuse the existing two-second look-ahead policy to form each coordinated
-segment.
-
-Pretty sure the protocol specifies 10,000 means maximum velocity. which as it is 
-already constrained by the slowest physical participating motor for virtual jog,
-i think it should be so for jog on line
+- Kuper X is vEW, Kuper Y is vNS, and Kuper Z is vTrack.
+- Negative Z / negative vTrack is forward, toward the set. Camera-local `-Z`
+  is the optical forward direction.
+- The X/Y/Z line is captured from the effective camera orientation at jog
+  start. Aim compensation may later rotate pan/tilt, but it must not bend that
+  captured translation line.
+- A magnitude of 10,000 uses the maximum feasible coordinated speed, limited by
+  the slowest participating physical motor.
+- PAN and TILT jog-on-line axes change virtual pan/tilt. When aim is active,
+  those are relative offsets from the aim direction; otherwise they are direct
+  virtual camera rotations.
 
 ## Coordinate pipeline
 
@@ -63,10 +47,11 @@ All line-jog translation must pass through the public Kuper virtual-coordinate
 boundary. It must not bypass `KuperTrackConvention`.
 
 ```text
-camera-local direction
-  -> rotate by current virtual pan/tilt/roll
+captured camera-local X/Y/Z direction
+  -> rotate once by effective virtual pan/tilt/roll
   -> Kuper world direction
   -> public virtual target pose
+  -> if aim enabled: derive target aim-base pan/tilt and apply vPAN/vTILT offsets
   -> public-to-solver conversion
   -> IK
   -> coordinated physical targets
@@ -79,9 +64,9 @@ commands the matching signed real-track position.
 
 ### 1. Shared camera-line direction helper
 
-Add a shared helper in `common/LimnmocoIK` that accepts a local X, Y, or Z axis,
-applies the existing virtual pan/tilt/roll rotation matrix, and returns a
-normalized Kuper-world translation direction.
+Add a shared helper in `common/LimnmocoIK` that accepts a Kuper X, Y, or Z
+axis, applies the effective virtual pan/tilt/roll rotation matrix once, and
+returns a normalized public-world translation direction.
 
 Required host tests:
 
@@ -100,16 +85,17 @@ Add a pure helper that receives the current public virtual pose, camera-local
 axis, signed normalized speed, and look-ahead distance. It returns a new public
 virtual pose along the camera line.
 
-For X/Y/Z translation, orientation and unrelated virtual coordinates must remain
-unchanged.
+For X/Y/Z translation, the captured line stays fixed. When aim is disabled,
+orientation remains unchanged; when aim is enabled, target pan/tilt are
+re-derived from the aim point while preserving their relative offsets.
 
 Commit point: target-generation tests only.
 
 ### 3. Define PAN and TILT behavior
 
-After the protocol interpretation is confirmed, implement axes 3 and 4. If they
-are direct rotational jogs, route them through the existing virtual pan/tilt
-target machinery and add focused regression tests.
+Implement axes 3 and 4 through the virtual pan/tilt target machinery. With aim
+enabled they change relative offsets from aim; without aim they are direct
+virtual rotations.
 
 Commit point: protocol-axis behavior tests.
 
@@ -118,8 +104,11 @@ Commit point: protocol-axis behavior tests.
 Replace the current `msg_virt_jog_on_line()` stub with state that records:
 
 - active flag;
-- requested camera-local axis;
+- requested Kuper camera-local axis;
 - signed speed;
+- captured effective orientation;
+- mapped `MSG_VIRT_STOP` axis (X -> EW, Y -> NS, Z -> Track, PAN -> PAN,
+  TILT -> TILT);
 - last target or refresh time;
 - active physical axes.
 
@@ -134,16 +123,18 @@ While line jog is active:
 2. Generate a short public virtual target on the camera line.
 3. Convert through `virtualPoseForIk()` and solve IK.
 4. Convert solver track with `solver_track_to_kuper()`.
-5. Schedule synchronized physical motion with `coordinated_motion_start()`.
-6. Refresh the segment until stopped.
+5. Hand off synchronized physical motion through a velocity-preserving
+   coordinated replan API.
+6. Refresh the horizon until stopped.
 
 This must not rely on Dragonframe repeatedly sending line-jog packets.
 
 ### 6. Integrate stop and safety behavior
 
-`MSG_VIRT_STOP` must stop every physical axis participating in the active line
-jog and clear its state. A hard stop, limit, range failure, or IK failure must
-also clear line-jog state and return the appropriate error.
+`MSG_VIRT_STOP` for the mapped logical axis must stop every physical axis
+participating in the active line jog and clear its state. A hard stop, limit,
+range failure, or IK failure must also clear line-jog state and emit the defined
+asynchronous fault/status event.
 
 A normal virtual move or virtual jog must supersede and cancel an active line
 jog.
@@ -151,8 +142,9 @@ jog.
 ### 7. Preserve virtual position reporting
 
 Virtual positions continue to come from FK. Physical compensation axes may move
-during a line jog, but only the intended camera-line displacement should advance
-in public virtual coordinates.
+during a line jog, and a rotated camera line can legitimately change multiple
+public translation components. The invariant is straight nodal travel along the
+captured camera line.
 
 ## Code locations
 
@@ -169,12 +161,12 @@ in public virtual coordinates.
 
 ## Hardware acceptance tests
 
-- Identity orientation: local X/Y/Z jogs map to expected virtual EW/NS/track
+- Identity orientation: X/Y/Z jogs map to vEW/vNS/vTrack
   directions.
 - Pan +90 degrees: camera-line jog moves sideways in world space.
 - Tilt +90 degrees: camera-line jog moves vertically.
 - Positive and negative speed reverse exactly.
 - `MSG_VIRT_STOP` halts every participating motor.
 - Forward line jog reports negative `vTrack`.
+- Aim compensation does not bend a captured camera line.
 - Direct real-axis commands and raw signed motor-position reports are unchanged.
-
