@@ -2,6 +2,7 @@
 
 #include "limnmoco_ik.h"
 
+#include <AimGeometry.h>
 #include <BoomCompensation.h>
 #include <CameraLine.h>
 #include <KuperTrackConvention.h>
@@ -225,6 +226,92 @@ bool runCameraLineDirectionTest() {
 
   std::cout << (ok ? "[PASS]" : "[FAIL]")
             << " Kuper camera-line direction mapping\n";
+  return ok;
+}
+
+bool runAimGeometryTest() {
+  using limnmoco::AimOrientation;
+  using limnmoco::CameraLineAxis;
+  using limnmoco::KuperPoint;
+  using limnmoco::VirtualTranslationDelta;
+
+  const KuperPoint nodal{0.0f, 0.0f, 0.0f};
+  AimOrientation forward{};
+  AimOrientation right{};
+  AimOrientation left{};
+  AimOrientation above{};
+  AimOrientation below{};
+  AimOrientation offset{};
+  AimOrientation wrapped{};
+  VirtualTranslationDelta aimForwardDirection{};
+  VirtualTranslationDelta aimRightDirection{};
+  VirtualTranslationDelta aimAboveDirection{};
+
+  bool ok =
+      limnmoco::aim_base_orientation(nodal, KuperPoint{0.0f, 0.0f, -10.0f},
+                                     23.0f, &forward) &&
+      limnmoco::aim_base_orientation(nodal, KuperPoint{10.0f, 0.0f, 0.0f},
+                                     0.0f, &right) &&
+      limnmoco::aim_base_orientation(nodal, KuperPoint{-10.0f, 0.0f, 0.0f},
+                                     0.0f, &left) &&
+      limnmoco::aim_base_orientation(nodal, KuperPoint{0.0f, 10.0f, -1.0f},
+                                     0.0f, &above) &&
+      limnmoco::aim_base_orientation(nodal, KuperPoint{0.0f, -10.0f, -1.0f},
+                                     0.0f, &below) &&
+      limnmoco::aim_apply_relative_offsets(forward, 20.0f, -10.0f, &offset) &&
+      limnmoco::aim_apply_relative_offsets(
+          AimOrientation{170.0f, 5.0f, 7.0f}, 20.0f, -2.0f, &wrapped) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kZ,
+                                      forward.vpanDeg, forward.vtiltDeg,
+                                      forward.vrollDeg, &aimForwardDirection,
+                                      -1.0f) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kZ,
+                                      right.vpanDeg, right.vtiltDeg,
+                                      right.vrollDeg, &aimRightDirection,
+                                      -1.0f) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kZ,
+                                      above.vpanDeg, above.vtiltDeg,
+                                      above.vrollDeg, &aimAboveDirection,
+                                      -1.0f);
+
+  ok = ok &&
+      near(forward.vpanDeg, 0.0f, 0.0001f) &&
+      near(forward.vtiltDeg, 0.0f, 0.0001f) &&
+      near(forward.vrollDeg, 23.0f, 0.0001f) &&
+      near(right.vpanDeg, -90.0f, 0.0001f) &&
+      near(right.vtiltDeg, 0.0f, 0.0001f) &&
+      near(left.vpanDeg, 90.0f, 0.0001f) &&
+      near(left.vtiltDeg, 0.0f, 0.0001f) &&
+      near(above.vpanDeg, 0.0f, 0.0001f) &&
+      near(above.vtiltDeg, 84.2894f, 0.0001f) &&
+      near(below.vpanDeg, 0.0f, 0.0001f) &&
+      near(below.vtiltDeg, -84.2894f, 0.0001f) &&
+      near(offset.vpanDeg, 20.0f, 0.0001f) &&
+      near(offset.vtiltDeg, -10.0f, 0.0001f) &&
+      near(offset.vrollDeg, 23.0f, 0.0001f) &&
+      near(wrapped.vpanDeg, -170.0f, 0.0001f) &&
+      near(wrapped.vtiltDeg, 3.0f, 0.0001f) &&
+      near(wrapped.vrollDeg, 7.0f, 0.0001f) &&
+      near(aimForwardDirection.vew, 0.0f, 0.0001f) &&
+      near(aimForwardDirection.vns, 0.0f, 0.0001f) &&
+      near(aimForwardDirection.vtrack, -1.0f, 0.0001f) &&
+      near(aimRightDirection.vew, 1.0f, 0.0001f) &&
+      near(aimRightDirection.vns, 0.0f, 0.0001f) &&
+      near(aimRightDirection.vtrack, 0.0f, 0.0001f) &&
+      near(aimAboveDirection.vew, 0.0f, 0.0001f) &&
+      near(aimAboveDirection.vns, 0.9950f, 0.0001f) &&
+      near(aimAboveDirection.vtrack, -0.0995f, 0.0001f) &&
+      !limnmoco::aim_base_orientation(nodal, nodal, 0.0f, &forward) &&
+      !limnmoco::aim_point_outside_safe_cylinder(
+          KuperPoint{0.0f, 999.0f, 0.0f}, nodal, 10.0f) &&
+      !limnmoco::aim_point_outside_safe_cylinder(
+          KuperPoint{10.0f, 0.0f, 0.0f}, nodal, 10.0f) &&
+      limnmoco::aim_point_outside_safe_cylinder(
+          KuperPoint{10.001f, 0.0f, 0.0f}, nodal, 10.0f) &&
+      !limnmoco::aim_point_outside_safe_cylinder(nodal, nodal, -1.0f);
+
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " Aim point geometry and safe cylinder\n";
   return ok;
 }
 
@@ -542,6 +629,9 @@ int main() {
     ++failures;
   }
   if (!runCameraLineDirectionTest()) {
+    ++failures;
+  }
+  if (!runAimGeometryTest()) {
     ++failures;
   }
   if (!runCompensationFixture(
