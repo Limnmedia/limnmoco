@@ -43,6 +43,7 @@ struct CraneSolveResult {
 
 float angle_degrees(float radiansValue);
 float angle_radians(float degreesValue);
+Mat3 virtual_rotation_matrix(float vpanDeg, float vtiltDeg, float vrollDeg);
 CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry);
 VirtualPose solve_fk(float boomDeg, float swingDeg, float track,
                      float panDeg, float tiltDeg, float rollDeg,

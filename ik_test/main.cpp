@@ -3,6 +3,7 @@
 #include "limnmoco_ik.h"
 
 #include <BoomCompensation.h>
+#include <CameraLine.h>
 #include <KuperTrackConvention.h>
 
 #include <cmath>
@@ -155,6 +156,75 @@ bool runKuperNorthSouthCompensationTest() {
                        -5.0f, 0.0f);
   std::cout << (ok ? "[PASS]" : "[FAIL]")
             << " Kuper NS compensation commands negative raw track\n";
+  return ok;
+}
+
+bool runCameraLineDirectionTest() {
+  using limnmoco::CameraLineAxis;
+  using limnmoco::VirtualTranslationDelta;
+
+  VirtualTranslationDelta x{};
+  VirtualTranslationDelta y{};
+  VirtualTranslationDelta z{};
+  VirtualTranslationDelta forward{};
+  VirtualTranslationDelta panRight{};
+  VirtualTranslationDelta panLeft{};
+  VirtualTranslationDelta tiltUp{};
+  VirtualTranslationDelta tiltDown{};
+  VirtualTranslationDelta rolledX{};
+  VirtualTranslationDelta combined{};
+
+  bool ok =
+      limnmoco::camera_line_direction(CameraLineAxis::kX,
+                                      0.0f, 0.0f, 0.0f, &x) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kY,
+                                      0.0f, 0.0f, 0.0f, &y) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kZ,
+                                      0.0f, 0.0f, 0.0f, &z) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kZ,
+                                      0.0f, 0.0f, 0.0f, &forward, -1.0f) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kZ,
+                                      90.0f, 0.0f, 0.0f, &panRight) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kZ,
+                                      -90.0f, 0.0f, 0.0f, &panLeft) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kZ,
+                                      0.0f, 90.0f, 0.0f, &tiltUp) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kZ,
+                                      0.0f, -90.0f, 0.0f, &tiltDown) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kX,
+                                      0.0f, 0.0f, 90.0f, &rolledX) &&
+      limnmoco::camera_line_direction(CameraLineAxis::kY,
+                                      20.0f, -15.0f, 30.0f, &combined);
+
+  const float combinedLength = std::sqrt(
+      combined.vew * combined.vew + combined.vns * combined.vns +
+      combined.vtrack * combined.vtrack);
+  ok = ok &&
+      near(x.vew, 1.0f, 0.0001f) && near(x.vns, 0.0f, 0.0001f) &&
+      near(x.vtrack, 0.0f, 0.0001f) &&
+      near(y.vew, 0.0f, 0.0001f) && near(y.vns, 1.0f, 0.0001f) &&
+      near(y.vtrack, 0.0f, 0.0001f) &&
+      near(z.vew, 0.0f, 0.0001f) && near(z.vns, 0.0f, 0.0001f) &&
+      near(z.vtrack, 1.0f, 0.0001f) &&
+      near(forward.vew, 0.0f, 0.0001f) &&
+      near(forward.vns, 0.0f, 0.0001f) &&
+      near(forward.vtrack, -1.0f, 0.0001f) &&
+      near(panRight.vew, 1.0f, 0.0001f) &&
+      near(panRight.vns, 0.0f, 0.0001f) &&
+      near(panRight.vtrack, 0.0f, 0.0001f) &&
+      near(panLeft.vew, -1.0f, 0.0001f) &&
+      near(panLeft.vns, 0.0f, 0.0001f) &&
+      near(panLeft.vtrack, 0.0f, 0.0001f) &&
+      near(tiltUp.vew, 0.0f, 0.0001f) && near(tiltUp.vns, -1.0f, 0.0001f) &&
+      near(tiltUp.vtrack, 0.0f, 0.0001f) &&
+      near(tiltDown.vew, 0.0f, 0.0001f) && near(tiltDown.vns, 1.0f, 0.0001f) &&
+      near(tiltDown.vtrack, 0.0f, 0.0001f) &&
+      near(rolledX.vew, 0.0f, 0.0001f) && near(rolledX.vns, -1.0f, 0.0001f) &&
+      near(rolledX.vtrack, 0.0f, 0.0001f) &&
+      near(combinedLength, 1.0f, 0.0001f);
+
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " Kuper camera-line direction mapping\n";
   return ok;
 }
 
@@ -469,6 +539,9 @@ int main() {
     ++failures;
   }
   if (!runKuperNorthSouthCompensationTest()) {
+    ++failures;
+  }
+  if (!runCameraLineDirectionTest()) {
     ++failures;
   }
   if (!runCompensationFixture(
