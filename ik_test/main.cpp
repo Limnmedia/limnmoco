@@ -3,6 +3,7 @@
 #include "limnmoco_ik.h"
 
 #include <AimGeometry.h>
+#include <AimAwareTarget.h>
 #include <BoomCompensation.h>
 #include <CameraLine.h>
 #include <KuperTrackConvention.h>
@@ -312,6 +313,79 @@ bool runAimGeometryTest() {
 
   std::cout << (ok ? "[PASS]" : "[FAIL]")
             << " Aim point geometry and safe cylinder\n";
+  return ok;
+}
+
+bool runAimAwareTargetTest() {
+  using limnmoco::AimAwareTarget;
+  using limnmoco::KuperPoint;
+  using limnmoco::VirtualAimState;
+  using limnmoco::VirtualPose;
+  using limnmoco::VirtualTargetAxis;
+
+  const VirtualPose current{0.0f, 0.0f, 0.0f, 3.0f, 4.0f, 5.0f};
+  const VirtualAimState noAim{false, true, KuperPoint{}, 0.0f, 0.0f, 0.0f};
+  const VirtualAimState aimed{
+      true, true, KuperPoint{0.0f, 0.0f, -10.0f}, 2.0f, 20.0f, -5.0f};
+  const VirtualAimState noRollAim{
+      true, false, KuperPoint{0.0f, 0.0f, -10.0f}, 2.0f, 0.0f, 0.0f};
+
+  AimAwareTarget direct{};
+  AimAwareTarget translated{};
+  AimAwareTarget panOffset{};
+  AimAwareTarget noRoll{};
+  AimAwareTarget unchanged{
+      VirtualPose{99.0f, 98.0f, 97.0f, 96.0f, 95.0f, 94.0f}, 93.0f, 92.0f};
+  const AimAwareTarget sentinel = unchanged;
+
+  bool ok =
+      limnmoco::build_aim_aware_target(
+          current, noAim, VirtualTargetAxis::kEW, 7.0f, &direct) &&
+      limnmoco::build_aim_aware_target(
+          current, aimed, VirtualTargetAxis::kEW, 1.0f, &translated) &&
+      limnmoco::build_aim_aware_target(
+          current, aimed, VirtualTargetAxis::kPan, 30.0f, &panOffset) &&
+      limnmoco::build_aim_aware_target(
+          VirtualPose{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, noRollAim,
+          VirtualTargetAxis::kNS, 1.0f, &noRoll) &&
+      !limnmoco::build_aim_aware_target(
+          current, aimed, VirtualTargetAxis::kTrack, -9.0f, &unchanged) &&
+      !limnmoco::build_aim_aware_target(
+          current, noRollAim, VirtualTargetAxis::kRoll, 2.0f, &unchanged);
+
+  ok = ok &&
+      near(direct.pose.vtrack, 0.0f, 0.0001f) &&
+      near(direct.pose.vew, 7.0f, 0.0001f) &&
+      near(direct.pose.vheight, 0.0f, 0.0001f) &&
+      near(direct.pose.vpanDeg, 3.0f, 0.0001f) &&
+      near(direct.pose.vtiltDeg, 4.0f, 0.0001f) &&
+      near(direct.pose.vrollDeg, 5.0f, 0.0001f) &&
+      near(translated.pose.vew, 1.0f, 0.0001f) &&
+      near(translated.pose.vtrack, 0.0f, 0.0001f) &&
+      near(translated.pose.vheight, 0.0f, 0.0001f) &&
+      near(translated.pose.vpanDeg, 25.7106f, 0.0001f) &&
+      near(translated.pose.vtiltDeg, -5.0f, 0.0001f) &&
+      near(translated.pose.vrollDeg, 5.0f, 0.0001f) &&
+      near(translated.panOffsetDeg, 20.0f, 0.0001f) &&
+      near(translated.tiltOffsetDeg, -5.0f, 0.0001f) &&
+      near(panOffset.pose.vpanDeg, 30.0f, 0.0001f) &&
+      near(panOffset.pose.vtiltDeg, -5.0f, 0.0001f) &&
+      near(panOffset.panOffsetDeg, 30.0f, 0.0001f) &&
+      near(panOffset.tiltOffsetDeg, -5.0f, 0.0001f) &&
+      near(noRoll.pose.vrollDeg, 0.0f, 0.0001f) &&
+      near(noRoll.panOffsetDeg, 0.0f, 0.0001f) &&
+      near(noRoll.tiltOffsetDeg, 0.0f, 0.0001f) &&
+      near(unchanged.pose.vtrack, sentinel.pose.vtrack, 0.0f) &&
+      near(unchanged.pose.vew, sentinel.pose.vew, 0.0f) &&
+      near(unchanged.pose.vheight, sentinel.pose.vheight, 0.0f) &&
+      near(unchanged.pose.vpanDeg, sentinel.pose.vpanDeg, 0.0f) &&
+      near(unchanged.pose.vtiltDeg, sentinel.pose.vtiltDeg, 0.0f) &&
+      near(unchanged.pose.vrollDeg, sentinel.pose.vrollDeg, 0.0f) &&
+      near(unchanged.panOffsetDeg, sentinel.panOffsetDeg, 0.0f) &&
+      near(unchanged.tiltOffsetDeg, sentinel.tiltOffsetDeg, 0.0f);
+
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " Transactional aim-aware virtual targets\n";
   return ok;
 }
 
@@ -632,6 +706,9 @@ int main() {
     ++failures;
   }
   if (!runAimGeometryTest()) {
+    ++failures;
+  }
+  if (!runAimAwareTargetTest()) {
     ++failures;
   }
   if (!runCompensationFixture(
