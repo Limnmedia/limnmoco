@@ -24,6 +24,7 @@
 #include <AimGeometry.h>
 #include <AimAwareTarget.h>
 #include <AimPointProtocol.h>
+#include <CameraLineTarget.h>
 #include <RPC.h>
 
 #ifdef CORE_CM4
@@ -170,6 +171,17 @@ struct Virtual {
 
 static Virtual _virtual;
 
+struct VirtualLineJog {
+  uint8_t active;
+  limnmoco::CameraLineJogAxis axis;
+  int16_t speed;
+  uint8_t stopAxis;
+  limnmoco::CameraLineOrientation orientation;
+};
+static VirtualLineJog virtualLineJog;
+constexpr float kVirtualLineJogHorizonMm = 20.0f;
+constexpr float kVirtualLineJogRotationStepDeg = 2.0f;
+
 int32_t msg_motor_move(uint8_t motor, int32_t position);
 int32_t msg_motor_stop(uint8_t motor);
 int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest);
@@ -177,19 +189,24 @@ int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest);
 int32_t msg_virt_move(uint8_t motor, int32_t position);
 int32_t msg_virt_stop(uint8_t motor);
 int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest);
-int32_t msg_virt_jog_on_line(uint8_t axis, uint16_t speed);
+int32_t msg_virt_jog_on_line(uint8_t axis, int16_t speed);
 int32_t msg_virt_aim_point(
     const limnmoco::AimPointConfiguration &configuration);
 int32_t msg_virt_get_position(uint32_t msg_id);
 
 void virt_update_positions();
-void virt_kinematics();
+void virt_kinematics(bool trace = true);
 VirtualPose virtualPoseForIk(const VirtualPose &pose);
 int32_t virt_inverse_kinematics();
-int32_t scheduleVirtualPose(const VirtualPose &effectivePose, uint16_t speed);
+int32_t scheduleVirtualPose(const VirtualPose &effectivePose, uint16_t speed,
+                            bool handoff = false);
 bool virtualTargetAxis(uint8_t motor, limnmoco::VirtualTargetAxis *axis);
 limnmoco::VirtualAimState currentVirtualAimState();
 void commitVirtualTarget(const limnmoco::AimAwareTarget &target);
+bool virtualLineJogAxis(uint8_t axis, limnmoco::CameraLineJogAxis *output,
+                        uint8_t *stopAxis);
+void clearVirtualLineJog();
+int32_t executeVirtualLineJog(bool initial);
 bool boomMotorStepsToGeometricAngle(float motorSteps, float *boomDegrees);
 bool boomGeometricAngleToMotorSteps(float boomDegrees, float *motorSteps);
 bool virtualRollPresent();
@@ -1334,9 +1351,8 @@ void loop()
             responseCode = msg_virt_get_position(msgId);
           }
           else if (cmd == DMC_MSG_VIRT_JOG_ON_LINE) {
-            // #TODO:
             uint8_t  axis  = dmc_msg_read_byte();
-            uint16_t speed = dmc_msg_read_word();
+            int16_t speed = (int16_t)dmc_msg_read_word();
 
             responseCode = _virtual.configured ?
               msg_virt_jog_on_line(axis, speed) : DMC_ACK_ERR_GENERAL;
@@ -1492,6 +1508,7 @@ int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest) {
 
 void clearVirtualConfiguration() {
   coordinated_motion_reset();
+  clearVirtualLineJog();
   memset(&_virtual, 0, sizeof(Virtual));
   for (uint32_t index = 0; index < MOTOR_COUNT; ++index) {
     motors[index].config &= ~(DMC_MOTOR_CONFIG_VIRT);
@@ -1510,7 +1527,7 @@ float virtualRollDegrees() {
   return rollMotor->position / rollMotor->SPU;
 }
 
-void virt_kinematics() {
+void virt_kinematics(bool trace) {
   if (!_virtual.configured) {
     return;
   }
@@ -1533,6 +1550,7 @@ void virt_kinematics() {
   float tiltDeg  = (float)(tiltMotor->position / tiltMotor->SPU);
   float rollDeg  = virtualRollDegrees();
 
+  if (trace) {
   Serial4.print("\nBFK");
   Serial4.print("sp");
   Serial4.print(swingMotor->position);
@@ -1557,6 +1575,7 @@ void virt_kinematics() {
   Serial4.print("vr");
   Serial4.print(_virtual.roll);
   Serial4.print("\n");
+  }
 
   VirtualPose fk = solve_fk(
     boomDeg, swingDeg, track, panDeg, tiltDeg, rollDeg,
@@ -1587,6 +1606,7 @@ void virt_kinematics() {
     _virtual.tilt = _virtual.aimTiltOffset;
   }
 
+  if (trace) {
   Serial4.print("\nAFK");
   Serial4.print("sp");
   Serial4.print(swingMotor->position);
@@ -1613,6 +1633,7 @@ void virt_kinematics() {
   Serial4.print("vr");
   Serial4.print(_virtual.roll);
   Serial4.print("\n");
+  }
 }
 
 bool boomMotorStepsToGeometricAngle(float motorSteps, float *boomDegrees) {
@@ -1699,7 +1720,8 @@ void commitVirtualTarget(const limnmoco::AimAwareTarget &target) {
   }
 }
 
-int32_t scheduleVirtualPose(const VirtualPose &effectivePose, uint16_t speed) {
+int32_t scheduleVirtualPose(const VirtualPose &effectivePose, uint16_t speed,
+                            bool handoff) {
   if (!_virtual.configured || speed == 0) {
     return DMC_ACK_ERR_GENERAL;
   }
@@ -1778,7 +1800,8 @@ int32_t scheduleVirtualPose(const VirtualPose &effectivePose, uint16_t speed) {
        fmaxf(4.0f, rollMotor->maxAcceleration * speed * 0.0001f)}};
   }
 
-  if (!coordinated_motion_start(motors, axes, axisCount)) {
+  if (!(handoff ? coordinated_motion_handoff(motors, axes, axisCount)
+                : coordinated_motion_start(motors, axes, axisCount))) {
     return DMC_ACK_ERR_RANGE;
   }
   _virtual.T = targetTrack;
@@ -1806,6 +1829,7 @@ int32_t msg_virt_move(uint8_t motor, int32_t position) {
       (motor == DMC_VIRT_ROLL && !virtualRollPresent())) {
     return DMC_ACK_ERR_RANGE;
   }
+  clearVirtualLineJog();
 
   virt_kinematics();
   limnmoco::VirtualTargetAxis axis{};
@@ -1831,6 +1855,9 @@ int32_t msg_virt_stop(uint8_t motor) {
   }
   if (motor == DMC_VIRT_ROLL && !virtualRollPresent()) {
     return DMC_ACK_ERR_RANGE;
+  }
+  if (virtualLineJog.active && virtualLineJog.stopAxis == motor) {
+    clearVirtualLineJog();
   }
 
   // #NOTE: this code seems to work just fine. we are trying to reuse diyamis'
@@ -1942,6 +1969,7 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   if (!boomMotorStepsToGeometricAngle(boomMotor->position, &currentBoom)) {
     return DMC_ACK_ERR_RANGE;
   }
+  clearVirtualLineJog();
   const float currentTrack = kuper_track_to_solver(
     (float)(trackMotor->position / trackMotor->SPU));
   const float currentPan   = (float)(panMotor->position / panMotor->SPU);
@@ -2095,41 +2123,91 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   return DMC_ACK_OK;
 }
 
-int32_t msg_virt_jog_on_line(uint8_t axis, uint16_t speed) {
-  switch(axis) {
+bool virtualLineJogAxis(uint8_t axis, limnmoco::CameraLineJogAxis *output,
+                        uint8_t *stopAxis) {
+  if (!output || !stopAxis) {
+    return false;
+  }
+  switch (axis) {
     case DMC_VIRT_JOG_ON_LINE_AXIS_X:
-      // jogging in the X axis is equivalent to a East West move
-      break;
-
+      *output = limnmoco::CameraLineJogAxis::kX; *stopAxis = DMC_VIRT_EW; return true;
     case DMC_VIRT_JOG_ON_LINE_AXIS_Y:
-      // jogging in the Y axis is equivalent to a North SOuth move
-      break;
-
+      *output = limnmoco::CameraLineJogAxis::kY; *stopAxis = DMC_VIRT_NS; return true;
     case DMC_VIRT_JOG_ON_LINE_AXIS_Z:
-      // jogging in the Z axis is equivalent to a Forward Backward move
-      break;
-
+      *output = limnmoco::CameraLineJogAxis::kZ; *stopAxis = DMC_VIRT_TRACK; return true;
     case DMC_VIRT_JOG_ON_LINE_AXIS_PAN:
-      // jogging along pan? does that mean a rotation about pan?
-      // or is it another way of saying East west?
-      break;
-
+      *output = limnmoco::CameraLineJogAxis::kPan; *stopAxis = DMC_VIRT_PAN; return true;
     case DMC_VIRT_JOG_ON_LINE_AXIS_TILT:
-      // jogging along tilt? same questions as pan, tilt moves in 
-      // the north south direction. 
-      // if it's just rotate the camera, can't dragonframe just send a 
-      // motor_move packet?
-      // if it's move in the north south direction, can't dragonframe 
-      // just send a jog with DMC_VIRT_NS as the target?
-      // if it's a crane movement distinct from either, then how is the crane 
-      // expected to move? 
-      break;
+      *output = limnmoco::CameraLineJogAxis::kTilt; *stopAxis = DMC_VIRT_TILT; return true;
+    default: return false;
+  }
+}
 
-    default:
-      break;
+void clearVirtualLineJog() {
+  virtualLineJog = VirtualLineJog{};
+}
+
+int32_t executeVirtualLineJog(bool initial) {
+  if (!virtualLineJog.active) {
+    return DMC_ACK_ERR_GENERAL;
+  }
+  virt_kinematics(false);
+  const VirtualPose logical{_virtual.track, _virtual.EW, _virtual.NS,
+                            _virtual.pan, _virtual.tilt, _virtual.roll};
+  limnmoco::AimAwareTarget target{};
+  if (!limnmoco::build_camera_line_target(
+          logical, currentVirtualAimState(), virtualLineJog.orientation,
+          virtualLineJog.axis, (float)virtualLineJog.speed,
+          kVirtualLineJogHorizonMm, kVirtualLineJogRotationStepDeg, &target)) {
+    return DMC_ACK_ERR_RANGE;
+  }
+  const int32_t result = scheduleVirtualPose(
+      target.pose, (uint16_t)abs(virtualLineJog.speed), !initial);
+  if (result == DMC_ACK_OK) {
+    commitVirtualTarget(target);
+  }
+  return result;
+}
+
+int32_t msg_virt_jog_on_line(uint8_t axis, int16_t speed) {
+  if (!_virtual.configured || speed == 0 || speed == INT16_MIN ||
+      abs((int32_t)speed) > 10000) {
+    return DMC_ACK_ERR_RANGE;
+  }
+  limnmoco::CameraLineJogAxis lineAxis{};
+  uint8_t stopAxis = 0;
+  if (!virtualLineJogAxis(axis, &lineAxis, &stopAxis)) {
+    return DMC_ACK_ERR_RANGE;
   }
 
-  return 0;
+  // Capture the effective orientation, not aim-relative public offsets.
+  virt_kinematics();
+  VirtualPose effective{_virtual.track, _virtual.EW, _virtual.NS,
+                        _virtual.pan, _virtual.tilt, _virtual.roll};
+  if (_virtual.aimEnabled) {
+    limnmoco::AimAwareTarget aimed{};
+    if (!limnmoco::build_aim_aware_target(
+            effective, currentVirtualAimState(),
+            limnmoco::VirtualTargetAxis::kTrack, effective.vtrack, &aimed)) {
+      return DMC_ACK_ERR_AIM_COD;
+    }
+    effective = aimed.pose;
+  }
+
+  VirtualLineJog candidate{};
+  candidate.active = 1;
+  candidate.axis = lineAxis;
+  candidate.speed = speed;
+  candidate.stopAxis = stopAxis;
+  candidate.orientation = {effective.vpanDeg, effective.vtiltDeg,
+                           effective.vrollDeg};
+  const VirtualLineJog previous = virtualLineJog;
+  virtualLineJog = candidate;
+  const int32_t result = executeVirtualLineJog(true);
+  if (result != DMC_ACK_OK) {
+    virtualLineJog = previous;
+  }
+  return result;
 }
 
 int32_t msg_virt_aim_point(
@@ -2606,6 +2684,12 @@ int32_t updateMotorVelocities()
       for (m = 0; m < MOTOR_COUNT; ++m)
       {
         setMotorDir(m, coordinatedDirections[m]);
+      }
+      // Keep a line jog supplied with finite targets.  A failed in-flight
+      // handoff leaves the current safe horizon untouched; when that horizon
+      // completes, the next tick starts a fresh one from rest.
+      if (virtualLineJog.active) {
+        (void)executeVirtualLineJog(!coordinated_motion_active());
       }
     }
     else
