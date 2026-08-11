@@ -206,6 +206,7 @@ void commitVirtualTarget(const limnmoco::AimAwareTarget &target);
 bool virtualLineJogAxis(uint8_t axis, limnmoco::CameraLineJogAxis *output,
                         uint8_t *stopAxis);
 void clearVirtualLineJog();
+void stopVirtualLineJogMotion();
 int32_t executeVirtualLineJog(bool initial);
 bool boomMotorStepsToGeometricAngle(float motorSteps, float *boomDegrees);
 bool boomGeometricAngleToMotorSteps(float boomDegrees, float *motorSteps);
@@ -1508,7 +1509,9 @@ int32_t msg_motor_jog(uint8_t motor, uint16_t speed, int32_t dest) {
 
 void clearVirtualConfiguration() {
   coordinated_motion_reset();
-  clearVirtualLineJog();
+  if (virtualLineJog.active) {
+    stopVirtualLineJogMotion();
+  }
   memset(&_virtual, 0, sizeof(Virtual));
   for (uint32_t index = 0; index < MOTOR_COUNT; ++index) {
     motors[index].config &= ~(DMC_MOTOR_CONFIG_VIRT);
@@ -1829,7 +1832,9 @@ int32_t msg_virt_move(uint8_t motor, int32_t position) {
       (motor == DMC_VIRT_ROLL && !virtualRollPresent())) {
     return DMC_ACK_ERR_RANGE;
   }
-  clearVirtualLineJog();
+  if (virtualLineJog.active) {
+    stopVirtualLineJogMotion();
+  }
 
   virt_kinematics();
   limnmoco::VirtualTargetAxis axis{};
@@ -1857,7 +1862,8 @@ int32_t msg_virt_stop(uint8_t motor) {
     return DMC_ACK_ERR_RANGE;
   }
   if (virtualLineJog.active && virtualLineJog.stopAxis == motor) {
-    clearVirtualLineJog();
+    stopVirtualLineJogMotion();
+    return DMC_ACK_OK;
   }
 
   // #NOTE: this code seems to work just fine. we are trying to reuse diyamis'
@@ -1969,7 +1975,9 @@ int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest) {
   if (!boomMotorStepsToGeometricAngle(boomMotor->position, &currentBoom)) {
     return DMC_ACK_ERR_RANGE;
   }
-  clearVirtualLineJog();
+  if (virtualLineJog.active) {
+    stopVirtualLineJogMotion();
+  }
   const float currentTrack = kuper_track_to_solver(
     (float)(trackMotor->position / trackMotor->SPU));
   const float currentPan   = (float)(panMotor->position / panMotor->SPU);
@@ -2145,6 +2153,19 @@ bool virtualLineJogAxis(uint8_t axis, limnmoco::CameraLineJogAxis *output,
 
 void clearVirtualLineJog() {
   virtualLineJog = VirtualLineJog{};
+}
+
+void stopVirtualLineJogMotion() {
+  coordinated_motion_reset();
+  const uint8_t axes[] = {_virtual.trackIndex, _virtual.swingIndex,
+                          _virtual.boomIndex, _virtual.panIndex,
+                          _virtual.tiltIndex, _virtual.rollIndex};
+  for (uint8_t axis : axes) {
+    if (axis != 0) {
+      msg_motor_stop(axis);
+    }
+  }
+  clearVirtualLineJog();
 }
 
 int32_t executeVirtualLineJog(bool initial) {
