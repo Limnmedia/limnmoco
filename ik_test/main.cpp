@@ -7,6 +7,7 @@
 #include <AimPointProtocol.h>
 #include <BoomCompensation.h>
 #include <CameraLine.h>
+#include <CameraLineTarget.h>
 #include <CoordinatedTrajectory.h>
 #include <KuperTrackConvention.h>
 
@@ -192,6 +193,47 @@ bool runCoordinatedHandoffProfileTest() {
       impossible.duration == 0.0f;
   std::cout << (ok ? "[PASS]" : "[FAIL]")
             << " Coordinated trajectory handoff profile\n";
+  return ok;
+}
+
+bool runCameraLineTargetTest() {
+  const limnmoco::VirtualPose current{0.0f, 10.0f, 20.0f,
+                                      90.0f, 0.0f, 0.0f};
+  const limnmoco::VirtualAimState noAim{
+      false, true, {}, 0.0f, 0.0f, 0.0f};
+  const limnmoco::CameraLineOrientation captured{90.0f, 0.0f, 0.0f};
+  limnmoco::AimAwareTarget first{};
+  limnmoco::AimAwareTarget second{};
+  const bool built = limnmoco::build_camera_line_target(
+      current, noAim, captured, limnmoco::CameraLineJogAxis::kZ,
+      -1.0f, 10.0f, 1.0f, &first) &&
+      limnmoco::build_camera_line_target(
+          first.pose, noAim, captured, limnmoco::CameraLineJogAxis::kZ,
+          -1.0f, 10.0f, 1.0f, &second);
+
+  const limnmoco::VirtualAimState aiming{
+      true, true, {10.0f, 100.0f, 0.0f}, 1.0f, 3.0f, -2.0f};
+  limnmoco::AimAwareTarget aimed{};
+  limnmoco::AimAwareTarget unsafe{};
+  const bool aimedBuilt = limnmoco::build_camera_line_target(
+      limnmoco::VirtualPose{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+      aiming, limnmoco::CameraLineOrientation{0.0f, 0.0f, 0.0f},
+      limnmoco::CameraLineJogAxis::kX, 1.0f, 2.0f, 1.0f, &aimed);
+  const bool unsafeRejected = !limnmoco::build_camera_line_target(
+      limnmoco::VirtualPose{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+      limnmoco::VirtualAimState{true, true, {0.0f, 100.0f, 0.0f},
+                                2.0f, 0.0f, 0.0f},
+      limnmoco::CameraLineOrientation{0.0f, 0.0f, 0.0f},
+      limnmoco::CameraLineJogAxis::kX, 1.0f, 1.0f, 1.0f, &unsafe);
+  const bool ok = built && aimedBuilt && unsafeRejected &&
+      near(first.pose.vew, 0.0f, 0.0001f) &&
+      near(first.pose.vtrack, 0.0f, 0.0001f) &&
+      near(first.pose.vheight, 20.0f, 0.0001f) &&
+      near(second.pose.vew, -10.0f, 0.0001f) &&
+      near(aimed.panOffsetDeg, 3.0f, 0.0001f) &&
+      near(aimed.tiltOffsetDeg, -2.0f, 0.0001f);
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " Fixed-orientation camera-line targets\n";
   return ok;
 }
 
@@ -759,6 +801,9 @@ int main() {
     ++failures;
   }
   if (!runCoordinatedHandoffProfileTest()) {
+    ++failures;
+  }
+  if (!runCameraLineTargetTest()) {
     ++failures;
   }
   if (!runCameraLineDirectionTest()) {
