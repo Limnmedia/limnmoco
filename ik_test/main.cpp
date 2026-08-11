@@ -4,6 +4,7 @@
 
 #include <AimGeometry.h>
 #include <AimAwareTarget.h>
+#include <AimPointProtocol.h>
 #include <BoomCompensation.h>
 #include <CameraLine.h>
 #include <KuperTrackConvention.h>
@@ -389,6 +390,28 @@ bool runAimAwareTargetTest() {
   return ok;
 }
 
+bool runAimPointProtocolTest() {
+  limnmoco::AimPointConfiguration parsed{};
+  uint8_t enabled = 0;
+  int32_t rawX = 0;
+  int32_t rawY = 0;
+  int32_t rawZ = 0;
+
+  const bool ok =
+      limnmoco::aim_point_from_protocol(1, -1234, 5678, -9000, &parsed) &&
+      parsed.enabled && near(parsed.point.x, -1.234f, 0.0001f) &&
+      near(parsed.point.y, 5.678f, 0.0001f) &&
+      near(parsed.point.z, -9.0f, 0.0001f) &&
+      limnmoco::aim_point_to_protocol(parsed, &enabled, &rawX, &rawY, &rawZ) &&
+      enabled == 1 && rawX == -1234 && rawY == 5678 && rawZ == -9000 &&
+      !limnmoco::aim_point_from_protocol(2, 0, 0, 0, &parsed) &&
+      !limnmoco::aim_point_from_protocol(1, 0, 0, 0, nullptr);
+
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " Aim point signed protocol encoding\n";
+  return ok;
+}
+
 std::vector<std::string> splitCsv(const std::string &line) {
   std::vector<std::string> fields;
   std::stringstream stream(line);
@@ -709,6 +732,9 @@ int main() {
     ++failures;
   }
   if (!runAimAwareTargetTest()) {
+    ++failures;
+  }
+  if (!runAimPointProtocolTest()) {
     ++failures;
   }
   if (!runCompensationFixture(

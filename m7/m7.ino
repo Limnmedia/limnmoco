@@ -21,6 +21,8 @@
 #include "coordinated_motion.h"
 #include "dbg.h"
 
+#include <AimGeometry.h>
+#include <AimPointProtocol.h>
 #include <RPC.h>
 
 #ifdef CORE_CM4
@@ -153,9 +155,9 @@ struct Virtual {
   VirtualPose fkOrigin;
   uint8_t fkOriginValid;
 
-  float aimX;
-  float aimY;
-  float aimZ;
+  limnmoco::KuperPoint aimPoint;
+  float aimPanOffset;
+  float aimTiltOffset;
 
   float T;
   float s;
@@ -175,7 +177,8 @@ int32_t msg_virt_move(uint8_t motor, int32_t position);
 int32_t msg_virt_stop(uint8_t motor);
 int32_t msg_virt_jog(uint8_t motor, uint16_t speed, int32_t dest);
 int32_t msg_virt_jog_on_line(uint8_t axis, uint16_t speed);
-int32_t msg_virt_aim_point();
+int32_t msg_virt_aim_point(
+    const limnmoco::AimPointConfiguration &configuration);
 int32_t msg_virt_get_position(uint32_t msg_id);
 
 void virt_update_positions();
@@ -1230,10 +1233,10 @@ void loop()
                 // boom-compensation table and safe-distance fields. They do not
                 // affect this firmware version, so deliberately leave them unread.
 
-                // #TODO: support camera aim point
-                candidate.aimX = 0;
-                candidate.aimY = 0;
-                candidate.aimZ = 0;
+                // A virtual reconfiguration clears all aim state atomically.
+                candidate.aimPoint = limnmoco::KuperPoint{};
+                candidate.aimPanOffset = 0.0f;
+                candidate.aimTiltOffset = 0.0f;
                 candidate.aimEnabled = 0;
 
                 candidate.virtualOrigin = VirtualPose{
@@ -1334,20 +1337,37 @@ void loop()
               msg_virt_jog_on_line(axis, speed) : DMC_ACK_ERR_GENERAL;
           }
           else if (cmd == DMC_MSG_VIRT_AIM_POINT) {
-            _virtual.aimEnabled = dmc_msg_read_byte();
-            _virtual.aimX = dmc_msg_read_dword();
-            _virtual.aimY = dmc_msg_read_dword();
-            _virtual.aimZ = dmc_msg_read_dword();
+            limnmoco::AimPointConfiguration configuration{};
+            const uint8_t enabled = dmc_msg_read_byte();
+            const int32_t rawX = (int32_t)dmc_msg_read_dword();
+            const int32_t rawY = (int32_t)dmc_msg_read_dword();
+            const int32_t rawZ = (int32_t)dmc_msg_read_dword();
+            if (!limnmoco::aim_point_from_protocol(
+                    enabled, rawX, rawY, rawZ, &configuration)) {
+              responseCode = DMC_ACK_ERR_RANGE;
+            } else {
+              responseCode = msg_virt_aim_point(configuration);
+            }
 
-            msg_virt_aim_point();
-
-            dmc_msg_prepare(cmd, msgId);
-            dmc_msg_out_byte(_virtual.aimEnabled);
-            dmc_msg_out_dword(_virtual.aimX);
-            dmc_msg_out_dword(_virtual.aimY);
-            dmc_msg_out_dword(_virtual.aimZ);
-            writeOutputMessage();
-            responseCode = 0; // #NOTE: aim point response has already been written
+            if (responseCode == DMC_ACK_OK) {
+              uint8_t responseEnabled = 0;
+              int32_t responseX = 0;
+              int32_t responseY = 0;
+              int32_t responseZ = 0;
+              if (!limnmoco::aim_point_to_protocol(
+                      configuration, &responseEnabled, &responseX, &responseY,
+                      &responseZ)) {
+                responseCode = DMC_ACK_ERR_GENERAL;
+              } else {
+                dmc_msg_prepare(cmd, msgId);
+                dmc_msg_out_byte(responseEnabled);
+                dmc_msg_out_dword((uint32_t)responseX);
+                dmc_msg_out_dword((uint32_t)responseY);
+                dmc_msg_out_dword((uint32_t)responseZ);
+                writeOutputMessage();
+                responseCode = 0; // Response has already been written.
+              }
+            }
           }
           else // unsupported
           {
@@ -2007,7 +2027,44 @@ int32_t msg_virt_jog_on_line(uint8_t axis, uint16_t speed) {
   return 0;
 }
 
-int32_t msg_virt_aim_point() {
+int32_t msg_virt_aim_point(
+    const limnmoco::AimPointConfiguration &configuration) {
+  if (!_virtual.configured) {
+    return DMC_ACK_ERR_GENERAL;
+  }
+
+  if (!configuration.enabled) {
+    _virtual.aimEnabled = 0;
+    _virtual.aimPoint = configuration.point;
+    _virtual.aimPanOffset = 0.0f;
+    _virtual.aimTiltOffset = 0.0f;
+    return DMC_ACK_OK;
+  }
+
+  // Aim configuration is transactional: do not alter existing state until the
+  // requested point is valid at the current FK-reported nodal position.
+  virt_kinematics();
+  const limnmoco::KuperPoint nodalPoint{
+      _virtual.EW, _virtual.NS, _virtual.track};
+  limnmoco::AimOrientation baseOrientation{};
+  if (!limnmoco::aim_point_outside_safe_cylinder(
+          nodalPoint, configuration.point, _virtual.safeDistance) ||
+      !limnmoco::aim_base_orientation(
+          nodalPoint, configuration.point, virtualRollDegrees(),
+          &baseOrientation)) {
+    return DMC_ACK_ERR_AIM_COD;
+  }
+
+  const bool wasEnabled = _virtual.aimEnabled != 0;
+  _virtual.aimEnabled = 1;
+  _virtual.aimPoint = configuration.point;
+  // Dragonframe's initial aim enable resets its logical PAN/TILT offsets to
+  // zero. Later aim-point updates retain offsets that may be keyframed.
+  if (!wasEnabled) {
+    _virtual.aimPanOffset = 0.0f;
+    _virtual.aimTiltOffset = 0.0f;
+  }
+  return DMC_ACK_OK;
 }
 
 int32_t msg_virt_get_position(uint32_t msg_id) {
