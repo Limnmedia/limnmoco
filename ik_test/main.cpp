@@ -7,6 +7,7 @@
 #include <AimPointProtocol.h>
 #include <BoomCompensation.h>
 #include <CameraLine.h>
+#include <CoordinatedTrajectory.h>
 #include <KuperTrackConvention.h>
 
 #include <cmath>
@@ -159,6 +160,38 @@ bool runKuperNorthSouthCompensationTest() {
                        -5.0f, 0.0f);
   std::cout << (ok ? "[PASS]" : "[FAIL]")
             << " Kuper NS compensation commands negative raw track\n";
+  return ok;
+}
+
+bool runCoordinatedHandoffProfileTest() {
+  const limnmoco::CoordinatedAxisPlan plans[] = {
+      {10.0f, 110.0f, 80.0f, 160.0f},
+      {-5.0f, 45.0f, 40.0f, 80.0f},
+  };
+  const float initialProgressVelocity = 0.2f;
+  const limnmoco::CoordinatedTrajectoryProfile profile =
+      limnmoco::coordinated_make_handoff_profile(
+          plans, 2, initialProgressVelocity);
+  const float initialVelocity0 = limnmoco::coordinated_velocity(
+      plans[0], profile, 0.0f);
+  const float initialVelocity1 = limnmoco::coordinated_velocity(
+      plans[1], profile, 0.0f);
+  const float finalPosition0 = limnmoco::coordinated_position(
+      plans[0], profile, profile.duration);
+  const float finalPosition1 = limnmoco::coordinated_position(
+      plans[1], profile, profile.duration);
+  const limnmoco::CoordinatedTrajectoryProfile impossible =
+      limnmoco::coordinated_make_handoff_profile(plans, 2, 2.0f);
+  const bool ok = profile.duration > 0.0f &&
+      near(initialVelocity0, 20.0f, 0.0001f) &&
+      near(initialVelocity1, 10.0f, 0.0001f) &&
+      near(finalPosition0, 110.0f, 0.0001f) &&
+      near(finalPosition1, 45.0f, 0.0001f) &&
+      near(limnmoco::coordinated_velocity(
+               plans[0], profile, profile.duration), 0.0f, 0.0001f) &&
+      impossible.duration == 0.0f;
+  std::cout << (ok ? "[PASS]" : "[FAIL]")
+            << " Coordinated trajectory handoff profile\n";
   return ok;
 }
 
@@ -723,6 +756,9 @@ int main() {
     ++failures;
   }
   if (!runKuperNorthSouthCompensationTest()) {
+    ++failures;
+  }
+  if (!runCoordinatedHandoffProfileTest()) {
     ++failures;
   }
   if (!runCameraLineDirectionTest()) {

@@ -20,6 +20,9 @@ struct CoordinatedTrajectoryProfile {
   float cruiseTime;
   float peakProgressVelocity;
   float progressAcceleration;
+  // Non-zero only for a validated in-flight handoff.  It is expressed in the
+  // shared normalized 0..1 progress coordinate.
+  float initialProgressVelocity;
 };
 
 float coordinated_minimum_duration(float distance, float maxVelocity,
@@ -30,6 +33,13 @@ float coordinated_move_duration(const CoordinatedAxisPlan *plans,
 
 CoordinatedTrajectoryProfile coordinated_make_profile(
     const CoordinatedAxisPlan *plans, int axisCount);
+
+// Builds a profile that starts at initialProgressVelocity and ends at rest.
+// The caller must establish that all physical axes share this normalized
+// velocity and that it points toward their new targets.
+CoordinatedTrajectoryProfile coordinated_make_handoff_profile(
+    const CoordinatedAxisPlan *plans, int axisCount,
+    float initialProgressVelocity);
 
 float coordinated_profile_progress(const CoordinatedTrajectoryProfile &profile,
                                    float elapsed);

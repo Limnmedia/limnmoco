@@ -18,6 +18,12 @@ void coordinated_motion_reset();
 bool coordinated_motion_start(Motor *motors,
                               const CoordinatedMotionAxis *axes,
                               uint8_t axisCount);
+// Replans an active coordinated move without a zero-velocity pulse.  It
+// rejects a target that would require an immediate reversal or cannot retain
+// one shared normalized velocity across all participating axes.
+bool coordinated_motion_handoff(Motor *motors,
+                                const CoordinatedMotionAxis *axes,
+                                uint8_t axisCount);
 bool coordinated_motion_update(Motor *motors, float timeSegment,
                                int32_t *directions);
 bool coordinated_motion_active();

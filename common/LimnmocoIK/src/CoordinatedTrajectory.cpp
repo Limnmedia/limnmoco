@@ -45,8 +45,15 @@ float coordinated_move_duration(const CoordinatedAxisPlan *plans,
 
 CoordinatedTrajectoryProfile coordinated_make_profile(
     const CoordinatedAxisPlan *plans, int axisCount) {
+  return coordinated_make_handoff_profile(plans, axisCount, 0.0f);
+}
+
+CoordinatedTrajectoryProfile coordinated_make_handoff_profile(
+    const CoordinatedAxisPlan *plans, int axisCount,
+    float initialProgressVelocity) {
   CoordinatedTrajectoryProfile profile{};
-  if (plans == nullptr || axisCount <= 0) {
+  if (plans == nullptr || axisCount <= 0 ||
+      !std::isfinite(initialProgressVelocity) || initialProgressVelocity < 0.0f) {
     return profile;
   }
 
@@ -75,17 +82,33 @@ CoordinatedTrajectoryProfile coordinated_make_profile(
     return profile;
   }
 
+  if (initialProgressVelocity > maxProgressVelocity) {
+    return CoordinatedTrajectoryProfile{};
+  }
+
   const float distanceToReachPeak =
-      (maxProgressVelocity * maxProgressVelocity) / maxProgressAcceleration;
+      (maxProgressVelocity * maxProgressVelocity -
+       initialProgressVelocity * initialProgressVelocity) /
+          (2.0f * maxProgressAcceleration) +
+      (maxProgressVelocity * maxProgressVelocity) /
+          (2.0f * maxProgressAcceleration);
   profile.progressAcceleration = maxProgressAcceleration;
+  profile.initialProgressVelocity = initialProgressVelocity;
   if (distanceToReachPeak >= 1.0f) {
-    profile.accelerationTime = std::sqrt(1.0f / maxProgressAcceleration);
+    const float peakSquared = maxProgressAcceleration +
+        0.5f * initialProgressVelocity * initialProgressVelocity;
+    if (peakSquared < initialProgressVelocity * initialProgressVelocity) {
+      return CoordinatedTrajectoryProfile{};
+    }
+    profile.peakProgressVelocity = std::sqrt(peakSquared);
+    profile.accelerationTime =
+        (profile.peakProgressVelocity - initialProgressVelocity) /
+        maxProgressAcceleration;
     profile.cruiseTime = 0.0f;
-    profile.peakProgressVelocity =
-        maxProgressAcceleration * profile.accelerationTime;
   } else {
     profile.accelerationTime =
-        maxProgressVelocity / maxProgressAcceleration;
+        (maxProgressVelocity - initialProgressVelocity) /
+        maxProgressAcceleration;
     profile.cruiseTime =
         (1.0f - distanceToReachPeak) / maxProgressVelocity;
     profile.peakProgressVelocity = maxProgressVelocity;
@@ -102,9 +125,12 @@ float coordinated_profile_progress(const CoordinatedTrajectoryProfile &profile,
 
   const float t = std::max(0.0f, std::min(profile.duration, elapsed));
   const float accelDistance = 0.5f * profile.progressAcceleration *
-                              profile.accelerationTime * profile.accelerationTime;
+                              profile.accelerationTime * profile.accelerationTime +
+                              profile.initialProgressVelocity *
+                                  profile.accelerationTime;
   if (t <= profile.accelerationTime) {
-    return 0.5f * profile.progressAcceleration * t * t;
+    return profile.initialProgressVelocity * t +
+           0.5f * profile.progressAcceleration * t * t;
   }
 
   const float cruiseEnd = profile.accelerationTime + profile.cruiseTime;
@@ -119,12 +145,13 @@ float coordinated_profile_progress(const CoordinatedTrajectoryProfile &profile,
 
 float coordinated_profile_velocity(const CoordinatedTrajectoryProfile &profile,
                                    float elapsed) {
-  if (profile.duration <= 0.0f || elapsed <= 0.0f || elapsed >= profile.duration) {
+  if (profile.duration <= 0.0f || elapsed < 0.0f || elapsed >= profile.duration) {
     return 0.0f;
   }
 
   if (elapsed <= profile.accelerationTime) {
-    return profile.progressAcceleration * elapsed;
+    return profile.initialProgressVelocity +
+           profile.progressAcceleration * elapsed;
   }
 
   const float cruiseEnd = profile.accelerationTime + profile.cruiseTime;
