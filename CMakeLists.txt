@@ -56,7 +56,9 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
     tests/ik/main.cpp
     tests/ik/limnmoco_ik.cpp
   )
-  target_link_libraries(limnmoco_ik_test PRIVATE limnmoco_ik)
+  target_link_libraries(limnmoco_ik_test PRIVATE
+    limnmoco_ik GTest::gtest_main limnmoco_test_support
+  )
 
   add_executable(coordinated_trajectory_test
     tests/trajectory/coordinated_trajectory_test.cpp
@@ -75,13 +77,10 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
   )
 
   if(BUILD_TESTING)
-    add_test(NAME limnmoco_ik_test COMMAND limnmoco_ik_test)
-    set_tests_properties(limnmoco_ik_test PROPERTIES
-      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
-    )
     include(GoogleTest)
     gtest_discover_tests(googletest_smoke_test)
     gtest_discover_tests(coordinated_trajectory_test)
+    gtest_discover_tests(limnmoco_ik_test)
   endif()
 
   add_custom_target(host-tests

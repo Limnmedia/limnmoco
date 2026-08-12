@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "limnmoco_ik.h"
+#include "test_support.h"
 
 #include <AimGeometry.h>
 #include <AimAwareTarget.h>
@@ -10,6 +11,8 @@
 #include <CameraLineTarget.h>
 #include <CoordinatedTrajectory.h>
 #include <KuperTrackConvention.h>
+
+#include <gtest/gtest.h>
 
 #include <cmath>
 #include <cstdint>
@@ -498,19 +501,7 @@ std::vector<std::string> splitCsv(const std::string &line) {
 }
 
 bool openFixture(const std::string &name, std::ifstream *file) {
-  file->open(name);
-  if (file->is_open()) {
-    return true;
-  }
-
-  file->clear();
-  file->open("tests/fixtures/" + name);
-  if (file->is_open()) {
-    return true;
-  }
-
-  file->clear();
-  file->open("../fixtures/" + name);
+  file->open(limnmoco::test::fixture_path(name));
   return file->is_open();
 }
 
@@ -715,144 +706,119 @@ bool runTest(const TestCase &test) {
 
 } // namespace
 
-int main() {
-  const limnmoco::CraneGeometry defaultGeometry{
-      10.0, // boomLength
-      2.8,  // extensionLength
-      0.0,  // offsetX
-      0.0,  // offsetY
-      0.0,  // offsetZ
-  };
+TEST(IkForwardKinematics, NormalizesTheConfigurationOrigin) {
+  EXPECT_TRUE(runForwardKinematicsOriginTest());
+}
 
-  const std::vector<TestCase> tests = {
-      {
-          "Blender default panel values",
-          limnmoco::VirtualPose{
-              8.0, // vtrack / Y
-              2.0, // vew / X
-              3.0, // vheight / Z
-              0.0, // vpanDeg
-              0.0, // vtiltDeg
-              0.0, // vrollDeg
-          },
-          defaultGeometry,
-          -4.17623f,
-          9.32780f,
-          17.4576f,
-          true,
-          false,
-      },
-      {
-          "Centered target, no offset",
-          limnmoco::VirtualPose{
-              12.8,
-              0.0,
-              0.0,
-              0.0,
-              0.0,
-              0.0,
-          },
-          defaultGeometry,
-          0.0,
-          0.0,
-          0.0,
-          true,
-          false,
-      },
-      {
-          "Rotated nodal offset",
-          limnmoco::VirtualPose{
-              8.0,
-              2.0,
-              3.0,
-              20.0,
-              10.0,
-              -5.0,
-          },
-          limnmoco::CraneGeometry{
-              10.0,
-              2.8,
-              0.5,
-              0.25,
-              -0.1,
-          },
-          0.0,
-          0.0,
-          0.0,
-          false,
-          false,
-      },
-  };
+TEST(IkVirtualAxes, EastWestCompensatesTrackWithoutNorthSouthMotion) {
+  EXPECT_TRUE(runEastWestCompensationTest());
+}
 
-  int failures = 0;
-  if (!runForwardKinematicsOriginTest()) {
-    ++failures;
-  }
-  if (!runEastWestCompensationTest()) {
-    ++failures;
-  }
-  if (!runBoomCompensationTableTest()) {
-    ++failures;
-  }
-  if (!runDragonframeBoomCompensationEncodingTest()) {
-    ++failures;
-  }
-  if (!runBoomCompensationStepTargetRegressionTest()) {
-    ++failures;
-  }
-  if (!runKuperTrackConventionTest()) {
-    ++failures;
-  }
-  if (!runKuperNorthSouthCompensationTest()) {
-    ++failures;
-  }
-  if (!runCoordinatedHandoffProfileTest()) {
-    ++failures;
-  }
-  if (!runCameraLineTargetTest()) {
-    ++failures;
-  }
-  if (!runCameraLineDirectionTest()) {
-    ++failures;
-  }
-  if (!runAimGeometryTest()) {
-    ++failures;
-  }
-  if (!runAimAwareTargetTest()) {
-    ++failures;
-  }
-  if (!runAimPointProtocolTest()) {
-    ++failures;
-  }
-  if (!runCompensationFixture(
-          "expected_virtual_displacements.csv",
-          limnmoco::CraneGeometry{857.7f, 78.0f, 0.0f, 0.0f, 0.0f},
-          false, 63)) {
-    ++failures;
-  }
-  if (!runCompensationFixture(
-          "expected_virtual_rotation_displacements_with_offsets.csv",
-          limnmoco::CraneGeometry{857.7f, 78.0f, -0.2727f, -0.1463f, 0.3179f},
-          true, 57)) {
-    ++failures;
-  }
-  if (!runCompensationFixture(
-          "expected_virtual_rotation_displacements.csv",
-          limnmoco::CraneGeometry{857.7f, 78.0f, 0.0f, 0.0f, 0.0f},
-          true, 57)) {
-    ++failures;
-  }
-  for (const TestCase &test : tests) {
-    if (!runTest(test)) {
-      ++failures;
-    }
-  }
+TEST(BoomCompensation, ValidatesAndInterpolatesTables) {
+  EXPECT_TRUE(runBoomCompensationTableTest());
+}
 
-  if (failures) {
-    std::cerr << failures << " IK test(s) failed.\n";
-    return 1;
-  }
+TEST(BoomCompensation, PreservesDragonframeSignedStepEncoding) {
+  EXPECT_TRUE(runDragonframeBoomCompensationEncodingTest());
+}
 
-  std::cout << "All IK tests passed.\n";
-  return 0;
+TEST(BoomCompensation, MapsGeometricAngleToRawMotorSteps) {
+  EXPECT_TRUE(runBoomCompensationStepTargetRegressionTest());
+}
+
+TEST(KuperCoordinates, ConvertsTrackAcrossTheSolverBoundary) {
+  EXPECT_TRUE(runKuperTrackConventionTest());
+}
+
+TEST(KuperCoordinates, UsesNegativeRawTrackForNorthSouthCompensation) {
+  EXPECT_TRUE(runKuperNorthSouthCompensationTest());
+}
+
+TEST(CoordinatedTrajectory, BuildsAVelocityPreservingHandoffProfile) {
+  EXPECT_TRUE(runCoordinatedHandoffProfileTest());
+}
+
+TEST(CameraLineTarget, HoldsTheCapturedOrientationAcrossHorizons) {
+  EXPECT_TRUE(runCameraLineTargetTest());
+}
+
+TEST(CameraLineCoordinates, MapsKuperAxesAndCameraRotation) {
+  EXPECT_TRUE(runCameraLineDirectionTest());
+}
+
+TEST(AimPointGeometry, DerivesOrientationAndEnforcesTheSafeCylinder) {
+  EXPECT_TRUE(runAimGeometryTest());
+}
+
+TEST(AimAwareTarget, PreservesOffsetsAndRejectsInvalidTargets) {
+  EXPECT_TRUE(runAimAwareTargetTest());
+}
+
+TEST(AimPointProtocol, EncodesAndDecodesSignedFixedPointCoordinates) {
+  EXPECT_TRUE(runAimPointProtocolTest());
+}
+
+struct CompensationFixtureCase {
+  const char *id;
+  const char *name;
+  limnmoco::CraneGeometry geometry;
+  bool rotationalFixture;
+  std::size_t expectedRows;
+};
+
+class CompensationFixtureTest
+    : public testing::TestWithParam<CompensationFixtureCase> {};
+
+TEST_P(CompensationFixtureTest, MatchesEveryCapturedRegressionRow) {
+  const CompensationFixtureCase &fixture = GetParam();
+  EXPECT_TRUE(runCompensationFixture(fixture.name, fixture.geometry,
+                                     fixture.rotationalFixture,
+                                     fixture.expectedRows));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CsvFixtures, CompensationFixtureTest,
+    testing::Values(
+        CompensationFixtureCase{
+            "LinearDisplacements",
+            "expected_virtual_displacements.csv",
+            limnmoco::CraneGeometry{857.7f, 78.0f, 0.0f, 0.0f, 0.0f},
+            false, 63},
+        CompensationFixtureCase{
+            "RotationsWithOffsets",
+            "expected_virtual_rotation_displacements_with_offsets.csv",
+            limnmoco::CraneGeometry{
+                857.7f, 78.0f, -0.2727f, -0.1463f, 0.3179f},
+            true, 57},
+        CompensationFixtureCase{
+            "RotationsWithoutOffsets",
+            "expected_virtual_rotation_displacements.csv",
+            limnmoco::CraneGeometry{857.7f, 78.0f, 0.0f, 0.0f, 0.0f},
+            true, 57}),
+    [](const testing::TestParamInfo<CompensationFixtureCase> &info) {
+      return std::string(info.param.id);
+    });
+
+TEST(IkSolver, MatchesTheBlenderDefaultPanelValues) {
+  EXPECT_TRUE(runTest(TestCase{
+      "Blender default panel values",
+      limnmoco::VirtualPose{8.0f, 2.0f, 3.0f, 0.0f, 0.0f, 0.0f},
+      limnmoco::CraneGeometry{10.0f, 2.8f, 0.0f, 0.0f, 0.0f},
+      -4.17623f, 9.32780f, 17.4576f, true, false}));
+}
+
+TEST(IkSolver, CentersAnUnrotatedTargetWithoutOffsets) {
+  EXPECT_TRUE(runTest(TestCase{
+      "Centered target, no offset",
+      limnmoco::VirtualPose{12.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+      limnmoco::CraneGeometry{10.0f, 2.8f, 0.0f, 0.0f, 0.0f},
+      0.0f, 0.0f, 0.0f, true, false}));
+}
+
+TEST(IkSolver, ReconstructsARotatedNodalOffset) {
+  EXPECT_TRUE(runTest(TestCase{
+      "Rotated nodal offset",
+      limnmoco::VirtualPose{8.0f, 2.0f, 3.0f, 20.0f, 10.0f, -5.0f},
+      limnmoco::CraneGeometry{10.0f, 2.8f, 0.5f, 0.25f, -0.1f},
+      0.0f, 0.0f, 0.0f, false, false}));
 }
