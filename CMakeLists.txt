@@ -5,6 +5,8 @@ project(limnmoco LANGUAGES CXX)
 option(LIMNMOCO_BUILD_HOST_TESTS "Build host-side test executables" ON)
 option(LIMNMOCO_ENABLE_FIRMWARE_TARGETS
        "Expose Arduino CLI firmware build targets when arduino-cli is installed" ON)
+set(LIMNMOCO_UPLOAD_PORT "" CACHE STRING
+    "Serial port for the optional upload-m7 and upload-m4 targets")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -119,6 +121,32 @@ if(LIMNMOCO_ENABLE_FIRMWARE_TARGETS)
       USES_TERMINAL
       COMMENT "Compiling Limnmoco M4 firmware through Arduino CLI"
     )
+
+    if(LIMNMOCO_UPLOAD_PORT)
+      add_custom_target(upload-m7
+        COMMAND "${ARDUINO_CLI_EXECUTABLE}" compile --upload
+          --port "${LIMNMOCO_UPLOAD_PORT}"
+          --libraries "${CMAKE_CURRENT_SOURCE_DIR}/common"
+          --fqbn "${LIMNMOCO_GIGA_FQBN},target_core=cm7"
+          "${CMAKE_CURRENT_SOURCE_DIR}/m7"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        USES_TERMINAL
+        COMMENT "Compiling and uploading Limnmoco M7 firmware through Arduino CLI"
+      )
+
+      add_custom_target(upload-m4
+        COMMAND "${ARDUINO_CLI_EXECUTABLE}" compile --upload
+          --port "${LIMNMOCO_UPLOAD_PORT}"
+          --fqbn "${LIMNMOCO_GIGA_FQBN},target_core=cm4"
+          "${CMAKE_CURRENT_SOURCE_DIR}/m4"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        USES_TERMINAL
+        COMMENT "Compiling and uploading Limnmoco M4 firmware through Arduino CLI"
+      )
+    else()
+      message(STATUS
+        "Set LIMNMOCO_UPLOAD_PORT (for example -DLIMNMOCO_UPLOAD_PORT=/dev/ttyACM0) to enable upload-m7 and upload-m4")
+    endif()
 
     add_custom_target(verify)
     if(TARGET host-tests)

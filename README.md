@@ -42,6 +42,17 @@ cmake --build build --target verify
 `arduino-cli` is installed and the Giga board core has been installed as above.
 They are intentionally not part of CMake's default build target.
 
+To enable upload targets, configure the serial port explicitly, then select
+the desired processor target:
+
+```sh
+cmake -S . -B build -DLIMNMOCO_UPLOAD_PORT=/dev/ttyACM0
+cmake --build build --target upload-m7
+cmake --build build --target upload-m4
+```
+
+`upload-m7` and `upload-m4` each compile and upload the selected processor.
+
 See the [host test suite](tests/README.md) for test coverage and known gaps.
 
 Use the Arduino IDE to upload either processor after selecting its target and
