@@ -140,6 +140,7 @@ Use CSV for stable, reviewable numeric fixtures.  Each basic move should have:
 - starting physical pose or starting virtual pose;
 - requested virtual axis/value when applicable;
 - expected final pose values;
+- repeated round-trip count;
 - optional per-case tolerance override.
 
 Do not duplicate derived values unnecessarily.  Fixtures should state inputs
@@ -183,7 +184,7 @@ acceptance records.
     `test: colocate ik test implementations`
 - [x] Add a reusable, table-driven named-basic-move fixture reader.
   - Commit: `test: add virtual move fixture framework`
-- [ ] Add reference, single-axis, and repeated IK/FK round-trip basic move
+- [x] Add reference, single-axis, and repeated IK/FK round-trip basic move
   cases.
   - Commit: `test: cover basic virtual IK FK moves`
 - [ ] Add combined, no-roll, nodal-offset, and BCT basic-move cases.

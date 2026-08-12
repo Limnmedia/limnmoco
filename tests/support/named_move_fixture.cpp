@@ -3,6 +3,7 @@
 #include "named_move_fixture.h"
 
 #include <cmath>
+#include <limits>
 #include <sstream>
 
 namespace limnmoco::test {
@@ -11,13 +12,13 @@ namespace {
 constexpr char kHeader[] =
     "name,category,boom_length_mm,extension_length_mm,nodal_offset_x_mm,"
     "nodal_offset_y_mm,nodal_offset_z_mm,roll_present,bct_enabled,"
-    "start_boom_deg,start_swing_deg,start_track_mm,start_pan_deg,"
-    "start_tilt_deg,start_roll_deg,target_vtrack_mm,target_vew_mm,"
-    "target_vns_mm,target_vpan_deg,target_vtilt_deg,target_vroll_deg,"
-    "expected_boom_deg,expected_swing_deg,expected_track_mm,"
-    "expected_pan_deg,expected_tilt_deg,expected_roll_deg,"
-    "translation_tolerance_mm,rotation_tolerance_deg";
-constexpr std::size_t kFieldCount = 29;
+    "round_trip_count,start_boom_deg,start_swing_deg,start_track_mm,"
+    "start_pan_deg,start_tilt_deg,start_roll_deg,target_vtrack_mm,"
+    "target_vew_mm,target_vns_mm,target_vpan_deg,target_vtilt_deg,"
+    "target_vroll_deg,expected_boom_deg,expected_swing_deg,"
+    "expected_track_mm,expected_pan_deg,expected_tilt_deg,"
+    "expected_roll_deg,translation_tolerance_mm,rotation_tolerance_deg";
+constexpr std::size_t kFieldCount = 30;
 
 std::vector<std::string> split_csv(const std::string &line) {
   std::vector<std::string> fields;
@@ -49,6 +50,21 @@ bool parse_float(const std::string &field, float *value) {
     return false;
   }
   return parsed == field.size() && std::isfinite(*value);
+}
+
+bool parse_round_trip_count(const std::string &field, uint32_t *value) {
+  std::size_t parsed = 0;
+  try {
+    const unsigned long count = std::stoul(field, &parsed);
+    if (parsed != field.size() || count == 0 ||
+        count > std::numeric_limits<uint32_t>::max()) {
+      return false;
+    }
+    *value = static_cast<uint32_t>(count);
+    return true;
+  } catch (const std::exception &) {
+    return false;
+  }
 }
 
 bool parse_pose(const std::vector<std::string> &fields, std::size_t start,
@@ -112,16 +128,17 @@ bool read_named_move_fixture(std::istream &input,
         parse_float(fields[6], &move.nodalOffsetZmm) &&
         parse_bool(fields[7], &move.rollPresent) &&
         parse_bool(fields[8], &move.boomCompensationEnabled) &&
-        parse_pose(fields, 9, &move.startingPhysical) &&
-        parse_float(fields[15], &move.targetVtrackMm) &&
-        parse_float(fields[16], &move.targetVewMm) &&
-        parse_float(fields[17], &move.targetVnsMm) &&
-        parse_float(fields[18], &move.targetVpanDeg) &&
-        parse_float(fields[19], &move.targetVtiltDeg) &&
-        parse_float(fields[20], &move.targetVrollDeg) &&
-        parse_pose(fields, 21, &move.expectedPhysical) &&
-        parse_float(fields[27], &move.translationToleranceMm) &&
-        parse_float(fields[28], &move.rotationToleranceDeg);
+        parse_round_trip_count(fields[9], &move.repeatedRoundTrips) &&
+        parse_pose(fields, 10, &move.startingPhysical) &&
+        parse_float(fields[16], &move.targetVtrackMm) &&
+        parse_float(fields[17], &move.targetVewMm) &&
+        parse_float(fields[18], &move.targetVnsMm) &&
+        parse_float(fields[19], &move.targetVpanDeg) &&
+        parse_float(fields[20], &move.targetVtiltDeg) &&
+        parse_float(fields[21], &move.targetVrollDeg) &&
+        parse_pose(fields, 22, &move.expectedPhysical) &&
+        parse_float(fields[28], &move.translationToleranceMm) &&
+        parse_float(fields[29], &move.rotationToleranceDeg);
     if (!valid || move.boomLengthMm <= 0.0f || move.extensionLengthMm < 0.0f ||
         move.translationToleranceMm <= 0.0f || move.rotationToleranceDeg <= 0.0f) {
       *error = "line " + std::to_string(line_number) +

@@ -1,3 +1,3 @@
-name,category,boom_length_mm,extension_length_mm,nodal_offset_x_mm,nodal_offset_y_mm,nodal_offset_z_mm,roll_present,bct_enabled,start_boom_deg,start_swing_deg,start_track_mm,start_pan_deg,start_tilt_deg,start_roll_deg,target_vtrack_mm,target_vew_mm,target_vns_mm,target_vpan_deg,target_vtilt_deg,target_vroll_deg,expected_boom_deg,expected_swing_deg,expected_track_mm,expected_pan_deg,expected_tilt_deg,expected_roll_deg,translation_tolerance_mm,rotation_tolerance_deg
-reader_zero_pose,reader,857.7,78,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.0001,0.0002
-reader_roll_absent,reader,857.7,78,-0.2727,-0.1463,0.3179,0,1,1,2,3,4,5,0,6,7,8,9,10,0,11,12,13,14,15,0,0.001,0.002
+name,category,boom_length_mm,extension_length_mm,nodal_offset_x_mm,nodal_offset_y_mm,nodal_offset_z_mm,roll_present,bct_enabled,round_trip_count,start_boom_deg,start_swing_deg,start_track_mm,start_pan_deg,start_tilt_deg,start_roll_deg,target_vtrack_mm,target_vew_mm,target_vns_mm,target_vpan_deg,target_vtilt_deg,target_vroll_deg,expected_boom_deg,expected_swing_deg,expected_track_mm,expected_pan_deg,expected_tilt_deg,expected_roll_deg,translation_tolerance_mm,rotation_tolerance_deg
+reader_zero_pose,reader,857.7,78,0,0,0,1,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.0001,0.0002
+reader_roll_absent,reader,857.7,78,-0.2727,-0.1463,0.3179,0,1,4,1,2,3,4,5,0,6,7,8,9,10,0,11,12,13,14,15,0,0.001,0.002

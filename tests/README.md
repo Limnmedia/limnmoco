@@ -40,14 +40,14 @@ instrumentation; use the status labels to show what is automated today.
 
 | Area | Automated coverage | Known gap |
 | --- | --- | --- |
-| Shared IK/FK | FK-origin normalization, reconstruction sanity cases, linear virtual compensation, rotation, and CSV range sweeps | Basic named move/round-trip fixtures and repeated-drift cases are planned |
+| Shared IK/FK | FK-origin normalization, reconstruction sanity cases, reference and single-axis named moves, repeated round trips, linear virtual compensation, rotation, and CSV range sweeps | Combined, no-roll, nodal-offset, and BCT named-move cases are planned |
 | Coordinate conventions | Kuper track sign, NS track compensation, camera-line X/Y/Z mapping, pan/tilt/roll rotation cases | Hardware confirmation of every world-space direction remains required |
 | Boom compensation | Table validation, interpolation, signed Dragonframe raw-step encoding, and regression against double scaling | Broader basic-move BCT fixture coverage is planned |
 | Aim point | Aim geometry, safe cylinder, relative PAN/TILT offsets, roll retention, and transactional target construction | M7 aim command/state behavior is not host-tested yet |
 | Camera-line jog | Fixed-orientation target generation, signed direction, aim compensation, and safe-cylinder target rejection | M7 packet handling, horizon execution, stop behavior, and hardware line accuracy are not host-tested yet |
 | Coordinated trajectories | Triangular/trapezoidal profiles, synchronized axes, velocity/acceleration limits, and pure handoff-profile math | M7 coordinated-motion handoff and reversal simulation are not implemented |
 | DMC fixed-point data | Aim-point signed encode/decode | Full raw-packet parsing, checksums, response fixtures, and virtual-command state transitions are not implemented |
-| Named-move fixtures | Strict CSV schema parsing, finite numeric values, boolean flags, and transactional rejection of malformed records | Named reference, single-axis, round-trip, BCT, and no-roll move cases are not implemented yet |
+| Named-move fixtures | Strict CSV schema parsing, finite numeric values, boolean flags, repeated-round-trip counts, transactional rejection of malformed records, and reference/single-axis cases | Combined, BCT, nodal-offset, and no-roll move cases are not implemented yet |
 | M7 firmware integration | M7 firmware compiles through the `firmware-m7` CMake target | No parser, controller, or motion-simulation test seam yet |
 | M4 firmware integration | M4 firmware compiles through the `firmware-m4` CMake target | No automated step-generation or shared-memory simulation yet |
 | Physical crane | Manual hardware procedures and prior trace review inform acceptance expectations | Laser/plumb measurements, calibration, line-jog continuity, stop-all behavior, and absent-roll operation need versioned acceptance records |

@@ -4,6 +4,7 @@
 #define LIMNMOCO_NAMED_MOVE_FIXTURE_H_
 
 #include <iosfwd>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,7 @@ struct NamedVirtualMoveCase {
   float nodalOffsetZmm;
   bool rollPresent;
   bool boomCompensationEnabled;
+  uint32_t repeatedRoundTrips;
   NamedMovePhysicalPose startingPhysical;
   float targetVtrackMm;
   float targetVewMm;

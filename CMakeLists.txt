@@ -70,9 +70,11 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
     tests/ik/compensation_fixture_test.cpp
     tests/ik/fk_ik_test.cpp
     tests/ik/kuper_coordinates_test.cpp
+    tests/ik/named_virtual_move_test.cpp
   )
   target_link_libraries(limnmoco_ik_test PRIVATE
-    limnmoco_ik GTest::gtest_main limnmoco_test_support
+    limnmoco_ik limnmoco_named_move_fixture GTest::gtest_main
+    limnmoco_test_support
   )
 
   add_executable(coordinated_trajectory_test

@@ -1,0 +1,8 @@
+name,category,boom_length_mm,extension_length_mm,nodal_offset_x_mm,nodal_offset_y_mm,nodal_offset_z_mm,roll_present,bct_enabled,round_trip_count,start_boom_deg,start_swing_deg,start_track_mm,start_pan_deg,start_tilt_deg,start_roll_deg,target_vtrack_mm,target_vew_mm,target_vns_mm,target_vpan_deg,target_vtilt_deg,target_vroll_deg,expected_boom_deg,expected_swing_deg,expected_track_mm,expected_pan_deg,expected_tilt_deg,expected_roll_deg,translation_tolerance_mm,rotation_tolerance_deg
+reference_zero_pose,reference,10,2.8,0,0,0,1,0,8,0,0,0,0,0,0,12.8,0,0,0,0,0,0,0,0,0,0,0,0.001,0.001
+single_axis_vtrack,virtual_single_axis,10,2.8,0,0,0,1,0,8,2,3,4,5,6,7,14.8,0,0,0,0,0,0,0,2,0,0,0,0.001,0.001
+single_axis_vew,virtual_single_axis,10,2.8,0,0,0,1,0,8,1,-2,3,-5,2,0,12.8,2,0,0,0,0,0,8.9893,0.1572,-8.9893,0,0,0.001,0.001
+single_axis_vns,virtual_single_axis,10,2.8,0,0,0,1,0,8,-3,4,-2,5,-1,2,12.8,0,2,0,0,0,11.53696,0,0.20204,0,0,0,0.001,0.001
+single_axis_vpan,virtual_single_axis,10,2.8,0,0,0,1,0,8,1,2,3,4,5,6,12.8,0,0,15,0,0,0,0,0,15,0,0,0.001,0.001
+single_axis_vtilt,virtual_single_axis,10,2.8,0,0,0,1,0,8,1,2,3,4,5,6,12.8,0,0,0,10,0,0,0,0,0,10,0,0.001,0.001
+single_axis_vroll,virtual_single_axis,10,2.8,0,0,0,1,0,8,1,2,3,4,5,6,12.8,0,0,0,0,-10,0,0,0,0,0,-10,0.001,0.001
