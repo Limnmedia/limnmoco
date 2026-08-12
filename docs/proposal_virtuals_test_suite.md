@@ -196,3 +196,69 @@ for pure-math or parser commits.
   Arduino CLI wrapper), and should CI run it?
 - Which current captured hardware traces are stable enough to become static
   protocol fixtures?
+
+## Typed-packet and controller migration
+
+The `typed-packet-rewrite` branch demonstrates a useful architectural
+direction: typed DMC packet structures and dispatch callbacks.  It is not a
+viable base branch for this work, however.  It diverged before the current
+virtuals implementation, virtual command handlers remain stubs, and its CM7
+rewrite is not presently buildable.  Bringing it to feature parity would
+combine a broad M7/M4 rewrite with reimplementation of the already working
+virtual-crane behavior.
+
+Therefore, `virtuals-test-suite` remains the behavior baseline.  Reuse the
+typed-rewrite concepts selectively, extracting them from the current working
+firmware in independently verifiable steps.
+
+### Target boundary
+
+```text
+raw DMC bytes
+  -> typed packet codec and validation
+  -> VirtualMotionController
+  -> MotorPort and response port
+
+Arduino M7 loop
+  -> transport/clock/step-output adapters around the controller
+```
+
+`VirtualMotionController` owns virtual configuration, aim state, line-jog
+state, target construction, command arbitration, and scheduling decisions. It
+uses the real shared IK/FK and coordinated-trajectory libraries.  It must not
+own Arduino serial, RPC, GPIO, or M4 shared-memory details.
+
+`MotorPort` provides only the state and actions the controller needs: motor
+configuration/limits/current position and velocity, coordinated target
+scheduling, and stopping participating axes.  A response port emits ACKs and
+position/feature packets.  Arduino adapters bind these ports to current M7
+state; host fakes make the controller deterministic under test.
+
+Use fakes for stateful simulation (motor bank, clock, and captured response
+bytes).  Use GoogleMock only for narrow interaction contracts: no motor write
+after rejected validation, one expected ACK, stop requests for every
+participating motor, or command supersession.  Do not mock IK, FK, BCT, or
+trajectory math; execute that shared production code in tests.
+
+### Incremental migration
+
+1. Adopt GoogleTest and create host test targets without changing firmware
+   behavior.
+2. Extract typed packet definitions/codecs from the current DMC behavior,
+   using the typed-rewrite layouts only as a reference.  Validate exact raw
+   packet fixtures, signed fields, lengths, and checksums.
+3. Introduce a host-buildable `VirtualMotionController` with fake motor and
+   response ports.  Start with virtual configuration and get-position.
+4. Port normal virtual move, jog, and stop one command at a time, retaining
+   current M7 behavior and adding packet/state tests before each port.
+5. Port aim point and jog-on-line state, then validate coordinated handoff,
+   cancellation, limits, and error behavior in the simulator.
+6. Reduce `m7.ino` to an adapter that decodes packets, calls the controller,
+   ticks it at the existing data rate, and forwards scheduled output to the
+   current M4 path.
+7. After parity and hardware acceptance, evaluate whether non-virtual motion
+   and CM4 code should adopt the broader typed-rewrite architecture.
+
+This sequence preserves known working crane behavior, produces a test seam as
+early as possible, and avoids treating an incomplete rewrite as a prerequisite
+for virtuals testing.
