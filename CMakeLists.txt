@@ -143,9 +143,20 @@ if(LIMNMOCO_ENABLE_FIRMWARE_TARGETS)
         USES_TERMINAL
         COMMENT "Compiling and uploading Limnmoco M4 firmware through Arduino CLI"
       )
+
+      add_custom_target(upload-all
+        COMMAND "${ARDUINO_CLI_EXECUTABLE}" compile --upload
+          --port "${LIMNMOCO_UPLOAD_PORT}"
+          --fqbn "${LIMNMOCO_GIGA_FQBN},target_core=cm4"
+          "${CMAKE_CURRENT_SOURCE_DIR}/m4"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        DEPENDS upload-m7
+        USES_TERMINAL
+        COMMENT "Uploading Limnmoco M7, then M4 firmware through Arduino CLI"
+      )
     else()
       message(STATUS
-        "Set LIMNMOCO_UPLOAD_PORT (for example -DLIMNMOCO_UPLOAD_PORT=/dev/ttyACM0) to enable upload-m7 and upload-m4")
+        "Set LIMNMOCO_UPLOAD_PORT (for example -DLIMNMOCO_UPLOAD_PORT=/dev/ttyACM0) to enable upload-m7, upload-m4, and upload-all")
     endif()
 
     add_custom_target(verify)

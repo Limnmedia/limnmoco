@@ -49,9 +49,11 @@ the desired processor target:
 cmake -S . -B build -DLIMNMOCO_UPLOAD_PORT=/dev/ttyACM0
 cmake --build build --target upload-m7
 cmake --build build --target upload-m4
+cmake --build build --target upload-all
 ```
 
 `upload-m7` and `upload-m4` each compile and upload the selected processor.
+`upload-all` uploads M7 first, then M4.
 
 See the [host test suite](tests/README.md) for test coverage and known gaps.
 
