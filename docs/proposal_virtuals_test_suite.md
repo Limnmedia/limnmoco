@@ -165,19 +165,23 @@ acceptance records.
 
 1. Add this proposal document.
    - Commit: `docs: plan layered virtuals test suite`
-2. Mechanically rename `ik_test/` to `tests/`, fix paths and build docs.
+2. Add a root CMake build that runs host tests through CTest and provides
+   opt-in `firmware-m7`, `firmware-m4`, and aggregate `verify` targets which
+   delegate to Arduino CLI.
+   - Commit: `build: add cmake host and firmware targets`
+3. Mechanically rename `ik_test/` to `tests/`, fix paths and build docs.
    - Commit: `test: rename ik harness to tests framework`
-3. Add shared host test support and table-driven basic fixture reader.
+4. Add shared host test support and table-driven basic fixture reader.
    - Commit: `test: add virtual move fixture framework`
-4. Add reference, single-axis, and round-trip basic move cases.
+5. Add reference, single-axis, and round-trip basic move cases.
    - Commit: `test: cover basic virtual IK FK moves`
-5. Add combined, no-roll, nodal-offset, and BCT basic cases.
+6. Add combined, no-roll, nodal-offset, and BCT basic cases.
    - Commit: `test: expand virtual move regression coverage`
-6. Add a host-buildable M7 protocol/state seam and packet fixtures.
+7. Add a host-buildable M7 protocol/state seam and packet fixtures.
    - Commit: `test(m7): add virtual protocol state coverage`
-7. Add coordinated-motion simulation and continuous line-jog tests.
+8. Add coordinated-motion simulation and continuous line-jog tests.
    - Commit: `test(m7): simulate coordinated virtual motion`
-8. Move the current manual procedures into versioned hardware acceptance
+9. Move the current manual procedures into versioned hardware acceptance
    documents and add a trace-recording template.
    - Commit: `test(hardware): document virtuals acceptance procedure`
 
@@ -192,8 +196,8 @@ for pure-math or parser commits.
 - Should the simulator model generated step accumulation or only scheduled
   floating-point motor positions?  Start with the latter; add step-level
   verification only where it reveals firmware/M4 integration defects.
-- What is the canonical automated test command (Make, CMake, shell script, or
-  Arduino CLI wrapper), and should CI run it?
+- Which CMake targets should CI run by default: host tests only, or the full
+  `verify` target when Arduino CLI and the Giga board core are available?
 - Which current captured hardware traces are stable enough to become static
   protocol fixtures?
 

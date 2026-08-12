@@ -47,6 +47,23 @@ make a note of the port for uploading
     arduino-cli compile --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm4 m4
 ```
 
+### CMake host tests and firmware checks
+
+CMake builds and runs host-side tests, and exposes opt-in firmware targets
+which delegate to `arduino-cli`; it does not replace the Arduino build system.
+
+```sh
+cmake -S . -B build
+cmake --build build --target host-tests
+cmake --build build --target firmware-m7
+cmake --build build --target firmware-m4
+cmake --build build --target verify
+```
+
+`firmware-m7`, `firmware-m4`, and `verify` are available only when
+`arduino-cli` is installed and the Giga board core has been installed as above.
+They are intentionally not part of CMake's default build target.
+
 **upload subprojects:**
 
 ```
