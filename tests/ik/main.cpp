@@ -504,7 +504,13 @@ bool openFixture(const std::string &name, std::ifstream *file) {
   }
 
   file->clear();
-  file->open("ik_test/" + name);
+  file->open("tests/fixtures/" + name);
+  if (file->is_open()) {
+    return true;
+  }
+
+  file->clear();
+  file->open("../fixtures/" + name);
   return file->is_open();
 }
 

@@ -67,7 +67,7 @@ cmake --build build --target verify
 `arduino-cli` is installed and the Giga board core has been installed as above.
 They are intentionally not part of CMake's default build target.
 
-See the [host test suite](ik_test/README.md) for test coverage and known gaps.
+See the [host test suite](tests/README.md) for test coverage and known gaps.
 
 **upload subprojects:**
 

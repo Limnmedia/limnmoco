@@ -45,27 +45,27 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
   target_compile_features(limnmoco_ik PUBLIC cxx_std_17)
 
   add_executable(limnmoco_ik_test
-    ik_test/main.cpp
-    ik_test/limnmoco_ik.cpp
+    tests/ik/main.cpp
+    tests/ik/limnmoco_ik.cpp
   )
   target_link_libraries(limnmoco_ik_test PRIVATE limnmoco_ik)
 
   add_executable(coordinated_trajectory_test
-    ik_test/coordinated_trajectory_test.cpp
+    tests/trajectory/coordinated_trajectory_test.cpp
   )
   target_link_libraries(coordinated_trajectory_test PRIVATE limnmoco_ik)
 
   # This is intentionally a small integration check. Existing tests are
   # migrated incrementally, rather than mixed into the dependency commit.
   add_executable(googletest_smoke_test
-    ik_test/googletest_smoke_test.cpp
+    tests/support/googletest_smoke_test.cpp
   )
   target_link_libraries(googletest_smoke_test PRIVATE GTest::gtest_main)
 
   if(BUILD_TESTING)
     add_test(NAME limnmoco_ik_test COMMAND limnmoco_ik_test)
     set_tests_properties(limnmoco_ik_test PROPERTIES
-      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ik_test"
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
     )
     add_test(NAME coordinated_trajectory_test COMMAND coordinated_trajectory_test)
     include(GoogleTest)

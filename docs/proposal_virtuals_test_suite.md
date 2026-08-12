@@ -7,16 +7,16 @@ framework must validate pure kinematics first, then firmware protocol and
 motion integration, then retain a concise hardware acceptance procedure for
 the physical crane.
 
-The existing `ik_test/` directory is a valuable first layer, but its name no
-longer reflects its scope: it already covers boom compensation, Kuper
+The existing `tests/` directory is a valuable first layer, but its former
+`ik_test/` name no longer reflected its scope: it already covers boom compensation, Kuper
 coordinate conventions, aim-point geometry, camera-line targets, and
 coordinated trajectory primitives.  It cannot naturally contain M7 parser
 tests or an M7 motion simulation under an IK-only name.
 
 ## Target layout
 
-Rename `ik_test/` to `tests/` as an initial mechanical change, preserving its
-existing contents and test commands.  Then organize it by test boundary:
+The initial mechanical rename to `tests/` preserves existing test behavior and
+organizes the current suite by test boundary:
 
 ```text
 tests/
@@ -29,10 +29,9 @@ tests/
   support/            Host adapters, assertions, fixture readers, tolerances
 ```
 
-The rename should not combine with functional changes.  Update the root
-README, test README, compile commands, scripts, and any fixture paths in one
-reviewable commit.  Preserve a compatibility note for any external workflow
-that currently invokes `ik_test` directly.
+The rename does not combine with functional test changes. Update the root
+README, test README, build configuration, scripts, fixture paths, and feature
+documentation in one reviewable commit.
 
 ## Test layers
 

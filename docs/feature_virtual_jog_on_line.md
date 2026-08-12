@@ -151,8 +151,8 @@ captured camera line.
 | Area | Files / functions |
 |---|---|
 | Shared direction math | `common/LimnmocoIK/src/Mat3.*`, new helper beside `KuperTrackConvention.*` |
-| Host tests | `ik_test/main.cpp` |
-| Coordinated segment tests | `common/LimnmocoIK/src/CoordinatedTrajectory.*`, `ik_test/coordinated_trajectory_test.cpp` |
+| Host tests | `tests/ik/main.cpp` |
+| Coordinated segment tests | `common/LimnmocoIK/src/CoordinatedTrajectory.*`, `tests/trajectory/coordinated_trajectory_test.cpp` |
 | Protocol constants/types | `m7/dfx.h` |
 | Packet dispatch | `m7/m7.ino` `MSG_VIRT_JOG_ON_LINE` handler |
 | Current stub | `m7/m7.ino` `msg_virt_jog_on_line()` |

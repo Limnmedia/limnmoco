@@ -114,7 +114,7 @@ This document consolidates the decisions and constraints shared by
 | Shared public-coordinate, line, and aim geometry | New module in `common/LimnmocoIK/src/` |
 | Existing orientation math and FK/IK | `common/LimnmocoIK/src/LimnmocoIK.cpp` |
 | Track-sign conversion | `common/LimnmocoIK/src/KuperTrackConvention.*` |
-| Host tests | `ik_test/main.cpp` |
+| Host tests | `tests/ik/main.cpp` |
 | Protocol parsing and virtual state | `m7/m7.ino`, `m7/dfx.h`, `m7/dmc_msg.h` |
 | Virtual FK/IK target path | `virt_kinematics()`, `virtualPoseForIk()`, `virt_inverse_kinematics()` |
 | Virtual move/jog/stop arbitration | `msg_virt_move()`, `msg_virt_jog()`, `msg_virt_stop()` |

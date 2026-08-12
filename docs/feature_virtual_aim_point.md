@@ -157,7 +157,7 @@ complete.
 | Area | Files / functions |
 |---|---|
 | Shared aiming math | new helper in `common/LimnmocoIK/src/` |
-| Shared tests | `ik_test/main.cpp` |
+| Shared tests | `tests/ik/main.cpp` |
 | Kuper Z conversion | `common/LimnmocoIK/src/KuperTrackConvention.*` |
 | Protocol constants/scaling | `m7/dfx.h` |
 | Aim packet parser/response | `m7/m7.ino` `MSG_VIRT_AIM_POINT` handler |

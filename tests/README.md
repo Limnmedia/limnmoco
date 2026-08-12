@@ -5,10 +5,11 @@ math and motion primitives used by the M7 firmware. It covers IK/FK, boom
 compensation, Kuper coordinates, aim-point and camera-line calculations, DMC
 fixed-point conversions, and coordinated trajectory profiles.
 
-The directory will be renamed to `tests/` as the suite expands to include M7
-packet/state tests, motion simulation, and versioned hardware acceptance
-procedures. The current layout and commands remain valid until that mechanical
-rename occurs.
+The suite is organized by boundary: `ik/` contains shared crane math,
+`fixtures/` contains versioned numeric data, `trajectory/` contains focused
+motion-profile tests, and `support/` contains shared test infrastructure. M7
+packet/state, motion simulation, and hardware-acceptance directories will be
+added as those layers are implemented.
 
 ## Run the suite
 
