@@ -26,29 +26,6 @@ Firmware, virtual-crane inverse kinematics, and host-side tests for Limnmoco.
 - When building or uploading m7, select the m7 main processor target.
 - When building or uploading m4, select the m4 co-processor target.
 
-### arduino-cli
-
-**install giga r1 support:**
-
-```
-    arduino-cli core install arduino:mbed_giga
-```
-
-**find connected boards:**
-
-```
-    arduino-cli board list
-```
-
-make a note of the port for uploading
-
-**compile subprojects:**
-
-```
-    arduino-cli compile --libraries common --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm7 m7
-    arduino-cli compile --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm4 m4
-```
-
 ### CMake tests and firmware checks
 
 CMake 3.16+ and a C++17 compiler build and run the host-side suites. CMake also
@@ -58,8 +35,6 @@ replace the Arduino build system.
 ```sh
 cmake -S . -B build
 cmake --build build --target host-tests
-cmake --build build --target firmware-m7
-cmake --build build --target firmware-m4
 cmake --build build --target verify
 ```
 
@@ -69,9 +44,5 @@ They are intentionally not part of CMake's default build target.
 
 See the [host test suite](tests/README.md) for test coverage and known gaps.
 
-**upload subprojects:**
-
-```
-    arduino-cli upload --port <port> --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm7 m7
-    arduino-cli upload --port <port> --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm4 m4
-```
+Use the Arduino IDE to upload either processor after selecting its target and
+the required 75_25 flash split above.

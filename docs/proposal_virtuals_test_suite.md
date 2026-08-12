@@ -7,31 +7,31 @@ framework must validate pure kinematics first, then firmware protocol and
 motion integration, then retain a concise hardware acceptance procedure for
 the physical crane.
 
-The existing `tests/` directory is a valuable first layer, but its former
-`ik_test/` name no longer reflected its scope: it already covers boom compensation, Kuper
-coordinate conventions, aim-point geometry, camera-line targets, and
-coordinated trajectory primitives.  It cannot naturally contain M7 parser
-tests or an M7 motion simulation under an IK-only name.
+The existing `tests/` directory is the first completed layer. Its former
+`ik_test/` name no longer reflected its scope: the current suite covers boom
+compensation, Kuper coordinate conventions, aim-point geometry, camera-line
+targets, and coordinated trajectory primitives. Future M7 parser and motion
+simulation coverage belongs alongside—not inside—these IK-only tests.
 
-## Target layout
+## Current and target layout
 
-The initial mechanical rename to `tests/` preserves existing test behavior and
-organizes the current suite by test boundary:
+The completed mechanical rename to `tests/` preserved existing test behavior
+and organizes the suite by test boundary:
 
 ```text
 tests/
   ik/                 Shared-library IK/FK, BCT, coordinate, aim, and line math
   fixtures/           Versioned CSV fixtures shared by host tests
   trajectory/         Pure coordinated-profile and handoff tests
-  m7_protocol/        DMC packet parser/serializer and virtual-state tests
-  m7_simulation/      Firmware-facing virtual motion simulation tests
-  hardware/           Repeatable real-crane acceptance procedures and records
+  m7_protocol/        Planned: DMC packet parser/serializer and virtual-state tests
+  m7_simulation/      Planned: firmware-facing virtual motion simulation tests
+  hardware/           Planned: repeatable real-crane acceptance procedures and records
   support/            Host adapters, assertions, fixture readers, tolerances
 ```
 
-The rename does not combine with functional test changes. Update the root
-README, test README, build configuration, scripts, fixture paths, and feature
-documentation in one reviewable commit.
+Each new automated case belongs in a subject-specific `*_test.cpp` within its
+boundary directory. Reusable fixture and assertion utilities belong in
+`support/`; no aggregate test implementation file is retained.
 
 ## Test layers
 
@@ -160,41 +160,46 @@ Tolerances should represent floating-point/model precision, not mechanical
 calibration error.  Mechanical tolerance belongs exclusively to hardware
 acceptance records.
 
-## Incremental implementation and commits
+## Implementation checklist
 
-1. Add this proposal document.
-   - Commit: `docs: plan layered virtuals test suite`
-2. Add a root CMake build that runs host tests through CTest and provides
-   opt-in `firmware-m7`, `firmware-m4`, and aggregate `verify` targets which
-   delegate to Arduino CLI.
-   - Commit: `build: add cmake host and firmware targets`
-3. Add GoogleTest and GoogleMock through pinned CMake `FetchContent`, with a
-   smoke target before incrementally migrating existing test runners. Convert
-   the existing IK/FK, CSV regression, and trajectory runners into individual
-   GoogleTest/CTest-discovered cases without changing their numeric coverage.
-   - Commits: `test: add googletest host dependency`,
-     `test: add googletest test support`,
-     `test: convert trajectory tests to googletest`, and
-     `test: convert ik unit coverage to googletest`
-4. Mechanically rename `ik_test/` to `tests/`, fix paths and build docs.
-   - Commit: `test: rename ik harness to tests framework`
-5. Add shared host test support and table-driven basic fixture reader.
-   - Commit: `test: add virtual move fixture framework`
-6. Add reference, single-axis, and round-trip basic move cases.
-   - Commit: `test: cover basic virtual IK FK moves`
-7. Add combined, no-roll, nodal-offset, and BCT basic cases.
-   - Commit: `test: expand virtual move regression coverage`
-8. Add a host-buildable M7 protocol/state seam and packet fixtures.
-   - Commit: `test(m7): add virtual protocol state coverage`
-9. Add coordinated-motion simulation and continuous line-jog tests.
-   - Commit: `test(m7): simulate coordinated virtual motion`
-10. Move the current manual procedures into versioned hardware acceptance
-   documents and add a trace-recording template.
-   - Commit: `test(hardware): document virtuals acceptance procedure`
+- [x] Add this proposal document.
+  - Commit: `docs: plan layered virtuals test suite`
+- [x] Add a root CMake build that runs host tests through CTest and provides
+  opt-in `firmware-m7`, `firmware-m4`, and aggregate `verify` targets which
+  delegate to Arduino CLI.
+  - Commit: `build: add cmake host and firmware targets`
+- [x] Add pinned GoogleTest through CMake `FetchContent`, a smoke target, and
+  CTest discovery. Convert the existing IK/FK, CSV regression, and trajectory
+  runners into individual GoogleTest cases without changing their numeric
+  coverage.
+  - Commits: `test: add googletest host dependency`,
+    `test: add googletest test support`,
+    `test: convert trajectory tests to googletest`, and
+    `test: convert ik unit coverage to googletest`
+- [x] Mechanically rename `ik_test/` to `tests/`, fix paths and build docs.
+  - Commit: `test: rename ik harness to tests framework`
+- [x] Split the former aggregate IK source into subject-specific test files.
+  - Commits: `test: split ik coverage by subject` and
+    `test: colocate ik test implementations`
+- [ ] Add a reusable, table-driven named-basic-move fixture reader.
+  - Commit: `test: add virtual move fixture framework`
+- [ ] Add reference, single-axis, and repeated IK/FK round-trip basic move
+  cases.
+  - Commit: `test: cover basic virtual IK FK moves`
+- [ ] Add combined, no-roll, nodal-offset, and BCT basic-move cases.
+  - Commit: `test: expand virtual move regression coverage`
+- [ ] Add a host-buildable M7 protocol/state seam and raw-packet fixtures.
+  - Commit: `test(m7): add virtual protocol state coverage`
+- [ ] Add coordinated-motion simulation and continuous line-jog tests.
+  - Commit: `test(m7): simulate coordinated virtual motion`
+- [ ] Move the current manual procedures into versioned hardware acceptance
+  documents and add a trace-recording template.
+  - Commit: `test(hardware): document virtuals acceptance procedure`
 
-Every functional commit runs all prior host suites and compiles both M7 and M4
-firmware targets.  Hardware tests are recorded separately and are not a gate
-for pure-math or parser commits.
+Every functional commit runs all prior host suites. Firmware targets are also
+compiled when `arduino-cli` and the Giga board core are available. Hardware
+tests are recorded separately and are not a gate for pure-math or parser
+commits.
 
 ## Open design questions before the M7 layers
 
@@ -253,21 +258,21 @@ trajectory math; execute that shared production code in tests.
 
 ### Incremental migration
 
-1. Adopt GoogleTest and create host test targets without changing firmware
-   behavior.
-2. Extract typed packet definitions/codecs from the current DMC behavior,
+- [x] Adopt GoogleTest and create host test targets without changing firmware
+  behavior.
+- [ ] Extract typed packet definitions/codecs from the current DMC behavior,
    using the typed-rewrite layouts only as a reference.  Validate exact raw
    packet fixtures, signed fields, lengths, and checksums.
-3. Introduce a host-buildable `VirtualMotionController` with fake motor and
+- [ ] Introduce a host-buildable `VirtualMotionController` with fake motor and
    response ports.  Start with virtual configuration and get-position.
-4. Port normal virtual move, jog, and stop one command at a time, retaining
+- [ ] Port normal virtual move, jog, and stop one command at a time, retaining
    current M7 behavior and adding packet/state tests before each port.
-5. Port aim point and jog-on-line state, then validate coordinated handoff,
+- [ ] Port aim point and jog-on-line state, then validate coordinated handoff,
    cancellation, limits, and error behavior in the simulator.
-6. Reduce `m7.ino` to an adapter that decodes packets, calls the controller,
+- [ ] Reduce `m7.ino` to an adapter that decodes packets, calls the controller,
    ticks it at the existing data rate, and forwards scheduled output to the
    current M4 path.
-7. After parity and hardware acceptance, evaluate whether non-virtual motion
+- [ ] After parity and hardware acceptance, evaluate whether non-virtual motion
    and CM4 code should adopt the broader typed-rewrite architecture.
 
 This sequence preserves known working crane behavior, produces a test seam as
