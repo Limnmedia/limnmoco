@@ -11,6 +11,11 @@ motion-profile tests, and `support/` contains shared test infrastructure. M7
 packet/state, motion simulation, and hardware-acceptance directories will be
 added as those layers are implemented.
 
+Add new GoogleTest cases in a subject-specific `*_test.cpp` file in the
+appropriate boundary directory. Keep reusable fixture loading and legacy case
+construction in helper sources; do not add new test cases to an aggregate test
+file.
+
 ## Run the suite
 
 Run these commands from the repository root:

@@ -12,7 +12,6 @@
 #include <CoordinatedTrajectory.h>
 #include <KuperTrackConvention.h>
 
-#include <gtest/gtest.h>
 
 #include <cmath>
 #include <cstdint>
@@ -164,38 +163,6 @@ bool runKuperNorthSouthCompensationTest() {
                        -5.0f, 0.0f);
   std::cout << (ok ? "[PASS]" : "[FAIL]")
             << " Kuper NS compensation commands negative raw track\n";
-  return ok;
-}
-
-bool runCoordinatedHandoffProfileTest() {
-  const limnmoco::CoordinatedAxisPlan plans[] = {
-      {10.0f, 110.0f, 80.0f, 160.0f},
-      {-5.0f, 45.0f, 40.0f, 80.0f},
-  };
-  const float initialProgressVelocity = 0.2f;
-  const limnmoco::CoordinatedTrajectoryProfile profile =
-      limnmoco::coordinated_make_handoff_profile(
-          plans, 2, initialProgressVelocity);
-  const float initialVelocity0 = limnmoco::coordinated_velocity(
-      plans[0], profile, 0.0f);
-  const float initialVelocity1 = limnmoco::coordinated_velocity(
-      plans[1], profile, 0.0f);
-  const float finalPosition0 = limnmoco::coordinated_position(
-      plans[0], profile, profile.duration);
-  const float finalPosition1 = limnmoco::coordinated_position(
-      plans[1], profile, profile.duration);
-  const limnmoco::CoordinatedTrajectoryProfile impossible =
-      limnmoco::coordinated_make_handoff_profile(plans, 2, 2.0f);
-  const bool ok = profile.duration > 0.0f &&
-      near(initialVelocity0, 20.0f, 0.0001f) &&
-      near(initialVelocity1, 10.0f, 0.0001f) &&
-      near(finalPosition0, 110.0f, 0.0001f) &&
-      near(finalPosition1, 45.0f, 0.0001f) &&
-      near(limnmoco::coordinated_velocity(
-               plans[0], profile, profile.duration), 0.0f, 0.0001f) &&
-      impossible.duration == 0.0f;
-  std::cout << (ok ? "[PASS]" : "[FAIL]")
-            << " Coordinated trajectory handoff profile\n";
   return ok;
 }
 
@@ -706,119 +673,52 @@ bool runTest(const TestCase &test) {
 
 } // namespace
 
-TEST(IkForwardKinematics, NormalizesTheConfigurationOrigin) {
-  EXPECT_TRUE(runForwardKinematicsOriginTest());
+namespace limnmoco::test {
+
+bool fk_origin_normalization() { return runForwardKinematicsOriginTest(); }
+bool east_west_compensation() { return runEastWestCompensationTest(); }
+bool boom_table_mapping() { return runBoomCompensationTableTest(); }
+bool boom_signed_step_encoding() { return runDragonframeBoomCompensationEncodingTest(); }
+bool boom_step_target_mapping() { return runBoomCompensationStepTargetRegressionTest(); }
+bool kuper_track_convention() { return runKuperTrackConventionTest(); }
+bool kuper_north_south_compensation() { return runKuperNorthSouthCompensationTest(); }
+bool camera_line_target() { return runCameraLineTargetTest(); }
+bool camera_line_direction() { return runCameraLineDirectionTest(); }
+bool aim_geometry() { return runAimGeometryTest(); }
+bool aim_aware_target() { return runAimAwareTargetTest(); }
+bool aim_point_protocol() { return runAimPointProtocolTest(); }
+bool compensation_fixture_linear() {
+  return runCompensationFixture("expected_virtual_displacements.csv",
+      limnmoco::CraneGeometry{857.7f, 78.0f, 0.0f, 0.0f, 0.0f}, false, 63);
 }
-
-TEST(IkVirtualAxes, EastWestCompensatesTrackWithoutNorthSouthMotion) {
-  EXPECT_TRUE(runEastWestCompensationTest());
+bool compensation_fixture_rotations_with_offsets() {
+  return runCompensationFixture("expected_virtual_rotation_displacements_with_offsets.csv",
+      limnmoco::CraneGeometry{857.7f, 78.0f, -0.2727f, -0.1463f, 0.3179f}, true, 57);
 }
-
-TEST(BoomCompensation, ValidatesAndInterpolatesTables) {
-  EXPECT_TRUE(runBoomCompensationTableTest());
+bool compensation_fixture_rotations_without_offsets() {
+  return runCompensationFixture("expected_virtual_rotation_displacements.csv",
+      limnmoco::CraneGeometry{857.7f, 78.0f, 0.0f, 0.0f, 0.0f}, true, 57);
 }
-
-TEST(BoomCompensation, PreservesDragonframeSignedStepEncoding) {
-  EXPECT_TRUE(runDragonframeBoomCompensationEncodingTest());
-}
-
-TEST(BoomCompensation, MapsGeometricAngleToRawMotorSteps) {
-  EXPECT_TRUE(runBoomCompensationStepTargetRegressionTest());
-}
-
-TEST(KuperCoordinates, ConvertsTrackAcrossTheSolverBoundary) {
-  EXPECT_TRUE(runKuperTrackConventionTest());
-}
-
-TEST(KuperCoordinates, UsesNegativeRawTrackForNorthSouthCompensation) {
-  EXPECT_TRUE(runKuperNorthSouthCompensationTest());
-}
-
-TEST(CoordinatedTrajectory, BuildsAVelocityPreservingHandoffProfile) {
-  EXPECT_TRUE(runCoordinatedHandoffProfileTest());
-}
-
-TEST(CameraLineTarget, HoldsTheCapturedOrientationAcrossHorizons) {
-  EXPECT_TRUE(runCameraLineTargetTest());
-}
-
-TEST(CameraLineCoordinates, MapsKuperAxesAndCameraRotation) {
-  EXPECT_TRUE(runCameraLineDirectionTest());
-}
-
-TEST(AimPointGeometry, DerivesOrientationAndEnforcesTheSafeCylinder) {
-  EXPECT_TRUE(runAimGeometryTest());
-}
-
-TEST(AimAwareTarget, PreservesOffsetsAndRejectsInvalidTargets) {
-  EXPECT_TRUE(runAimAwareTargetTest());
-}
-
-TEST(AimPointProtocol, EncodesAndDecodesSignedFixedPointCoordinates) {
-  EXPECT_TRUE(runAimPointProtocolTest());
-}
-
-struct CompensationFixtureCase {
-  const char *id;
-  const char *name;
-  limnmoco::CraneGeometry geometry;
-  bool rotationalFixture;
-  std::size_t expectedRows;
-};
-
-class CompensationFixtureTest
-    : public testing::TestWithParam<CompensationFixtureCase> {};
-
-TEST_P(CompensationFixtureTest, MatchesEveryCapturedRegressionRow) {
-  const CompensationFixtureCase &fixture = GetParam();
-  EXPECT_TRUE(runCompensationFixture(fixture.name, fixture.geometry,
-                                     fixture.rotationalFixture,
-                                     fixture.expectedRows));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    CsvFixtures, CompensationFixtureTest,
-    testing::Values(
-        CompensationFixtureCase{
-            "LinearDisplacements",
-            "expected_virtual_displacements.csv",
-            limnmoco::CraneGeometry{857.7f, 78.0f, 0.0f, 0.0f, 0.0f},
-            false, 63},
-        CompensationFixtureCase{
-            "RotationsWithOffsets",
-            "expected_virtual_rotation_displacements_with_offsets.csv",
-            limnmoco::CraneGeometry{
-                857.7f, 78.0f, -0.2727f, -0.1463f, 0.3179f},
-            true, 57},
-        CompensationFixtureCase{
-            "RotationsWithoutOffsets",
-            "expected_virtual_rotation_displacements.csv",
-            limnmoco::CraneGeometry{857.7f, 78.0f, 0.0f, 0.0f, 0.0f},
-            true, 57}),
-    [](const testing::TestParamInfo<CompensationFixtureCase> &info) {
-      return std::string(info.param.id);
-    });
-
-TEST(IkSolver, MatchesTheBlenderDefaultPanelValues) {
-  EXPECT_TRUE(runTest(TestCase{
+bool blender_default_panel() {
+  return runTest(TestCase{
       "Blender default panel values",
       limnmoco::VirtualPose{8.0f, 2.0f, 3.0f, 0.0f, 0.0f, 0.0f},
       limnmoco::CraneGeometry{10.0f, 2.8f, 0.0f, 0.0f, 0.0f},
-      -4.17623f, 9.32780f, 17.4576f, true, false}));
+      -4.17623f, 9.32780f, 17.4576f, true, false});
 }
-
-TEST(IkSolver, CentersAnUnrotatedTargetWithoutOffsets) {
-  EXPECT_TRUE(runTest(TestCase{
+bool centered_target() {
+  return runTest(TestCase{
       "Centered target, no offset",
       limnmoco::VirtualPose{12.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
       limnmoco::CraneGeometry{10.0f, 2.8f, 0.0f, 0.0f, 0.0f},
-      0.0f, 0.0f, 0.0f, true, false}));
+      0.0f, 0.0f, 0.0f, true, false});
 }
-
-TEST(IkSolver, ReconstructsARotatedNodalOffset) {
-  EXPECT_TRUE(runTest(TestCase{
+bool rotated_nodal_offset() {
+  return runTest(TestCase{
       "Rotated nodal offset",
       limnmoco::VirtualPose{8.0f, 2.0f, 3.0f, 20.0f, 10.0f, -5.0f},
       limnmoco::CraneGeometry{10.0f, 2.8f, 0.5f, 0.25f, -0.1f},
-      0.0f, 0.0f, 0.0f, false, false}));
+      0.0f, 0.0f, 0.0f, false, false});
 }
+
+} // namespace limnmoco::test

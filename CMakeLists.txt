@@ -55,6 +55,12 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
   add_executable(limnmoco_ik_test
     tests/ik/main.cpp
     tests/ik/limnmoco_ik.cpp
+    tests/ik/aim_test.cpp
+    tests/ik/boom_compensation_test.cpp
+    tests/ik/camera_line_test.cpp
+    tests/ik/compensation_fixture_test.cpp
+    tests/ik/fk_ik_test.cpp
+    tests/ik/kuper_coordinates_test.cpp
   )
   target_link_libraries(limnmoco_ik_test PRIVATE
     limnmoco_ik GTest::gtest_main limnmoco_test_support
@@ -62,6 +68,7 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
 
   add_executable(coordinated_trajectory_test
     tests/trajectory/coordinated_trajectory_test.cpp
+    tests/trajectory/coordinated_handoff_test.cpp
   )
   target_link_libraries(coordinated_trajectory_test PRIVATE
     limnmoco_ik GTest::gtest_main limnmoco_test_support
