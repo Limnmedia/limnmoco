@@ -26,6 +26,14 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
   )
   FetchContent_MakeAvailable(googletest)
 
+  add_library(limnmoco_test_support INTERFACE)
+  target_include_directories(limnmoco_test_support INTERFACE
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/support"
+  )
+  target_compile_definitions(limnmoco_test_support INTERFACE
+    LIMNMOCO_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
+  )
+
   add_library(limnmoco_ik STATIC
     common/LimnmocoIK/src/AimAwareTarget.cpp
     common/LimnmocoIK/src/AimGeometry.cpp
@@ -60,7 +68,9 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
   add_executable(googletest_smoke_test
     tests/support/googletest_smoke_test.cpp
   )
-  target_link_libraries(googletest_smoke_test PRIVATE GTest::gtest_main)
+  target_link_libraries(googletest_smoke_test PRIVATE
+    GTest::gtest_main limnmoco_test_support
+  )
 
   if(BUILD_TESTING)
     add_test(NAME limnmoco_ik_test COMMAND limnmoco_ik_test)
