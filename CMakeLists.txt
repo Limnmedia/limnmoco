@@ -64,6 +64,7 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
 
   add_library(limnmoco_protocol STATIC
     common/LimnmocoProtocol/src/DmcFrame.cpp
+    common/LimnmocoProtocol/src/VirtualPackets.cpp
   )
   target_include_directories(limnmoco_protocol PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/common/LimnmocoProtocol/src"
@@ -107,6 +108,8 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
 
   add_executable(dmc_frame_test tests/m7_protocol/dmc_frame_test.cpp)
   target_link_libraries(dmc_frame_test PRIVATE limnmoco_protocol GTest::gtest_main)
+  add_executable(virtual_packets_test tests/m7_protocol/virtual_packets_test.cpp)
+  target_link_libraries(virtual_packets_test PRIVATE limnmoco_protocol GTest::gtest_main)
   target_link_libraries(named_move_fixture_test PRIVATE
     limnmoco_named_move_fixture GTest::gtest_main limnmoco_test_support
   )
@@ -116,6 +119,7 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
     gtest_discover_tests(googletest_smoke_test)
     gtest_discover_tests(named_move_fixture_test)
     gtest_discover_tests(dmc_frame_test)
+    gtest_discover_tests(virtual_packets_test)
     gtest_discover_tests(coordinated_trajectory_test)
     gtest_discover_tests(limnmoco_ik_test)
   endif()
@@ -125,6 +129,7 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
     DEPENDS limnmoco_ik_test coordinated_trajectory_test googletest_smoke_test
             named_move_fixture_test
             dmc_frame_test
+            virtual_packets_test
     USES_TERMINAL
     COMMENT "Running Limnmoco host tests"
   )
