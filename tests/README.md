@@ -22,10 +22,10 @@ cmake --build build --target host-tests
 
 `host-tests` runs the main virtual-crane suite and the focused coordinated
 trajectory suite through CTest. It also fetches the pinned GoogleTest 1.17.0
-release through CMake `FetchContent`; the current smoke test verifies that the
-framework is available while the existing tests are migrated incrementally.
-CMake requires version 3.16+, a C++17 compiler, and network access on the
-first configuration.
+release through CMake `FetchContent`. All current host tests are discovered
+GoogleTest cases; the smoke test remains as a direct dependency integration
+check. CMake requires version 3.16+, a C++17 compiler, and network access on
+the first configuration.
 
 ## Coverage status
 

@@ -67,8 +67,7 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
     limnmoco_ik GTest::gtest_main limnmoco_test_support
   )
 
-  # This is intentionally a small integration check. Existing tests are
-  # migrated incrementally, rather than mixed into the dependency commit.
+  # Retain a small direct integration check alongside the production suites.
   add_executable(googletest_smoke_test
     tests/support/googletest_smoke_test.cpp
   )

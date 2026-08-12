@@ -169,8 +169,13 @@ acceptance records.
    delegate to Arduino CLI.
    - Commit: `build: add cmake host and firmware targets`
 3. Add GoogleTest and GoogleMock through pinned CMake `FetchContent`, with a
-   smoke target before incrementally migrating existing test runners.
-   - Commit: `test: add googletest host dependency`
+   smoke target before incrementally migrating existing test runners. Convert
+   the existing IK/FK, CSV regression, and trajectory runners into individual
+   GoogleTest/CTest-discovered cases without changing their numeric coverage.
+   - Commits: `test: add googletest host dependency`,
+     `test: add googletest test support`,
+     `test: convert trajectory tests to googletest`, and
+     `test: convert ik unit coverage to googletest`
 4. Mechanically rename `ik_test/` to `tests/`, fix paths and build docs.
    - Commit: `test: rename ik harness to tests framework`
 5. Add shared host test support and table-driven basic fixture reader.
