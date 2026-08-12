@@ -169,19 +169,22 @@ acceptance records.
    opt-in `firmware-m7`, `firmware-m4`, and aggregate `verify` targets which
    delegate to Arduino CLI.
    - Commit: `build: add cmake host and firmware targets`
-3. Mechanically rename `ik_test/` to `tests/`, fix paths and build docs.
+3. Add GoogleTest and GoogleMock through pinned CMake `FetchContent`, with a
+   smoke target before incrementally migrating existing test runners.
+   - Commit: `test: add googletest host dependency`
+4. Mechanically rename `ik_test/` to `tests/`, fix paths and build docs.
    - Commit: `test: rename ik harness to tests framework`
-4. Add shared host test support and table-driven basic fixture reader.
+5. Add shared host test support and table-driven basic fixture reader.
    - Commit: `test: add virtual move fixture framework`
-5. Add reference, single-axis, and round-trip basic move cases.
+6. Add reference, single-axis, and round-trip basic move cases.
    - Commit: `test: cover basic virtual IK FK moves`
-6. Add combined, no-roll, nodal-offset, and BCT basic cases.
+7. Add combined, no-roll, nodal-offset, and BCT basic cases.
    - Commit: `test: expand virtual move regression coverage`
-7. Add a host-buildable M7 protocol/state seam and packet fixtures.
+8. Add a host-buildable M7 protocol/state seam and packet fixtures.
    - Commit: `test(m7): add virtual protocol state coverage`
-8. Add coordinated-motion simulation and continuous line-jog tests.
+9. Add coordinated-motion simulation and continuous line-jog tests.
    - Commit: `test(m7): simulate coordinated virtual motion`
-9. Move the current manual procedures into versioned hardware acceptance
+10. Move the current manual procedures into versioned hardware acceptance
    documents and add a trace-recording template.
    - Commit: `test(hardware): document virtuals acceptance procedure`
 

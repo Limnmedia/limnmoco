@@ -20,8 +20,11 @@ cmake --build build --target host-tests
 ```
 
 `host-tests` runs the main virtual-crane suite and the focused coordinated
-trajectory suite through CTest. CMake requires version 3.16+ and a C++17
-compiler.
+trajectory suite through CTest. It also fetches the pinned GoogleTest 1.17.0
+release through CMake `FetchContent`; the current smoke test verifies that the
+framework is available while the existing tests are migrated incrementally.
+CMake requires version 3.16+, a C++17 compiler, and network access on the
+first configuration.
 
 ## Coverage status
 

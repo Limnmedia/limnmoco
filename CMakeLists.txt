@@ -12,6 +12,19 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(LIMNMOCO_BUILD_HOST_TESTS)
   include(CTest)
+  include(FetchContent)
+
+  # Keep the test framework outside firmware builds.  The release tag makes
+  # host-test configuration reproducible while still allowing FetchContent to
+  # use an ordinary Git cache/build directory.
+  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  FetchContent_Declare(googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.17.0
+    GIT_SHALLOW TRUE
+  )
+  FetchContent_MakeAvailable(googletest)
 
   add_library(limnmoco_ik STATIC
     common/LimnmocoIK/src/AimAwareTarget.cpp
@@ -42,17 +55,26 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
   )
   target_link_libraries(coordinated_trajectory_test PRIVATE limnmoco_ik)
 
+  # This is intentionally a small integration check. Existing tests are
+  # migrated incrementally, rather than mixed into the dependency commit.
+  add_executable(googletest_smoke_test
+    ik_test/googletest_smoke_test.cpp
+  )
+  target_link_libraries(googletest_smoke_test PRIVATE GTest::gtest_main)
+
   if(BUILD_TESTING)
     add_test(NAME limnmoco_ik_test COMMAND limnmoco_ik_test)
     set_tests_properties(limnmoco_ik_test PROPERTIES
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ik_test"
     )
     add_test(NAME coordinated_trajectory_test COMMAND coordinated_trajectory_test)
+    include(GoogleTest)
+    gtest_discover_tests(googletest_smoke_test)
   endif()
 
   add_custom_target(host-tests
     COMMAND "${CMAKE_CTEST_COMMAND}" --output-on-failure
-    DEPENDS limnmoco_ik_test coordinated_trajectory_test
+    DEPENDS limnmoco_ik_test coordinated_trajectory_test googletest_smoke_test
     USES_TERMINAL
     COMMENT "Running Limnmoco host tests"
   )
