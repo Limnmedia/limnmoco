@@ -1,15 +1,16 @@
 # limnmoco
-Firmware for the Limnmoco
+
+Firmware, virtual-crane inverse kinematics, and host-side tests for Limnmoco.
 
 ## configuration
 
-### m4
+### m4 co-processor
 
 - m4/config.h
     - pin assignments for motor step/direction
     - pin assignments for remote camera control
 
-### m7
+### m7 main processor
 
 - m7/config.h
     - pin assignments for GIO Output and Input
@@ -19,10 +20,11 @@ Firmware for the Limnmoco
 
 ### arduino-ide
 
-- install the the board support package for the mbed_giga (arduino:mbed_giga)
-- Ensure that the memory is Split 1.5MB Main Core 0.5MB m4 co-processor
-- When building/uploading m7 make sure the m7 Main Core is the target
-- When building/uploading m4 make sure that the m4 co-processor is the target
+- Install the board support package for `arduino:mbed_giga`.
+- Select the `75_25` flash split: 1.5 MB for the m7 main processor and 0.5 MB
+  for the m4 co-processor.
+- When building or uploading m7, select the m7 main processor target.
+- When building or uploading m4, select the m4 co-processor target.
 
 ### arduino-cli
 
@@ -47,10 +49,11 @@ make a note of the port for uploading
     arduino-cli compile --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm4 m4
 ```
 
-### CMake host tests and firmware checks
+### CMake tests and firmware checks
 
-CMake builds and runs host-side tests, and exposes opt-in firmware targets
-which delegate to `arduino-cli`; it does not replace the Arduino build system.
+CMake 3.16+ and a C++17 compiler build and run the host-side suites. CMake also
+provides opt-in firmware targets which delegate to `arduino-cli`; it does not
+replace the Arduino build system.
 
 ```sh
 cmake -S . -B build
@@ -63,6 +66,8 @@ cmake --build build --target verify
 `firmware-m7`, `firmware-m4`, and `verify` are available only when
 `arduino-cli` is installed and the Giga board core has been installed as above.
 They are intentionally not part of CMake's default build target.
+
+See the [host test suite](ik_test/README.md) for test coverage and known gaps.
 
 **upload subprojects:**
 

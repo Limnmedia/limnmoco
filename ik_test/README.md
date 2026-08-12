@@ -1,120 +1,47 @@
-# LIMNMOCO IK Host Test Harness
+# Limnmoco Host Test Suite
 
-This folder contains a standalone C++ port of the Blender reference solver from:
+This directory contains deterministic C++17 tests for the shared virtual-crane
+math and motion primitives used by the M7 firmware. It covers IK/FK, boom
+compensation, Kuper coordinates, aim-point and camera-line calculations, DMC
+fixed-point conversions, and coordinated trajectory profiles.
 
-```text
-limnmoco-blender-addon/LIMNMOCO_CG_RIG/rigs/limnmoco_crane.py
-```
+The directory will be renamed to `tests/` as the suite expands to include M7
+packet/state tests, motion simulation, and versioned hardware acceptance
+procedures. The current layout and commands remain valid until that mechanical
+rename occurs.
 
-The harness has no Arduino or Blender dependencies. It validates the same shared Swing-Boom-Track crane IK/FK library used by the `m7` firmware.
+## Run the suite
 
-## Files
-
-```text
-limnmoco_ik.h    Test-facing adapters and host-only types
-limnmoco_ik.cpp  Test-facing adapters
-main.cpp         Console test runner with deterministic sanity cases
-../common/LimnmocoIK/  Shared IK/FK library used by firmware and host tests
-```
-
-## Build
-
-Use any C++17 compiler.
-
-With `g++`:
+Run these commands from the repository root:
 
 ```sh
-g++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
-  main.cpp limnmoco_ik.cpp ../common/LimnmocoIK/src/LimnmocoIK.cpp \
-  ../common/LimnmocoIK/src/Vec3.cpp ../common/LimnmocoIK/src/Mat3.cpp \
-  ../common/LimnmocoIK/src/CameraLine.cpp \
-  ../common/LimnmocoIK/src/CameraLineTarget.cpp \
-  ../common/LimnmocoIK/src/AimGeometry.cpp \
-  ../common/LimnmocoIK/src/AimAwareTarget.cpp \
-  ../common/LimnmocoIK/src/AimPointProtocol.cpp \
-  ../common/LimnmocoIK/src/CoordinatedTrajectory.cpp \
-  ../common/LimnmocoIK/src/BoomCompensation.cpp \
-  ../common/LimnmocoIK/src/KuperTrackConvention.cpp \
-  -o limnmoco_ik_test
+cmake -S . -B build
+cmake --build build --target host-tests
 ```
 
-With `clang++`:
+`host-tests` runs the main virtual-crane suite and the focused coordinated
+trajectory suite through CTest. CMake requires version 3.16+ and a C++17
+compiler.
 
-```sh
-clang++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
-  main.cpp limnmoco_ik.cpp ../common/LimnmocoIK/src/LimnmocoIK.cpp \
-  ../common/LimnmocoIK/src/Vec3.cpp ../common/LimnmocoIK/src/Mat3.cpp \
-  ../common/LimnmocoIK/src/CameraLine.cpp \
-  ../common/LimnmocoIK/src/CameraLineTarget.cpp \
-  ../common/LimnmocoIK/src/AimGeometry.cpp \
-  ../common/LimnmocoIK/src/AimAwareTarget.cpp \
-  ../common/LimnmocoIK/src/AimPointProtocol.cpp \
-  ../common/LimnmocoIK/src/CoordinatedTrajectory.cpp \
-  ../common/LimnmocoIK/src/BoomCompensation.cpp \
-  ../common/LimnmocoIK/src/KuperTrackConvention.cpp \
-  -o limnmoco_ik_test
-```
+## Coverage status
 
-With MSVC Developer PowerShell:
+This table describes behavioral coverage, not line coverage. Percentages would
+be misleading until the project has a defined denominator and coverage
+instrumentation; use the status labels to show what is automated today.
 
-```powershell
-cl /EHsc /std:c++17 /I..\common\LimnmocoIK\src main.cpp limnmoco_ik.cpp ..\common\LimnmocoIK\src\LimnmocoIK.cpp ..\common\LimnmocoIK\src\Vec3.cpp ..\common\LimnmocoIK\src\Mat3.cpp ..\common\LimnmocoIK\src\CameraLine.cpp ..\common\LimnmocoIK\src\CameraLineTarget.cpp ..\common\LimnmocoIK\src\AimGeometry.cpp ..\common\LimnmocoIK\src\AimAwareTarget.cpp ..\common\LimnmocoIK\src\AimPointProtocol.cpp ..\common\LimnmocoIK\src\CoordinatedTrajectory.cpp ..\common\LimnmocoIK\src\BoomCompensation.cpp ..\common\LimnmocoIK\src\KuperTrackConvention.cpp /Fe:limnmoco_ik_test.exe
-```
+| Area | Automated coverage | Known gap |
+| --- | --- | --- |
+| Shared IK/FK | FK-origin normalization, reconstruction sanity cases, linear virtual compensation, rotation, and CSV range sweeps | Basic named move/round-trip fixtures and repeated-drift cases are planned |
+| Coordinate conventions | Kuper track sign, NS track compensation, camera-line X/Y/Z mapping, pan/tilt/roll rotation cases | Hardware confirmation of every world-space direction remains required |
+| Boom compensation | Table validation, interpolation, signed Dragonframe raw-step encoding, and regression against double scaling | Broader basic-move BCT fixture coverage is planned |
+| Aim point | Aim geometry, safe cylinder, relative PAN/TILT offsets, roll retention, and transactional target construction | M7 aim command/state behavior is not host-tested yet |
+| Camera-line jog | Fixed-orientation target generation, signed direction, aim compensation, and safe-cylinder target rejection | M7 packet handling, horizon execution, stop behavior, and hardware line accuracy are not host-tested yet |
+| Coordinated trajectories | Triangular/trapezoidal profiles, synchronized axes, velocity/acceleration limits, and pure handoff-profile math | M7 coordinated-motion handoff and reversal simulation are not implemented |
+| DMC fixed-point data | Aim-point signed encode/decode | Full raw-packet parsing, checksums, response fixtures, and virtual-command state transitions are not implemented |
+| M7 firmware integration | M7 firmware compiles through the `firmware-m7` CMake target | No parser, controller, or motion-simulation test seam yet |
+| M4 firmware integration | M4 firmware compiles through the `firmware-m4` CMake target | No automated step-generation or shared-memory simulation yet |
+| Physical crane | Manual hardware procedures and prior trace review inform acceptance expectations | Laser/plumb measurements, calibration, line-jog continuity, stop-all behavior, and absent-roll operation need versioned acceptance records |
 
-The trajectory primitive has a separate focused test:
-
-```sh
-g++ -std=c++17 -Wall -Wextra -pedantic -I../common/LimnmocoIK/src \
-  coordinated_trajectory_test.cpp \
-  ../common/LimnmocoIK/src/CoordinatedTrajectory.cpp \
-  -o coordinated_trajectory_test
-./coordinated_trajectory_test
-```
-
-## Run
-
-```sh
-./limnmoco_ik_test
-```
-
-On Windows PowerShell:
-
-```powershell
-.\limnmoco_ik_test.exe
-```
-
-## Current Test Cases
-
-- Blender default panel values:
-  - `VTrack = 8`
-  - `VEW = 2`
-  - `VHeight = 3`
-  - `VPan = 0`
-  - `VTilt = 0`
-  - `VRoll = 0`
-  - `Boom Length = 10`
-  - `Level Extension = 2.8`
-  - `Offset = 0, 0, 0`
-- Centered target with no offset.
-- Rotated nodal offset sanity case.
-- CSV fixture sweeps for linear vEW/vNS/vTrack displacement.
-- CSV fixture sweeps for vPAN/vTilt/vRoll with nodal offsets
-  `(-0.2727, -0.1463, 0.3179) mm`.
-
-The first two cases check exact solved axis values. All cases check reconstruction error.
-
-## Notes
-
-The solver intentionally mirrors the Blender reference model:
-
-- `VEW` maps to X.
-- `VTrack` maps to Y.
-- `VHeight` maps to Z.
-- `VPan` rotates around Z.
-- `VTilt` rotates around X.
-- `VRoll` rotates around Y.
-
-The harness reports when a solve clamps boom or swing input ratios to keep `asin()` in range. That behavior matches the current Blender reference solver, but the firmware integration still needs a developer decision on whether unreachable targets should clamp, reject, or report an error.
-
-The shared library also exposes the `Vec3` and `Mat3` types and their vector,
-matrix, and rotation operations for other host or firmware modules.
+The test-suite evolution plan, including typed packet decoding and a
+host-testable virtual-motion controller, is in
+[`docs/proposal_virtuals_test_suite.md`](../docs/proposal_virtuals_test_suite.md).
