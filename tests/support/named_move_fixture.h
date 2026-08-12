@@ -29,6 +29,8 @@ struct NamedVirtualMoveCase {
   float nodalOffsetZmm;
   bool rollPresent;
   bool boomCompensationEnabled;
+  float boomCompensationStepsPerDegree;
+  float expectedBoomMotorSteps;
   uint32_t repeatedRoundTrips;
   NamedMovePhysicalPose startingPhysical;
   float targetVtrackMm;

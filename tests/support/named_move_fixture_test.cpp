@@ -26,6 +26,8 @@ TEST(NamedMoveFixture, ParsesVersionedFixtureCases) {
   EXPECT_NEAR(cases[0].boomLengthMm, 857.7f, 0.0001f);
   EXPECT_NEAR(cases[1].nodalOffsetZmm, 0.3179f, 0.0001f);
   EXPECT_FALSE(cases[1].rollPresent);
+  EXPECT_NEAR(cases[1].boomCompensationStepsPerDegree, 8600.0f, 0.0001f);
+  EXPECT_NEAR(cases[1].expectedBoomMotorSteps, 94600.0f, 0.0001f);
 }
 
 TEST(NamedMoveFixture, RejectsMalformedHeadersAndRecordsTransactionally) {
@@ -44,7 +46,7 @@ TEST(NamedMoveFixture, RejectsMalformedHeadersAndRecordsTransactionally) {
   std::string valid_record;
   ASSERT_TRUE(std::getline(fixture, header));
   ASSERT_TRUE(std::getline(fixture, valid_record));
-  const std::size_t roll_present = valid_record.find(",1,0,8,");
+  const std::size_t roll_present = valid_record.find(",1,0,0,0,8,");
   ASSERT_NE(roll_present, std::string::npos);
   valid_record.replace(roll_present + 1, 1, "not-a-bool");
   std::istringstream invalid_record(header + "\n" + valid_record + "\n");

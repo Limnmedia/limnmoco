@@ -4,6 +4,7 @@
 #include "named_move_fixture.h"
 #include "test_support.h"
 
+#include <BoomCompensation.h>
 #include <gtest/gtest.h>
 
 #include <fstream>
@@ -62,15 +63,36 @@ void expect_virtual_near(const limnmoco::VirtualPose &actual,
   EXPECT_NEAR(actual.vrollDeg, expected.vrollDeg, move.rotationToleranceDeg);
 }
 
+void expect_boom_compensation_near(
+    const limnmoco::test::NamedVirtualMoveCase &move,
+    const limnmoco::test::NamedMovePhysicalPose &physical) {
+  if (!move.boomCompensationEnabled) {
+    return;
+  }
+  limnmoco::BoomCompensationTable table{};
+  for (int index = 0; index < limnmoco::kBoomCompensationEntryCount; ++index) {
+    const float angle = limnmoco::kBoomCompensationMinDegrees + index;
+    table.motorSteps[index] = angle * move.boomCompensationStepsPerDegree;
+  }
+  ASSERT_TRUE(limnmoco::boom_compensation_table_is_valid(table));
+  float motor_steps = 0.0f;
+  float recovered_boom = 0.0f;
+  ASSERT_TRUE(limnmoco::boom_angle_to_steps(table, physical.boomDeg, &motor_steps));
+  EXPECT_NEAR(motor_steps, move.expectedBoomMotorSteps,
+              move.rotationToleranceDeg * move.boomCompensationStepsPerDegree);
+  ASSERT_TRUE(limnmoco::boom_steps_to_angle(table, motor_steps, &recovered_boom));
+  EXPECT_NEAR(recovered_boom, physical.boomDeg, move.rotationToleranceDeg);
+}
+
 } // namespace
 
-TEST(NamedVirtualMoves, PreserveReferenceAndSingleAxisRoundTrips) {
+TEST(NamedVirtualMoves, PreserveNamedMoveRoundTrips) {
   std::ifstream file(limnmoco::test::fixture_path("basic_virtual_moves.csv"));
   ASSERT_TRUE(file.is_open());
   std::vector<limnmoco::test::NamedVirtualMoveCase> cases;
   std::string error;
   ASSERT_TRUE(limnmoco::test::read_named_move_fixture(file, &cases, &error)) << error;
-  ASSERT_EQ(cases.size(), 7u);
+  ASSERT_EQ(cases.size(), 11u);
 
   for (const limnmoco::test::NamedVirtualMoveCase &move : cases) {
     SCOPED_TRACE(move.name);
@@ -86,6 +108,11 @@ TEST(NamedVirtualMoves, PreserveReferenceAndSingleAxisRoundTrips) {
     limnmoco::test::NamedMovePhysicalPose physical = solve_target(target, geometry);
     expect_physical_near(physical, move.expectedPhysical, move,
                          "virtual-target-to-physical");
+    expect_boom_compensation_near(move, physical);
+    if (!move.rollPresent) {
+      EXPECT_FLOAT_EQ(target.vrollDeg, 0.0f);
+      EXPECT_FLOAT_EQ(physical.rollDeg, 0.0f);
+    }
 
     for (uint32_t iteration = 0; iteration < move.repeatedRoundTrips; ++iteration) {
       const limnmoco::VirtualPose reconstructed =

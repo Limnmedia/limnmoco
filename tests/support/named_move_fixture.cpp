@@ -12,13 +12,14 @@ namespace {
 constexpr char kHeader[] =
     "name,category,boom_length_mm,extension_length_mm,nodal_offset_x_mm,"
     "nodal_offset_y_mm,nodal_offset_z_mm,roll_present,bct_enabled,"
-    "round_trip_count,start_boom_deg,start_swing_deg,start_track_mm,"
-    "start_pan_deg,start_tilt_deg,start_roll_deg,target_vtrack_mm,"
-    "target_vew_mm,target_vns_mm,target_vpan_deg,target_vtilt_deg,"
-    "target_vroll_deg,expected_boom_deg,expected_swing_deg,"
-    "expected_track_mm,expected_pan_deg,expected_tilt_deg,"
-    "expected_roll_deg,translation_tolerance_mm,rotation_tolerance_deg";
-constexpr std::size_t kFieldCount = 30;
+    "bct_steps_per_degree,expected_boom_motor_steps,round_trip_count,"
+    "start_boom_deg,start_swing_deg,start_track_mm,start_pan_deg,"
+    "start_tilt_deg,start_roll_deg,target_vtrack_mm,target_vew_mm,"
+    "target_vns_mm,target_vpan_deg,target_vtilt_deg,target_vroll_deg,"
+    "expected_boom_deg,expected_swing_deg,expected_track_mm,"
+    "expected_pan_deg,expected_tilt_deg,expected_roll_deg,"
+    "translation_tolerance_mm,rotation_tolerance_deg";
+constexpr std::size_t kFieldCount = 32;
 
 std::vector<std::string> split_csv(const std::string &line) {
   std::vector<std::string> fields;
@@ -128,19 +129,26 @@ bool read_named_move_fixture(std::istream &input,
         parse_float(fields[6], &move.nodalOffsetZmm) &&
         parse_bool(fields[7], &move.rollPresent) &&
         parse_bool(fields[8], &move.boomCompensationEnabled) &&
-        parse_round_trip_count(fields[9], &move.repeatedRoundTrips) &&
-        parse_pose(fields, 10, &move.startingPhysical) &&
-        parse_float(fields[16], &move.targetVtrackMm) &&
-        parse_float(fields[17], &move.targetVewMm) &&
-        parse_float(fields[18], &move.targetVnsMm) &&
-        parse_float(fields[19], &move.targetVpanDeg) &&
-        parse_float(fields[20], &move.targetVtiltDeg) &&
-        parse_float(fields[21], &move.targetVrollDeg) &&
-        parse_pose(fields, 22, &move.expectedPhysical) &&
-        parse_float(fields[28], &move.translationToleranceMm) &&
-        parse_float(fields[29], &move.rotationToleranceDeg);
+        parse_float(fields[9], &move.boomCompensationStepsPerDegree) &&
+        parse_float(fields[10], &move.expectedBoomMotorSteps) &&
+        parse_round_trip_count(fields[11], &move.repeatedRoundTrips) &&
+        parse_pose(fields, 12, &move.startingPhysical) &&
+        parse_float(fields[18], &move.targetVtrackMm) &&
+        parse_float(fields[19], &move.targetVewMm) &&
+        parse_float(fields[20], &move.targetVnsMm) &&
+        parse_float(fields[21], &move.targetVpanDeg) &&
+        parse_float(fields[22], &move.targetVtiltDeg) &&
+        parse_float(fields[23], &move.targetVrollDeg) &&
+        parse_pose(fields, 24, &move.expectedPhysical) &&
+        parse_float(fields[30], &move.translationToleranceMm) &&
+        parse_float(fields[31], &move.rotationToleranceDeg);
     if (!valid || move.boomLengthMm <= 0.0f || move.extensionLengthMm < 0.0f ||
-        move.translationToleranceMm <= 0.0f || move.rotationToleranceDeg <= 0.0f) {
+        move.translationToleranceMm <= 0.0f || move.rotationToleranceDeg <= 0.0f ||
+        (move.boomCompensationEnabled &&
+         move.boomCompensationStepsPerDegree <= 0.0f) ||
+        (!move.boomCompensationEnabled &&
+         (move.boomCompensationStepsPerDegree != 0.0f ||
+          move.expectedBoomMotorSteps != 0.0f))) {
       *error = "line " + std::to_string(line_number) +
           " contains invalid named-move values";
       cases->clear();

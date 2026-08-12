@@ -187,7 +187,7 @@ acceptance records.
 - [x] Add reference, single-axis, and repeated IK/FK round-trip basic move
   cases.
   - Commit: `test: cover basic virtual IK FK moves`
-- [ ] Add combined, no-roll, nodal-offset, and BCT basic-move cases.
+- [x] Add combined, no-roll, nodal-offset, and BCT basic-move cases.
   - Commit: `test: expand virtual move regression coverage`
 - [ ] Add a host-buildable M7 protocol/state seam and raw-packet fixtures.
   - Commit: `test(m7): add virtual protocol state coverage`
