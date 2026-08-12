@@ -53,7 +53,6 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
   target_compile_features(limnmoco_ik PUBLIC cxx_std_17)
 
   add_executable(limnmoco_ik_test
-    tests/ik/main.cpp
     tests/ik/limnmoco_ik.cpp
     tests/ik/aim_test.cpp
     tests/ik/boom_compensation_test.cpp
