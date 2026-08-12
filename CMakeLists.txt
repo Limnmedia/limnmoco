@@ -36,6 +36,14 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
     LIMNMOCO_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
   )
 
+  add_library(limnmoco_named_move_fixture STATIC
+    tests/support/named_move_fixture.cpp
+  )
+  target_include_directories(limnmoco_named_move_fixture PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/support"
+  )
+  target_compile_features(limnmoco_named_move_fixture PUBLIC cxx_std_17)
+
   add_library(limnmoco_ik STATIC
     common/LimnmocoIK/src/AimAwareTarget.cpp
     common/LimnmocoIK/src/AimGeometry.cpp
@@ -83,9 +91,17 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
     GTest::gtest_main limnmoco_test_support
   )
 
+  add_executable(named_move_fixture_test
+    tests/support/named_move_fixture_test.cpp
+  )
+  target_link_libraries(named_move_fixture_test PRIVATE
+    limnmoco_named_move_fixture GTest::gtest_main limnmoco_test_support
+  )
+
   if(BUILD_TESTING)
     include(GoogleTest)
     gtest_discover_tests(googletest_smoke_test)
+    gtest_discover_tests(named_move_fixture_test)
     gtest_discover_tests(coordinated_trajectory_test)
     gtest_discover_tests(limnmoco_ik_test)
   endif()
@@ -93,6 +109,7 @@ if(LIMNMOCO_BUILD_HOST_TESTS)
   add_custom_target(host-tests
     COMMAND "${CMAKE_CTEST_COMMAND}" --output-on-failure
     DEPENDS limnmoco_ik_test coordinated_trajectory_test googletest_smoke_test
+            named_move_fixture_test
     USES_TERMINAL
     COMMENT "Running Limnmoco host tests"
   )

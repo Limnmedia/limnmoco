@@ -47,6 +47,7 @@ instrumentation; use the status labels to show what is automated today.
 | Camera-line jog | Fixed-orientation target generation, signed direction, aim compensation, and safe-cylinder target rejection | M7 packet handling, horizon execution, stop behavior, and hardware line accuracy are not host-tested yet |
 | Coordinated trajectories | Triangular/trapezoidal profiles, synchronized axes, velocity/acceleration limits, and pure handoff-profile math | M7 coordinated-motion handoff and reversal simulation are not implemented |
 | DMC fixed-point data | Aim-point signed encode/decode | Full raw-packet parsing, checksums, response fixtures, and virtual-command state transitions are not implemented |
+| Named-move fixtures | Strict CSV schema parsing, finite numeric values, boolean flags, and transactional rejection of malformed records | Named reference, single-axis, round-trip, BCT, and no-roll move cases are not implemented yet |
 | M7 firmware integration | M7 firmware compiles through the `firmware-m7` CMake target | No parser, controller, or motion-simulation test seam yet |
 | M4 firmware integration | M4 firmware compiles through the `firmware-m4` CMake target | No automated step-generation or shared-memory simulation yet |
 | Physical crane | Manual hardware procedures and prior trace review inform acceptance expectations | Laser/plumb measurements, calibration, line-jog continuity, stop-all behavior, and absent-roll operation need versioned acceptance records |

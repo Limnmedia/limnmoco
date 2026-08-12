@@ -181,7 +181,7 @@ acceptance records.
 - [x] Split the former aggregate IK source into subject-specific test files.
   - Commits: `test: split ik coverage by subject` and
     `test: colocate ik test implementations`
-- [ ] Add a reusable, table-driven named-basic-move fixture reader.
+- [x] Add a reusable, table-driven named-basic-move fixture reader.
   - Commit: `test: add virtual move fixture framework`
 - [ ] Add reference, single-axis, and repeated IK/FK round-trip basic move
   cases.
