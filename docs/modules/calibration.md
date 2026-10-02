@@ -3,7 +3,7 @@
  SPDX-License-Identifier: GPL-3.0-only
 -->
 
-# Axis mapping and calibration
+# Calibration
 
 [Architecture overview](README.md) · [Global TODO](TODO.md)
 
@@ -61,4 +61,4 @@ progress checklist.
 No additional decisions recorded yet. Add dated entries here as this boundary is
 reviewed; update the contracts above when a decision is accepted.
 
-Related boundaries: [kinematics](kinematics.md), [motion](motion.md), [virtual controller](virtual-controller.md).
+Related boundaries: [kinematics](kinematics.md), [motion](motion.md), [Virtual](virtual.md).

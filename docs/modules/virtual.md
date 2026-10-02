@@ -3,7 +3,7 @@
  SPDX-License-Identifier: GPL-3.0-only
 -->
 
-# Virtual motion controller
+# Virtual
 
 [Architecture overview](README.md) · [Global TODO](TODO.md)
 
@@ -68,4 +68,4 @@ progress checklist.
 No additional decisions recorded yet. Add dated entries here as this boundary is
 reviewed; update the contracts above when a decision is accepted.
 
-Related boundaries: [kinematics](kinematics.md), [axis mapping calibration](axis-mapping-calibration.md), [motion](motion.md), [application coordinator](application-coordinator.md).
+Related boundaries: [kinematics](kinematics.md), [Calibration](calibration.md), [motion](motion.md), [Control](control.md).

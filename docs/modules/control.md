@@ -3,7 +3,7 @@
  SPDX-License-Identifier: GPL-3.0-only
 -->
 
-# Application coordinator
+# Control
 
 [Architecture overview](README.md) · [Global TODO](TODO.md)
 
@@ -13,7 +13,7 @@ contracts below are design targets, not existing APIs.
 ## Responsibility and ownership
 
 Own construction/wiring, command routing, cross-controller supersession policy,
-and control-loop ordering. Receive command and input events, consult fault policy,
+and control-loop ordering. Receive command and input events, consult Errors module,
 invoke the appropriate controller, advance motion, and publish outputs/responses.
 
 Keep this a small explicit coordinator. It must not become a new location for
@@ -27,7 +27,7 @@ or general plugin system is unnecessary.
 
 ## Interface and state contracts
 
-- Construct concrete adapters and controller instances once. Receive already decoded domain requests; wire representation stays in the command adapter.
+- Construct concrete adapters and controller instances once. Receive already decoded domain requests; wire representation stays in the Transport.
 - Own an explicit supersession matrix for independent, coordinated, virtual, playback, configuration/reset, and fault commands. Policy grants a transition; motion enforces actual reservations.
 - Define tick ordering around link readiness: sample inputs/observations, apply policy and pending commands, prepare continuation/timeline work, execute one motion interval, assemble outputs, and publish. Characterize the current order before changing observable timing.
 - Route typed completion/fault/camera events directly to their owners. Keep callbacks bounded and avoid reentrant command execution. No universal mutable context or global event bus is required.
@@ -54,7 +54,9 @@ progress checklist.
 
 ## Discussion and decisions
 
-No additional decisions recorded yet. Add dated entries here as this boundary is
-reviewed; update the contracts above when a decision is accepted.
+M01 HI review: Control routes the query and schedules the startup
+announcement; it does not own their device data. Device is an agreed boundary
+for the immutable description. Runtime state ownership stays
+with the already identified domain modules.
 
-Related boundaries: [transport command adapter](transport-command-adapter.md), [motion](motion.md), [virtual controller](virtual-controller.md), [playback move store](playback-move-store.md), [fault stop policy](fault-stop-policy.md).
+Related boundaries: [Transport](transport.md), [motion](motion.md), [Virtual](virtual.md), [Playback](playback.md), [Errors](errors.md).

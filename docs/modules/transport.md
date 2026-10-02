@@ -3,7 +3,7 @@
  SPDX-License-Identifier: GPL-3.0-only
 -->
 
-# Transport and command adapter
+# Transport
 
 [Architecture overview](README.md) · [Global TODO](TODO.md)
 
@@ -18,10 +18,15 @@ module and sends encoded responses. Define queue-full behavior explicitly;
 reserve capacity or defer command acceptance when a required response cannot be
 retained. Diagnostic traffic must not block motion execution.
 
-The command adapter maps valid packets to domain requests and domain results to
+The Transport maps valid packets to domain requests and domain results to
 DMC ACKs, replies, and asynchronous notifications. It owns request IDs and the
 rule for exactly one immediate command outcome. Domain controllers must not
 construct packets or carry DMC error constants.
+
+For HI, translate the agreed [Device](device.md) description
+into DMC response fields. Keep capability-bit mappings and compatibility
+exceptions here, separate from the actual supported feature set. DMC
+owns their wire representation; Control routes the request.
 
 These can be two components in the same firmware adapter package. Keeping their
 interfaces separate allows protocol tests without Arduino and controller tests
@@ -33,7 +38,7 @@ Serial reads, `writeOutputMessage()`, `transmitMessages()`, and the command disp
 
 ## Interface and state contracts
 
-- Transport owns byte queues and per-loop RX/TX budgets. It does not advance control time. The command adapter owns request correlation and translates domain errors into DMC outcomes.
+- Transport owns byte queues and per-loop RX/TX budgets. It does not advance control time. The Transport owns request correlation and translates domain errors into DMC outcomes.
 - Reserve bounded capacity for the immediate reply before committing a command. Define a separate bounded policy for later faults/events; telemetry and diagnostics may be coalesced or dropped only under an explicit policy.
 - A validated request produces one immediate outcome: ACK, typed reply, or the characterized protocol-specific behavior. Asynchronous motion events are distinct from that outcome. A thin legacy adapter can temporarily serve unmigrated command families.
 
@@ -61,4 +66,4 @@ progress checklist.
 No additional decisions recorded yet. Add dated entries here as this boundary is
 reviewed; update the contracts above when a decision is accepted.
 
-Related boundaries: [packet protocol](packet-protocol.md), [application coordinator](application-coordinator.md), [fault stop policy](fault-stop-policy.md).
+Related boundaries: [DMC](DMC.md), [Control](control.md), [Errors](errors.md).

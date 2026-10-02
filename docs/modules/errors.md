@@ -3,7 +3,7 @@
  SPDX-License-Identifier: GPL-3.0-only
 -->
 
-# Fault and stop policy
+# Errors
 
 [Architecture overview](README.md) · [Global TODO](TODO.md)
 
@@ -14,11 +14,12 @@ contracts below are design targets, not existing APIs.
 
 Own fault latches, admissible commands while faulted, stop reason/severity,
 repeated-stop escalation, and reset/recovery policy. Consume input and execution
-events; return decisions to the application coordinator. Do not directly call
+events; return decisions to the Control module. Do not directly call
 every controller through a shared global context.
 
 Keep local validation near the operation: kinematics checks reachability, virtual
-control checks aim geometry, and motion checks physical constraints. Fault policy
+control checks aim geometry, and motion checks physical constraints. The Errors
+module
 determines the system response. The motion subsystem implements braking; playback
 implements frame-aligned stopping; camera control implements its stop sequence.
 
@@ -63,4 +64,4 @@ progress checklist.
 No additional decisions recorded yet. Add dated entries here as this boundary is
 reviewed; update the contracts above when a decision is accepted.
 
-Related boundaries: [motion](motion.md), [camera auxiliary io](camera-auxiliary-io.md), [application coordinator](application-coordinator.md).
+Related boundaries: [motion](motion.md), [Camera](camera.md), [Control](control.md).

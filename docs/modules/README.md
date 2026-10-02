@@ -15,6 +15,10 @@ This overview was moved from `docs/modular-arch.md`. Each boundary document owns
 its detailed responsibilities, contracts, validation, and discussion. The
 [global TODO](TODO.md) is the single source for planned commit order and status.
 
+[M01 working records](M01/README.md) contain the command baseline guide and
+[DMC command inventory](M01/dmc-commands/README.md), including current code paths and
+proposed module participation.
+
 ## Direction
 
 Use small modules with explicit state ownership, value-based inputs and outputs,
@@ -27,8 +31,8 @@ different planning and handoff rules. A common interface should unify ownership
 and execution without forcing both algorithms into one implementation.
 
 In addition to packets, mathematics, kinematics, and motion, establish boundaries
-for virtual control, playback and uploaded data, calibration, fault policy,
-camera/GPIO sequencing, transport, and the inter-core link. These are logical
+for virtual control, playback and uploaded data, calibration, Errors module,
+camera/GPIO sequencing, transport, and the Intercore module. These are logical
 boundaries; each does not require a separate library, task, or abstract class.
 
 ## Current architecture and coupling
@@ -71,21 +75,28 @@ controller boundary to cover the rest of the firmware.
 
 | Boundary | Scope |
 | --- | --- |
-| [Packet protocol](packet-protocol.md) | DMC framing, streaming parser, typed payloads, and response codecs. |
-| [Transport and command adapter](transport-command-adapter.md) | Byte delivery, bounded output queues, and wire-to-domain command mapping. |
+| [DMC](DMC.md) | DMC framing, streaming parser, typed payloads, and response codecs. |
+| [Transport](transport.md) | Byte delivery, bounded output queues, and wire-to-domain command mapping. |
 | [Mathematics](mathematics.md) | Pure vector, matrix, rotation, and general numerical operations. |
 | [Kinematics and coordinate geometry](kinematics.md) | Pure FK/IK, coordinate frames, nodal geometry, aim, and line direction. |
-| [Axis mapping and calibration](axis-mapping-calibration.md) | Physical joints to motor steps, BCT, SPU, and optional-axis mapping. |
+| [Calibration](calibration.md) | Physical joints to motor steps, BCT, SPU, and optional-axis mapping. |
 | [Motion subsystem](motion.md) | One axis-state owner with independent and coordinated execution. |
-| [Virtual motion controller](virtual-controller.md) | Virtual configuration, origin, aim, target transactions, and line-jog lifecycle. |
-| [Uploaded move store and playback controller](playback-move-store.md) | Bounded uploads, committed tracks, frame time, and shooting/playback lifecycle. |
-| [Fault and stop policy](fault-stop-policy.md) | Fault latches, allowed commands, stop escalation, and recovery decisions. |
-| [Camera and auxiliary I/O](camera-auxiliary-io.md) | Shutter/meter, triggers, blips, input debounce, and timing-domain ownership. |
-| [Inter-core link, pulse engine, and board adapters](intercore-hardware.md) | Shared ABI, M7 publication, M4 pulse execution, and board-specific adapters. |
-| [Application coordinator](application-coordinator.md) | Composition, command policy, control-loop ordering, and event routing. |
+| [Virtual](virtual.md) | Virtual configuration, origin, aim, target transactions, and line-jog lifecycle. |
+| [Playback](playback.md) | Bounded uploads, committed tracks, frame time, and shooting/playback lifecycle. |
+| [Errors](errors.md) | Fault latches, allowed commands, stop escalation, and recovery decisions. |
+| [Camera](camera.md) | Shutter/meter, triggers, blips, input debounce, and timing-domain ownership. |
+| [Intercore](intercore.md) | Shared ABI, M7 publication, M4 pulse execution, and board-specific adapters. |
+| [Control](control.md) | Composition, command policy, control-loop ordering, and event routing. |
+
+The [Device](device.md) boundary owns the immutable identity, firmware metadata,
+and assembled device-capacity description used by HI. It is now an agreed
+thirteenth boundary alongside the 12 original boundaries.
+Control routes configuration queries; DMC encodes
+the response. Neither owns the underlying domain configuration by virtue of
+handling a message about it.
 
 The grouped boundaries retain distinct internal components: transport versus
-dispatch, storage versus playback, and the inter-core link versus pulse/board
+dispatch, storage versus playback, and the Intercore module versus pulse/board
 adapters. Motion keeps independent and coordinated planners behind one ownership
 interface. Split a document further when its discussion warrants it, without
 creating a new runtime module merely to match the documentation layout.
@@ -98,23 +109,23 @@ include their implementations.
 
 ```mermaid
 flowchart TD
-    Wire[Transport and command adapter] --> Protocol[Packet protocol]
-    Wire --> App[Application coordinator]
-    App --> Fault[Fault policy]
-    App --> Virtual[Virtual controller]
-    App --> Playback[Playback controller]
-    App --> IO[Camera and auxiliary I/O]
+    Wire[Transport] --> Protocol[DMC]
+    Wire --> App[Control]
+    App --> Fault[Errors]
+    App --> Virtual[Virtual]
+    App --> Playback[Playback]
+    App --> IO[Camera]
     App --> Motion[Motion subsystem]
     Virtual --> Geometry[Kinematics]
-    Virtual --> Calibration[Axis mapping and calibration]
+    Virtual --> Calibration[Calibration]
     Virtual --> Motion
-    Playback --> Store[Uploaded move store]
+    Playback --> Store[Playback]
     Playback --> Motion
     Geometry --> Math[Mathematics]
     Motion --> Math
     App --> Ports[Input and output ports]
-    Board[Board and inter-core adapters] -. implements .-> Ports
-    M4[M4 pulse engine and timer adapter] --> ABI[Shared inter-core ABI]
+    Board[Intercore adapters] -. implements .-> Ports
+    M4[M4 pulse engine and timer adapter] --> ABI[Intercore ABI]
     Board --> ABI
 ```
 
@@ -137,7 +148,7 @@ Key contracts:
   corrections separately. Release or transfer the entire affected group.
 - **Typed boundaries.** Distinguish axis IDs, virtual axes, degrees, millimetres,
   raw steps, frame indices, signed jog rates, and normalized trajectory progress.
-  Wire-specific numbering and scaling terminate at the command adapter.
+  Wire-specific numbering and scaling terminate at the Transport.
 - **Bounded work and memory.** No allocation or blocking I/O in the control tick
   or ISR. Bound transport work, event capacity, upload storage, and trace overhead.
   Measure memory and execution time as well as functional parity.

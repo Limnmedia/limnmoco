@@ -34,7 +34,7 @@ change from module extraction.
 
 - Inputs are a geometry snapshot and physical joint coordinates or a pose in a named frame. Results distinguish a reachable solution from clamping, invalid geometry, and non-finite inputs.
 - Public Kuper coordinates, solver coordinates, and camera-local directions are explicit at conversion points. Origin offsets are supplied values; the solver does not capture or mutate an origin.
-- No step counts, axis IDs, BCT tables, wire scales, or motion state enter the solver. Aim geometry returns orientation and geometric validity; the virtual controller owns persistent aim behavior.
+- No step counts, axis IDs, BCT tables, wire scales, or motion state enter the solver. Aim geometry returns orientation and geometric validity; the Virtual module owns persistent aim behavior.
 
 ## Validation required for extraction
 
@@ -60,4 +60,4 @@ progress checklist.
 No additional decisions recorded yet. Add dated entries here as this boundary is
 reviewed; update the contracts above when a decision is accepted.
 
-Related boundaries: [mathematics](mathematics.md), [axis mapping calibration](axis-mapping-calibration.md), [virtual controller](virtual-controller.md).
+Related boundaries: [mathematics](mathematics.md), [Calibration](calibration.md), [Virtual](virtual.md).

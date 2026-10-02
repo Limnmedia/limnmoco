@@ -3,7 +3,7 @@
  SPDX-License-Identifier: GPL-3.0-only
 -->
 
-# Inter-core link, pulse engine, and board adapters
+# Intercore
 
 [Architecture overview](README.md) · [Global TODO](TODO.md)
 
@@ -12,7 +12,7 @@ contracts below are design targets, not existing APIs.
 
 ## Responsibility and ownership
 
-The inter-core link owns a single shared ABI declaration, fixed-point speed
+The Intercore module owns a single shared ABI declaration, fixed-point speed
 conversion, publication/consumption, and emitted-step snapshots. M7 sends a bounded
 output frame; M4 consumes it. Only this layer knows shared addresses, RPC bootstrap,
 cache/memory ordering, and shared-memory layout.
@@ -72,4 +72,4 @@ progress checklist.
 No additional decisions recorded yet. Add dated entries here as this boundary is
 reviewed; update the contracts above when a decision is accepted.
 
-Related boundaries: [motion](motion.md), [camera auxiliary io](camera-auxiliary-io.md), [application coordinator](application-coordinator.md).
+Related boundaries: [motion](motion.md), [Camera](camera.md), [Control](control.md).

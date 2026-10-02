@@ -78,7 +78,17 @@ Record available build, memory, and timing baselines; distinguish hardware trace
 from host fixtures and mark unavailable measurements explicitly. Add narrow
 legacy test adapters where needed rather than rewriting behavior to make it fit.
 Complete when baseline checks are reproducible and disputed behavior is listed.
-Boundaries: [application](application-coordinator.md), [faults](fault-stop-policy.md).
+Boundaries: [application](control.md), [faults](errors.md).
+
+Working records: [M01 baseline guide](M01/README.md) and
+[DMC command inventory](M01/dmc-commands/README.md). The initial source review covers
+all 37 defined message codes and maps current paths to proposed module owners.
+Runtime fixtures, transition traces, and performance measurements remain pending;
+the inventory alone does not complete M01.
+
+HI review identified a missing device-description owner. [Device](device.md) is
+now an agreed boundary and will be extracted before the HI path migrates in M07.
+Control and DMC must not absorb domain configuration state as a shortcut.
 
 ### M02
 
@@ -103,9 +113,9 @@ no motor, protocol, or Arduino dependency. Do not add the horizontal-radius mode
 
 - [ ] `refactor(calibration): extract joint and motor-step mapping`
 
-Depends on M03. Extract [mapping/calibration](axis-mapping-calibration.md), BCT,
+Depends on M03. Extract [mapping/calibration](calibration.md), BCT,
 SPU, and optional-roll conversion behind immutable inputs. Wrap existing M7
-configuration until the virtual controller owns it. Complete when compensated
+configuration until the Virtual module owns it. Complete when compensated
 targets match fixtures, failed conversions leave output unchanged, and raw BCT
 steps cannot accidentally receive SPU scaling twice.
 
@@ -113,7 +123,7 @@ steps cannot accidentally receive SPU scaling twice.
 
 - [ ] `refactor(protocol): add bounded streaming frame codec`
 
-Depends on M01. Extend [protocol](packet-protocol.md) with an instance-based
+Depends on M01. Extend [protocol](DMC.md) with an instance-based
 incremental parser, explicit buffer/view lifetimes, and bounded encode/decode.
 Keep the existing complete-frame fixtures as wire references. Complete when
 fragmentation, corruption, resynchronization, maximum lengths, and independent
@@ -129,13 +139,13 @@ Move wire scales and aim fixed-point conversion out of the geometry package.
 Complete when each family has exact wire fixtures, malformed-shape rejection,
 signed/range checks, and explicit response behavior. Split this item as needed;
 the current virtual packet prototypes do not constitute complete coverage.
-Boundaries: [protocol](packet-protocol.md), [command adapter](transport-command-adapter.md).
+Boundaries: [protocol](DMC.md), [Transport](transport.md).
 
 ### M07
 
 - [ ] `refactor(m7): separate transport and command dispatch`
 
-Depends on M06. Introduce [transport/command adapters](transport-command-adapter.md),
+Depends on M06. Introduce [transport/Transports](transport.md),
 bounded queue policy, and typed request/result mapping. Route each command family
 to narrow legacy wrappers until its controller migrates. Complete when wire
 parity, exactly one immediate outcome, and congestion behavior pass tests while
@@ -187,11 +197,11 @@ Boundary: [motion](motion.md).
 
 - [ ] `refactor(virtual): extract configuration and position reporting`
 
-Depends on M04 and M11. Introduce the [virtual controller](virtual-controller.md)
+Depends on M04 and M11. Introduce the [Virtual](virtual.md)
 with owned geometry/calibration/mapping, captured origin, and explicit snapshot
 selection. Complete when configure/get-position, invalid reconfigure rollback,
 absent roll, stale revisions, and coordinate reporting are tested through the
-command adapter. Existing move/aim paths use temporary controller-owned adapters.
+Transport. Existing move/aim paths use temporary controller-owned adapters.
 
 ### M13
 
@@ -201,7 +211,7 @@ Depends on M12. Route normal virtual targets through geometry, calibration, and
 motion preparation/commit. Bind logical axes to motion group identities. Complete
 when invalid targets cannot partially change logical state or motion, physical
 limits are enforced, and stop/supersession affects every reserved participant.
-Boundaries: [virtual](virtual-controller.md), [motion](motion.md).
+Boundaries: [virtual](virtual.md), [motion](motion.md).
 
 ### M14
 
@@ -213,13 +223,13 @@ when multi-horizon simulation covers aim offsets, no-roll behavior, rejected
 handoffs, cancellation, and no restart after supersession. Resolve and document
 the next-horizon failure policy before adding any behavior-changing fix; record
 its existing-DMC notification mapping separately.
-Boundary: [virtual](virtual-controller.md).
+Boundary: [virtual](virtual.md).
 
 ### M15
 
 - [ ] `refactor(playback): extract bounded uploaded move storage`
 
-Depends on M07 and M08. Give [move storage](playback-move-store.md) exclusive
+Depends on M07 and M08. Give [move storage](playback.md) exclusive
 ownership of upload bounds, records, trigger data, and dataset validity/generation.
 Adapt legacy playback to its read-only view. Complete when interrupted/replaced
 uploads and record bounds are tested and incomplete datasets cannot execute.
@@ -229,7 +239,7 @@ Confirm actual memory usage; do not allocate a second full dataset implicitly.
 
 - [ ] `refactor(io): extract camera trigger and input state`
 
-Depends on M07. Extract [camera/GPIO](camera-auxiliary-io.md) countdowns, masks,
+Depends on M07. Extract [camera/GPIO](camera.md) countdowns, masks,
 blips, and debounce into portable state components with board output adapters.
 Expose direct and timeline intents with explicit ownership; retain M4 phase
 timing. Complete when pulse/debounce/overlap tests and existing camera sequences
@@ -240,7 +250,7 @@ pass. Leave final cross-controller stop policy for M19/M20.
 - [ ] `refactor(playback): extract physical track execution and frame clock`
 
 Depends on M11, M15, and M16. Move interpolation, frame positioning, live run,
-jog-all, and loop/ping-pong into [playback](playback-move-store.md). Replace its
+jog-all, and loop/ping-pong into [playback](playback.md). Replace its
 internal legacy writer with bounded motion submissions; preserve independent
 live-control reservations. Complete when frame boundaries, loops, overrides,
 and physical samples match fixtures without passing tracks through virtual IK.
@@ -253,14 +263,14 @@ Depends on M17. Move Go Motion variants, preroll/wait/shoot/postroll, synchroniz
 trigger intents, and frame-aligned stops into playback-owned timeline logic.
 Complete when exposure windows, interrupted shots, camera sequences, and stop
 alignment are tested using explicit time. Record hardware camera acceptance where
-physical timing is affected. Boundaries: [playback](playback-move-store.md),
-[camera/GPIO](camera-auxiliary-io.md).
+physical timing is affected. Boundaries: [playback](playback.md),
+[camera/GPIO](camera.md).
 
 ### M19
 
 - [ ] `refactor(control): centralize fault and recovery policy`
 
-Depends on M14 and M18. Extract [fault policy](fault-stop-policy.md), stop reasons,
+Depends on M14 and M18. Extract [Errors module](errors.md), stop reasons,
 repeated-stop escalation, command gating, and recovery. Route decisions to motion,
 virtual, playback, and I/O owners through the application. Complete when the
 faulted-command matrix, cancellation of future work, and recovery timing match
@@ -271,8 +281,8 @@ require explicit behavior-fix commits and physical acceptance criteria.
 
 - [ ] `refactor(app): centralize supersession and event routing`
 
-Depends on M19. Complete the [application coordinator](application-coordinator.md)
-and migrate command adapters to domain results/events. Remove duplicated mode
+Depends on M19. Complete the [Control](control.md)
+and migrate Transports to domain results/events. Remove duplicated mode
 policy from handlers. Complete when cross-mode sequence tests cover direct,
 virtual, playback, reconfiguration/reset, stop, and stale events, and every command
 has one defined outcome without bypassing motion ownership.
@@ -283,7 +293,7 @@ has one defined outcome without bypassing motion ownership.
 
 Depends on M20. Consolidate the current shared layout and move shared-address,
 fixed-point conversion, publication, and snapshot access into the
-[inter-core adapter](intercore-hardware.md). Add both-core layout assertions and
+[Intercore](intercore.md). Add both-core layout assertions and
 document current field ownership/synchronization. Complete when firmware builds
 and publication/conversion tests pass without changing the ABI. Document any
 unresolved atomicity or ordering issue; layout assertions alone do not resolve it.
@@ -296,7 +306,7 @@ Depends on M21. Separate portable pulse/phase transitions from timer interrupts,
 GPIO, and board configuration. Complete when pulse arithmetic, direction changes,
 pulse completion, and shutter wrap tests pass and hardware confirms actual timing.
 Keep M7/M4 handshake changes and any new stale-output safeguard in distinct,
-explicitly designed follow-up commits. Boundary: [inter-core/hardware](intercore-hardware.md).
+explicitly designed follow-up commits. Boundary: [Intercore](intercore.md).
 
 ### M23
 
@@ -307,7 +317,7 @@ and the omnibus `dfx.h` dependencies as their last consumers migrate. Keep sketc
 entrypoints focused on setup/loop wiring. Complete when every mutable state has
 one documented owner and portable public headers have no Arduino/global-context
 dependency. Preserve compatibility headers only where an identified consumer
-still needs them. Boundaries: [overview](README.md), [application](application-coordinator.md).
+still needs them. Boundaries: [overview](README.md), [application](control.md).
 
 ### M24
 
@@ -319,7 +329,7 @@ Account for Arduino library discovery and sketch source placement. Complete when
 clean-checkout checks catch forbidden dependencies and missing source/library
 wiring. CI can be introduced earlier incrementally; this milestone makes the
 final boundary rules enforceable. Boundaries: [overview](README.md),
-[transport](transport-command-adapter.md).
+[transport](transport.md).
 
 ### M25
 
@@ -327,10 +337,10 @@ final boundary rules enforceable. Boundaries: [overview](README.md),
 
 Depends on M24. Record firmware hashes, board configuration, calibration, host
 results, timing/memory measurements, and hardware acceptance for virtual motion,
-playback, stops, camera timing, and the inter-core link. Complete only when the
+playback, stops, camera timing, and the Intercore module. Complete only when the
 required hardware evidence exists; otherwise leave it pending and state the gap.
 Refresh all module statuses and document remaining intentional differences.
-Boundary: [inter-core/hardware](intercore-hardware.md), with evidence linked from
+Boundary: [Intercore](intercore.md), with evidence linked from
 the affected controller documents.
 
 ## Follow-up changes to schedule after a decision
@@ -349,7 +359,7 @@ acceptance criteria once the relevant module discussion resolves them.
 
 ## Completion record
 
-- M00: completed in this documentation commit,
+- M00: completed in commit `394a6db`,
   `docs: organize modular architecture and implementation roadmap`.
   Verified all 15 Markdown files and 153 local links/anchors, preserved the
   original architecture content and copyright headers, and checked whitespace.

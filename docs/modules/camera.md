@@ -3,7 +3,7 @@
  SPDX-License-Identifier: GPL-3.0-only
 -->
 
-# Camera and auxiliary I/O
+# Camera
 
 [Architecture overview](README.md) · [Global TODO](TODO.md)
 
@@ -58,4 +58,4 @@ progress checklist.
 No additional decisions recorded yet. Add dated entries here as this boundary is
 reviewed; update the contracts above when a decision is accepted.
 
-Related boundaries: [playback move store](playback-move-store.md), [fault stop policy](fault-stop-policy.md), [intercore hardware](intercore-hardware.md).
+Related boundaries: [Playback](playback.md), [Errors](errors.md), [Intercore](intercore.md).

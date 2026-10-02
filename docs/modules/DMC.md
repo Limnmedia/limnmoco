@@ -3,7 +3,7 @@
  SPDX-License-Identifier: GPL-3.0-only
 -->
 
-# Packet protocol
+# DMC
 
 [Architecture overview](README.md) · [Global TODO](TODO.md)
 
@@ -19,6 +19,12 @@ Malformed bytes must fail before application state changes.
 Keep two internal layers: a frame codec and command-specific payload codecs.
 Accept byte buffers and return packets or structured errors. Do not read Serial,
 own motors, decide whether a move is allowed, or schedule motion here.
+
+For HI, own the protocol version and wire layout, not the product's name,
+firmware version, capacities, or configuration. Encode values supplied by their
+owner. The agreed [Device](device.md) boundary supplies the immutable
+device description; Transport maps it to DMC fields and
+applies any explicit compatibility-advertisement policy.
 
 Move `AimPointProtocol` and fixed-point wire scales out of the kinematics
 library. Keep protocol representation separate from domain values: the command
@@ -62,4 +68,4 @@ progress checklist.
 No additional decisions recorded yet. Add dated entries here as this boundary is
 reviewed; update the contracts above when a decision is accepted.
 
-Related boundaries: [transport command adapter](transport-command-adapter.md), [kinematics](kinematics.md).
+Related boundaries: [Transport](transport.md), [kinematics](kinematics.md).

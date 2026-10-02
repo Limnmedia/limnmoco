@@ -83,4 +83,4 @@ progress checklist.
 No additional decisions recorded yet. Add dated entries here as this boundary is
 reviewed; update the contracts above when a decision is accepted.
 
-Related boundaries: [virtual controller](virtual-controller.md), [playback move store](playback-move-store.md), [fault stop policy](fault-stop-policy.md), [intercore hardware](intercore-hardware.md).
+Related boundaries: [Virtual](virtual.md), [Playback](playback.md), [Errors](errors.md), [Intercore](intercore.md).

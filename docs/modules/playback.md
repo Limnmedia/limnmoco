@@ -3,7 +3,7 @@
  SPDX-License-Identifier: GPL-3.0-only
 -->
 
-# Uploaded move store and playback controller
+# Playback
 
 [Architecture overview](README.md) · [Global TODO](TODO.md)
 
@@ -16,7 +16,7 @@ The move store owns upload state, frame/axis bounds, track data, trigger data,
 and the committed dataset's validity. It presents read-only tracks to playback.
 An incomplete upload must not become an executable move.
 
-The playback controller owns frame time, preroll/wait/shoot/postroll, live run,
+The Playback owns frame time, preroll/wait/shoot/postroll, live run,
 loop/ping-pong, jog-all, overrides, and synchronization of motion with exposure
 and trigger events. Move `evaluateMove()` and the Go Motion calculations here as
 pure helpers where possible. A frame clock is not a physical motor even if it
@@ -69,4 +69,4 @@ progress checklist.
 No additional decisions recorded yet. Add dated entries here as this boundary is
 reviewed; update the contracts above when a decision is accepted.
 
-Related boundaries: [motion](motion.md), [camera auxiliary io](camera-auxiliary-io.md), [fault stop policy](fault-stop-policy.md), [application coordinator](application-coordinator.md).
+Related boundaries: [motion](motion.md), [Camera](camera.md), [Errors](errors.md), [Control](control.md).
