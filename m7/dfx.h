@@ -15,8 +15,8 @@
 
 #include <stdint.h>
 
-#define DMC_VERSION_MAJOR 1
-#define DMC_VERSION_MINOR 2
+#define DMC_VERSION_MAJOR 0
+#define DMC_VERSION_MINOR 1
 #define DMC_VERSION_REV 2
 
 #define MOTOR_COUNT 8
@@ -36,6 +36,12 @@
 #define MOVE_STATE_SHOOT_WAIT 11
 #define MOVE_STATE_SHOOT 12
 #define MOVE_STATE_ALL_JOG 100
+
+#define VIRT_SCALE 100000.0f
+#define LEN_SCALE  1000.0f
+// Dragonframe sends MSG_VIRT_CONFIG steps-per-unit fields in thousandths.
+// This fixed-point scale is not documented in DMC-Protocol-2024-02-13.
+#define VIRT_SPU_SCALE 1000.0f
 
 struct MotorMove
 {
@@ -57,6 +63,7 @@ struct Motor
   int32_t limitLow;
   uint8_t limitHighEnabled;
   int32_t limitHigh;
+  float   SPU;
 
   uint8_t stopping;
 
