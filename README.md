@@ -2,6 +2,9 @@
 
 Firmware, virtual-crane inverse kinematics, and host-side tests for Limnmoco.
 
+The [modular firmware architecture plan](docs/modules/README.md) links the module
+discussions and [planned commit sequence](docs/modules/TODO.md).
+
 ## configuration
 
 ### m4 co-processor
