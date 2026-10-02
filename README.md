@@ -1,15 +1,16 @@
 # limnmoco
-Firmware for the Limnmoco
+
+Firmware, virtual-crane inverse kinematics, and host-side tests for Limnmoco.
 
 ## configuration
 
-### m4
+### m4 co-processor
 
 - m4/config.h
     - pin assignments for motor step/direction
     - pin assignments for remote camera control
 
-### m7
+### m7 main processor
 
 - m7/config.h
     - pin assignments for GIO Output and Input
@@ -19,37 +20,42 @@ Firmware for the Limnmoco
 
 ### arduino-ide
 
-- install the the board support package for the mbed_giga (arduino:mbed_giga)
-- Ensure that the memory is Split 1.5MB Main Core 0.5MB m4 co-processor
-- When building/uploading m7 make sure the m7 Main Core is the target
-- When building/uploading m4 make sure that the m4 co-processor is the target
+- Install the board support package for `arduino:mbed_giga`.
+- Select the `75_25` flash split: 1.5 MB for the m7 main processor and 0.5 MB
+  for the m4 co-processor.
+- When building or uploading m7, select the m7 main processor target.
+- When building or uploading m4, select the m4 co-processor target.
 
-### arduino-cli
+### CMake tests and firmware checks
 
-**install giga r1 support:**
+CMake 3.16+ and a C++17 compiler build and run the host-side suites. CMake also
+provides opt-in firmware targets which delegate to `arduino-cli`; it does not
+replace the Arduino build system.
 
-```
-    arduino-cli core install arduino:mbed_giga
-```
-
-**find connected boards:**
-
-```
-    arduino-cli board list
-```
-
-make a note of the port for uploading
-
-**compile subprojects:**
-
-```
-    arduino-cli compile --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm7 m7
-    arduino-cli compile --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm4 m4
+```sh
+cmake -S . -B build
+cmake --build build --target host-tests
+cmake --build build --target verify
 ```
 
-**upload subprojects:**
+`firmware-m7`, `firmware-m4`, and `verify` are available only when
+`arduino-cli` is installed and the Giga board core has been installed as above.
+They are intentionally not part of CMake's default build target.
 
+To enable upload targets, configure the serial port explicitly, then select
+the desired processor target:
+
+```sh
+cmake -S . -B build -DLIMNMOCO_UPLOAD_PORT=/dev/ttyACM0
+cmake --build build --target upload-m7
+cmake --build build --target upload-m4
+cmake --build build --target upload-all
 ```
-    arduino-cli upload --port <port> --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm7 m7
-    arduino-cli upload --port <port> --fqbn arduino:mbed_giga:giga:split=75_25,target_core=cm4 m4
-```
+
+`upload-m7` and `upload-m4` each compile and upload the selected processor.
+`upload-all` uploads M7 first, then M4.
+
+See the [host test suite](tests/README.md) for test coverage and known gaps.
+
+Use the Arduino IDE to upload either processor after selecting its target and
+the required 75_25 flash split above.

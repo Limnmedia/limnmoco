@@ -1,0 +1,102 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
+#include "LimnmocoIK.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace limnmoco {
+namespace {
+
+constexpr float kPi = 3.14159265f;
+constexpr float kEpsilon = 1e-6f;
+
+float clamp(float value, float lo, float hi) {
+  return std::max(lo, std::min(hi, value));
+}
+
+} // namespace
+
+Mat3 virtual_rotation_matrix(float vpanDeg, float vtiltDeg, float vrollDeg) {
+  return mat3_multiply(mat3_multiply(
+      mat3_rotation_z(angle_radians(vpanDeg)),
+      mat3_rotation_x(angle_radians(vtiltDeg))),
+      mat3_rotation_y(angle_radians(vrollDeg)));
+}
+
+float angle_degrees(float radiansValue) {
+  return radiansValue * 180.0f / kPi;
+}
+
+float angle_radians(float degreesValue) {
+  return degreesValue * kPi / 180.0f;
+}
+
+CraneSolveResult solve_ik(const VirtualPose &pose, const CraneGeometry &geometry) {
+  CraneSolveResult result{};
+  result.target = Vec3{pose.vew, pose.vtrack, pose.vheight};
+
+  const Mat3 rotation = virtual_rotation_matrix(
+      pose.vpanDeg, pose.vtiltDeg, pose.vrollDeg);
+  result.offsetWorld = mat3_multiply_v(rotation, Vec3{
+      geometry.offsetX, geometry.offsetY, geometry.offsetZ});
+  result.panTarget = vec3_sub(result.target, result.offsetWorld);
+
+  const float boomLength = std::max(0.001f, geometry.boomLength);
+  const float boomRawRatio = result.panTarget.z / boomLength;
+  const float boomRatio = clamp(boomRawRatio, -1.0f, 1.0f);
+  const float boomRad = std::asin(boomRatio);
+  result.boomClamped = std::abs(boomRawRatio - boomRatio) > kEpsilon;
+
+  float horizontalReach = boomLength * std::cos(boomRad) + geometry.extensionLength;
+  if (std::abs(horizontalReach) < kEpsilon) {
+    horizontalReach = kEpsilon;
+  }
+
+  const float swingRawRatio = result.panTarget.x / horizontalReach;
+  const float swingRatio = clamp(swingRawRatio, -1.0f, 1.0f);
+  const float swingRad = std::asin(swingRatio);
+  result.swingClamped = std::abs(swingRawRatio - swingRatio) > kEpsilon;
+
+  result.track = result.panTarget.y - horizontalReach * std::cos(swingRad);
+  result.swingDeg = angle_degrees(swingRad);
+  result.boomDeg = angle_degrees(boomRad);
+  result.base = Vec3{0.0f, result.track, 0.0f};
+  result.armTip = Vec3{
+      boomLength * std::sin(swingRad) * std::cos(boomRad),
+      result.track + boomLength * std::cos(swingRad) * std::cos(boomRad),
+      boomLength * std::sin(boomRad),
+  };
+  result.panCenter = vec3_add(result.armTip, Vec3{
+      geometry.extensionLength * std::sin(swingRad),
+      geometry.extensionLength * std::cos(swingRad), 0.0f});
+  result.nodal = vec3_add(result.panCenter, result.offsetWorld);
+  result.error = vec3_sub(result.target, result.nodal);
+  result.errorLength = vec3_length(result.error);
+  return result;
+}
+
+VirtualPose solve_fk(float boomDeg, float swingDeg, float track,
+                     float panDeg, float tiltDeg, float rollDeg,
+                     const CraneGeometry &geometry) {
+  const float boomRad = angle_radians(boomDeg);
+  const float swingRad = angle_radians(swingDeg);
+  const Vec3 armTip{
+      geometry.boomLength * std::sin(swingRad) * std::cos(boomRad),
+      track + geometry.boomLength * std::cos(swingRad) * std::cos(boomRad),
+      geometry.boomLength * std::sin(boomRad),
+  };
+  const Vec3 levelExtension{
+      geometry.extensionLength * std::sin(swingRad),
+      geometry.extensionLength * std::cos(swingRad), 0.0f};
+  const float virtualPanDeg = panDeg + swingDeg;
+  const Mat3 rotation = virtual_rotation_matrix(
+      virtualPanDeg, tiltDeg, rollDeg);
+  const Vec3 offsetWorld = mat3_multiply_v(rotation, Vec3{
+      geometry.offsetX, geometry.offsetY, geometry.offsetZ});
+  const Vec3 nodal = vec3_add(vec3_add(armTip, levelExtension), offsetWorld);
+  return VirtualPose{nodal.y, nodal.x, nodal.z,
+                     virtualPanDeg, tiltDeg, rollDeg};
+}
+
+} // namespace limnmoco
