@@ -31,4 +31,32 @@ Device owns the device description. Control only routes the query or startup ann
 
 **Characterization cases:** Exact identity bytes/capabilities; requested ID versus startup ID; repeated hello under queue pressure.
 
-**Evidence to record:** protocol fixture/capture — pending; state/motion or no-op trace — pending; timing/memory — pending.
+**Captured evidence (NS movement trace):** The external capture
+`virt_NS_move_5mm_BCT_v6.csv` records a valid HI exchange at approximately
+11.386 seconds into the trace. The trace was produced by an earlier firmware
+commit than the current source baseline; its exact firmware commit is not yet
+identified. The CSV contains decoded DMC fields rather than the raw serial
+bytes (`data` is empty for these rows), so this is a decoded protocol record,
+not a byte-for-byte fixture.
+
+| Direction | Start (s) | Duration (s) | ID | Type | Payload length | Result |
+| --- | ---: | ---: | --- | --- | ---: | --- |
+| Request | 11.385686083 | 0.001037542 | `0x0001` | `0x0001` (`MSG_HI`) | 0 | Valid, checksum valid |
+| Response | 11.386570000 | 0.005465750 | `0x0001` | `0x0001` (`MSG_HI`) | 51 (`0x33`) | Valid, checksum valid |
+
+The decoded response fields are: name `limnmoco`; firmware `0.1.2`; 8 motors;
+0 DMX channels; 2 GIO outputs; 1 GIO input; 0 hardware limits; upload capacity
+10,000 frames (`0x2710`); capabilities `0x07BF`; and protocol version `0x0002`.
+The response begins 0.883917 ms after the request start and occupies 5.465750
+ms according to the trace timestamps. These timings should be treated as
+instrumentation observations until the capture tool's event-timing semantics
+are confirmed.
+
+The captured capability mask is `0x07BF`. The current source advertises
+`DMC_CAP_AIM_POINT` (`0x0040`) as part of a `0x07FF` mask. Because this capture
+predates the current source baseline, the difference is recorded as historical
+firmware behavior. M01 should identify the capture's source commit and retain
+the comparison as a versioned protocol observation.
+
+**Evidence still pending:** raw serial-byte fixture; state/motion or no-op trace;
+and repeatable timing/memory measurements.

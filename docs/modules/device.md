@@ -30,7 +30,7 @@ singleton, class hierarchy, or additional runtime task is implied.
 | HI information | Source of truth and responsibility |
 | --- | --- |
 | Device name and firmware version | Device, initialized from product/build metadata. Firmware version is distinct from the DMC protocol version. |
-| Motor capacity | Motion subsystem capacity for the selected build; Device incorporates the same value, not an independently maintained constant. |
+| Motor capacity | Motion subsystem capacity for the selected build; Device incorporates the same value, not an independently maintained constant.  |
 | DMX, GIO, and physical-limit capacities | Selected feature/board configuration from Camera and Intercore as applicable; Device exposes the supported capacities. Unsupported facilities remain zero. |
 | Uploaded frame capacity | Playback storage capacity; the value in Device must agree with allocated storage. |
 | Implemented feature set | Device describes the selected build using the capabilities of the participating modules. It is not inferred from whichever modules happen to report activity. |

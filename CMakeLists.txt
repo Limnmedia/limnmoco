@@ -189,7 +189,7 @@ if(LIMNMOCO_ENABLE_FIRMWARE_TARGETS)
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         DEPENDS upload-m7
         USES_TERMINAL
-        COMMENT "Uploading Limnmoco M7, then M4 firmware through Arduino CLI"
+        COMMENT "Compiling and uploading Limnmoco M4 firmware through Arduino CLI"
       )
     else()
       message(STATUS
