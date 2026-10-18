@@ -7,11 +7,6 @@ cmake_minimum_required(VERSION 3.22)
 # User is free to modify the file as much as necessary
 #
 
-# Setup compiler settings
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS ON)
-
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
@@ -25,6 +20,23 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 # Compiler options
 set(STM32_MCU_FLAGS  "-mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard " )
 
+set(LIMNMOCO_WARNINGS
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wshadow
+    -Wconversion
+    -Wformat=2
+)
+
+set(LIMNMOCO_CPU_FLAGS
+    
+)
+
+set(LIMNMOCO_SYMBOLS
+    CORE_CM7
+)
+
 #Linker options
 set(STM32_LINKER_SCRIPT stm32h747xx_flash_CM7.ld)
 set(STM32_LINKER_OPTION  )
@@ -33,8 +45,21 @@ set(STM32_LINKER_OPTION  )
 set(CMAKE_PROJECT_NAME limnmoco_CM7)
 project(${CMAKE_PROJECT_NAME})
 
+set_property(GLOBAL PROPERTY LIMNMOCO_MODULES "")
+
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
+
+# Add Common subdirectory for shared modules
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Common
+    ${CMAKE_CURRENT_BINARY_DIR}/Common
+)
+
+# Add CM7 Modules subdirectory
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/Modules
+)
 
 # Include mx-generated
 include("mx-generated.cmake")
@@ -66,9 +91,12 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
+get_property(LIMNMOCO_MODULE_LIBS GLOBAL PROPERTY LIMNMOCO_MODULES)
+
 # Add linked libraries
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
+target_link_libraries(${CMAKE_PROJECT_NAME}
     # Add user defined libraries
+    ${LIMNMOCO_MODULE_LIBS}
 )
 
 # Remove wrong libob.a library dependency when using cpp files

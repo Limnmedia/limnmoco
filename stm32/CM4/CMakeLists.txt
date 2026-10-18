@@ -7,11 +7,6 @@ cmake_minimum_required(VERSION 3.22)
 # User is free to modify the file as much as necessary
 #
 
-# Setup compiler settings
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS ON)
-
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
@@ -25,6 +20,23 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 # Compiler options
 set(STM32_MCU_FLAGS  "-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard" )
 
+set(LIMNMOCO_WARNINGS
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wshadow
+    -Wconversion
+    -Wformat=2
+)
+
+set(LIMNMOCO_CPU_FLAGS
+
+)
+
+set(LIMNMOCO_SYMBOLS
+    CORE_CM4
+)
+
 #Linker options
 set(STM32_LINKER_SCRIPT stm32h747xx_flash_CM4.ld)
 set(STM32_LINKER_OPTION  )
@@ -35,6 +47,12 @@ project(${CMAKE_PROJECT_NAME})
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
+
+# Add Common subdirectory for shared modules
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Common
+    ${CMAKE_CURRENT_BINARY_DIR}/Common
+)
 
 # Include mx-generated
 include("mx-generated.cmake")
