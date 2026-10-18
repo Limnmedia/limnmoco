@@ -18,8 +18,6 @@ set(CMAKE_PROJECT_NAME limnmoco)
 # Core project settings
 project(${CMAKE_PROJECT_NAME})
 
-enable_language(C ASM)
-
 # add test project
 ExternalProject_Add(limnmoco_test
     BINARY_DIR                 ${CMAKE_SOURCE_DIR}/Test/build
