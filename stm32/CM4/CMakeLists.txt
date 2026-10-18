@@ -30,7 +30,7 @@ set(STM32_LINKER_SCRIPT stm32h747xx_flash_CM4.ld)
 set(STM32_LINKER_OPTION  )
 
 # Set the project name
-set(CMAKE_PROJECT_NAME stm32_CM4)
+set(CMAKE_PROJECT_NAME limnmoco_CM4)
 project(${CMAKE_PROJECT_NAME})
 
 # Create an executable object type
