@@ -14,17 +14,9 @@
 
 cmake_minimum_required(VERSION 3.22)
 
-# We are defining a base library for math functions,
-# so it should not be tied to any specific target,
-# however, it must be built such that it can be linked 
-# into the larger project. And we want to make sure that 
-# the library is built with the same compiler flags as the 
-# main project. so we know gcc is emitting the fpu instructions
-# for math acceleration.
-
 enable_language(C ASM)
 
-set(LIBRARY_NAME limnmoco_math)
+set(LIBRARY_NAME limnmoco_linear_algebra_tests)
 add_library(${LIBRARY_NAME})
 
 target_compile_definitions(${LIBRARY_NAME} PRIVATE
@@ -38,11 +30,18 @@ target_compile_options(${LIBRARY_NAME} PRIVATE
 
 target_sources(${LIBRARY_NAME} PUBLIC FILE_SET HEADERS
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/Inc
-    FILES ${CMAKE_CURRENT_SOURCE_DIR}/Inc/math/vec3.h
+    FILES ${CMAKE_CURRENT_SOURCE_DIR}/Inc/test/linear_algebra/vec3.h
 )
 
 target_sources(${LIBRARY_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/Src/math/vec3.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/test/linear_algebra/vec3.c
 )
 
-set_property(GLOBAL APPEND PROPERTY LIMNMOCO_MODULES ${LIBRARY_NAME})
+target_link_libraries(${LIBRARY_NAME} PRIVATE
+    munit
+    limnmoco_linear_algebra
+)
+
+set_property(GLOBAL APPEND PROPERTY LIMNMOCO_TEST_SUITES ${LIBRARY_NAME})
+
+

@@ -12,3 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef LIMNMOCO_TEST_CM7_MODULE_LINEAR_ALGEBRA_VEC3_H
+#define LIMNMOCO_TEST_CM7_MODULE_LINEAR_ALGEBRA_VEC3_H
+
+#include "munit.h"
+
+extern MunitTest cm7_linear_algebra_vec3_tests[];
+
+#endif // !LIMNMOCO_TEST_CM7_MODULE_LINEAR_ALGEBRA_VEC3_H
+

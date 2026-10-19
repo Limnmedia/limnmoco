@@ -14,8 +14,22 @@
  * limitations under the License.
  */
 
+#include "test/linear_algebra/vec3.h"
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] const char* argv[]) {
-    return 0;
+static MunitSuite suites[] = {
+    {"/cm7/linear_algebra", cm7_linear_algebra_vec3_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE}
+};
+
+static MunitSuite suite = {
+    "limnmoco",
+    NULL,
+    suites,
+    1,
+    MUNIT_SUITE_OPTION_NONE
+};
+
+int main(int argc, char* const *argv) {
+    return munit_suite_main(&suite, NULL, argc, argv);
 }
 

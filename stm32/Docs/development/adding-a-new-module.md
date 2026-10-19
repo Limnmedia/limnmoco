@@ -25,6 +25,14 @@ consider adding a new module "Foo" to the project.
     - `CM4/Modules/Foo`
     - `CM7/Modules/Foo`
     - `Common/Modules/Foo`
+    - the subdirectory of module "foo" is CamelCase "Foo", and the 
+      include and source subdirectories will be snake_case "foo"
+      for instance, if the Module is called "Foo Bar", the Module
+      subdirectory will be called "FooBar", and within the include
+      subdirectory all headers will be placed into a subfolder "foo_bar"
+      this way, when including headers from within C source files 
+      all files from module "Foo Bar" can be found under the file path
+      "foo_bar" consistently.
 2. Append the appropriate `add_subdirectory(...)` command to the 'CMakeLists.txt' file within the 
    Modules subdirectory:
     - for instance, within 'CM4/Modules/CMakeLists.txt' append `add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/Foo)`
@@ -54,7 +62,7 @@ consider adding a new module "Foo" to the project.
     )
 
     target_sources(${LIBRARY_NAME} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/Src/...
+        ${CMAKE_CURRENT_SOURCE_DIR}/Src/foo/...
         ...
     )
 
@@ -98,12 +106,12 @@ consider adding a new module "Foo" to the project.
 
     target_sources(${LIBRARY_NAME} PUBLIC FILE_SET HEADERS
         BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/Inc
-        FILES ${CMAKE_CURRENT_SOURCE_DIR}/Inc/test/...
+        FILES ${CMAKE_CURRENT_SOURCE_DIR}/Inc/test/foo/...
         ...
     )
 
     target_sources(${LIBRARY_NAME} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/Src/test/...
+        ${CMAKE_CURRENT_SOURCE_DIR}/Src/test/foo/...
         ...
     )
 

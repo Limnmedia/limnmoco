@@ -18,7 +18,7 @@
 #include <stddef.h>
 #include <math.h>
 
-#include "math/vec3.h"
+#include "linear_algebra/vec3.h"
 
 // Public Function Definitions
 

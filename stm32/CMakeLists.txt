@@ -18,6 +18,8 @@ set(CMAKE_PROJECT_NAME limnmoco)
 # Core project settings
 project(${CMAKE_PROJECT_NAME})
 
+include(CTest)
+
 # add test project
 ExternalProject_Add(limnmoco_test
     BINARY_DIR                 ${CMAKE_SOURCE_DIR}/Test/build
@@ -32,4 +34,15 @@ set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${CMAKE_SOURCE_DI
 
 # Include external project file
 include("mx-generated.cmake")
+
+if (BUILD_TESTING)
+    add_test(
+        NAME execute_unit_tests
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_SOURCE_DIR}/Test/build --target test
+    )
+
+    set_tests_properties(execute_unit_tests PROPERTIES 
+        DEPENDS limnmoco_test
+    )
+endif ()
 

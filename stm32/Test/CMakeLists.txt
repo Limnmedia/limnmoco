@@ -50,6 +50,8 @@ set(LIMNMOCO_SYMBOLS
 set(CMAKE_PROJECT_NAME limnmoco_test)
 project(${CMAKE_PROJECT_NAME})
 
+include(CTest)
+
 set_property(GLOBAL PROPERTY LIMNMOCO_MODULES "")
 set_property(GLOBAL PROPERTY LIMNMOCO_TEST_SUITES "")
 
@@ -130,4 +132,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     # link to all test suites
     ${LIMNMOCO_TEST_SUITE_LIBS}
 )
+
+add_test(NAME limnoco_test_suite COMMAND ${CMAKE_PROJECT_NAME})
 
