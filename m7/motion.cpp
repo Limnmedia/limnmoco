@@ -46,14 +46,14 @@ void calculatePointToPoint(Motor *motor, int32_t destination, float minTime)
 
   memset(motor->moves, 0, P2P_MOVE_COUNT * sizeof(MotorMove));
 
+  // Why is there an infinite loop here?
+  // can't we just return if the max acceleration is 0?
+  // that means the motor is not allowed to move right?
+  // so just don't fill in the motor move?
+  // we don't want to stall the entire system over it.
   if (motor->maxAcceleration == 0)
   {
-    i = 0;
-    while (1)
-    {
-      i++;
-      // IOWR_32DIRECT(LED_BASE, 0, (i >> 8) );//leds);
-    }
+    return;
   }
 
   float tmax = maxV * maxAInverse;
