@@ -22,72 +22,16 @@
 
 // Public Function Definitions
 
-void vec3_init(Vec3* v, double x, double y, double z) {
-    assert(v != NULL);
-    v->x = x;
-    v->y = y;
-    v->z = z;
-}
-
-void vec3_add(Vec3* result, const Vec3* a, const Vec3* b) {
-    assert(result != NULL);
-    assert(a != NULL);
-    assert(b != NULL);
-    result->x = a->x + b->x;
-    result->y = a->y + b->y;
-    result->z = a->z + b->z;
-}
-
-void vec3_sub(Vec3* result, const Vec3* a, const Vec3* b) {
-    assert(result != NULL);
-    assert(a != NULL);
-    assert(b != NULL);
-    result->x = a->x - b->x;
-    result->y = a->y - b->y;
-    result->z = a->z - b->z;
-}
-
-void vec3_scale(Vec3* result, const Vec3* v, double scalar) {
-    assert(result != NULL);
-    assert(v != NULL);
-    result->x = v->x * scalar;
-    result->y = v->y * scalar;
-    result->z = v->z * scalar;
-}
-
-double vec3_dot(const Vec3* a, const Vec3* b) {
-    assert(a != NULL);
-    assert(b != NULL);
-    return a->x * b->x + a->y * b->y + a->z * b->z;
-}
-
-void vec3_cross(Vec3* result, const Vec3* a, const Vec3* b) {
-    assert(result != NULL);
-    assert(a != NULL);
-    assert(b != NULL);
-    result->x = a->y * b->z - a->z * b->y;
-    result->y = a->z * b->x - a->x * b->z;
-    result->z = a->x * b->y - a->y * b->x;
-}
-
-double vec3_length(const Vec3* v) {
-    assert(v != NULL);
-    return sqrt(v->x * v->x + v->y * v->y + v->z * v->z);
-}
-
-void vec3_normalize(Vec3* result, const Vec3* v) {
-    assert(result != NULL);
-    assert(v != NULL);
-    double len = vec3_length(v);
-    if (len > 0) {
-        result->x = v->x / len;
-        result->y = v->y / len;
-        result->z = v->z / len;
-    } else {
-        result->x = 0;
-        result->y = 0;
-        result->z = 0;
-    }
-}
+extern inline Vec3 vec3_init(Scalar x, Scalar y, Scalar z);
+extern inline Vec3 vec3_splat(Scalar x);
+extern inline bool vec3_equal(Vec3 a, Vec3 b, Scalar near);
+extern inline bool vec3_equal_scalar(Vec3 a, Scalar b, Scalar near);
+extern inline Vec3 vec3_add(Vec3 a, Vec3 b);
+extern inline Vec3 vec3_sub(Vec3 a, Vec3 b);
+extern inline Vec3 vec3_scale(Vec3 v, Scalar s);
+extern inline Scalar vec3_dot(Vec3 a, Vec3 b);
+extern inline Vec3 vec3_cross(Vec3 a, Vec3 b);
+extern inline Scalar vec3_length(Vec3 v);
+extern inline Vec3 vec3_normalize(Vec3 v);
 
 // End Public Function Definitions

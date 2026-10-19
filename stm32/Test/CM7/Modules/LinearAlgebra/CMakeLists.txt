@@ -40,6 +40,7 @@ target_sources(${LIBRARY_NAME} PRIVATE
 target_link_libraries(${LIBRARY_NAME} PRIVATE
     munit
     limnmoco_linear_algebra
+    m
 )
 
 set_property(GLOBAL APPEND PROPERTY LIMNMOCO_TEST_SUITES ${LIBRARY_NAME})
