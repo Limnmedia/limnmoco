@@ -30,11 +30,14 @@ target_compile_options(${LIBRARY_NAME} PRIVATE
 
 target_sources(${LIBRARY_NAME} PUBLIC FILE_SET HEADERS
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/Inc
-    FILES ${CMAKE_CURRENT_SOURCE_DIR}/Inc/test/linear_algebra/vec3.h
+    FILES 
+        ${CMAKE_CURRENT_SOURCE_DIR}/Inc/test/linear_algebra/vec3.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/Inc/test/linear_algebra/mat3x3.h
 )
 
 target_sources(${LIBRARY_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/test/linear_algebra/vec3.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/test/linear_algebra/mat3x3.c
 )
 
 target_link_libraries(${LIBRARY_NAME} PRIVATE

@@ -321,8 +321,8 @@
     inlining in an Os context or an O2 context?)"
  */
 
-#ifndef MATH_VEC3_H
-#define MATH_VEC3_H
+#ifndef LIMNMOCO_CM7_MODULES_LINEAR_ALGEBRA_VEC3_H
+#define LIMNMOCO_CM7_MODULES_LINEAR_ALGEBRA_VEC3_H
 
 #include <stdint.h>
 #include <math.h>
@@ -408,4 +408,4 @@ static inline Vec3 vec3_normalize(Vec3 v) {
 
 // End Public Function Declarations
 
-#endif // !MATH_VEC3_H
+#endif // !LIMNMOCO_CM7_MODULES_LINEAR_ALGEBRA_VEC3_H

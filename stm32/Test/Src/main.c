@@ -15,10 +15,29 @@
  */
 
 #include "test/linear_algebra/vec3.h"
+#include "test/linear_algebra/mat3x3.h"
 
 static MunitSuite suites[] = {
-    {"/cm7/linear_algebra", cm7_linear_algebra_vec3_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
-    {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE}
+{"/cm7/linear_algebra",
+        cm7_linear_algebra_vec3_tests,
+        NULL,
+        1,
+        MUNIT_SUITE_OPTION_NONE
+    },
+    {
+        "cm7/linear_algebra",
+        cm7_linear_algebra_mat3x3_tests,
+        NULL,
+        1,
+        MUNIT_SUITE_OPTION_NONE
+    },
+    {
+        NULL,
+        NULL,
+        NULL,
+        0,
+        MUNIT_SUITE_OPTION_NONE
+    }
 };
 
 static MunitSuite suite = {

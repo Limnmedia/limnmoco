@@ -46,11 +46,13 @@ target_sources(${LIBRARY_NAME} PUBLIC FILE_SET HEADERS
     FILES 
         ${CMAKE_CURRENT_SOURCE_DIR}/Inc/linear_algebra/vec3.h
         ${CMAKE_CURRENT_SOURCE_DIR}/Inc/linear_algebra/scalar.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/Inc/linear_algebra/mat3x3.h
 )
 
 target_sources(${LIBRARY_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/linear_algebra/vec3.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/linear_algebra/scalar.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/linear_algebra/mat3x3.c
 )
 
 set_property(GLOBAL APPEND PROPERTY LIMNMOCO_MODULES ${LIBRARY_NAME})

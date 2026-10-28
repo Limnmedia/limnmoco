@@ -21,7 +21,7 @@
 #include <math.h>
 
 #include "test/linear_algebra/vec3.h"
-#include "linear_algebra/scalar.h"
+
 #include "linear_algebra/vec3.h"
 
 static MunitResult test_cm7_linear_algebra_vec3_init(
