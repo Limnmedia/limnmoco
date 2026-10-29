@@ -16,7 +16,7 @@
 // along with Limnmoco.  If not, see <https://www.gnu.org/licenses/>.
 
 #ifndef LIMNMOCO_TEST_CM7_MODULE_LINEAR_ALGEBRA_MAT3X3_H
-#define LIMNMODO_TEST_CM7_MODULE_LINEAR_ALGEBRA_MAT3X3_H
+#define LIMNMOCO_TEST_CM7_MODULE_LINEAR_ALGEBRA_MAT3X3_H
 
 #include "munit.h"
 

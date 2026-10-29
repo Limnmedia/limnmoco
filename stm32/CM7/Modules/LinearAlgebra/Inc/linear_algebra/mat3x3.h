@@ -25,7 +25,38 @@
  * need to index the rightmost array in the inner loop.
  *
  * The STM32H747IH6 ARM Cortex M7 has 16KiB of Instruction Cache
- * and 16KiB of Data Cache. 
+ * and 16KiB of Data Cache. and from the Arm Cortex-M7 Technical Reference
+ * Manual. Section 5.9 "The data cache is four-way set-associative, 
+ * the instruction cache is two-way set-associative. Both caches use a 
+ * line-length of 32-bytes. If all the cache lines in a set are valid, 
+ * to allocate a different address to the cache, the cache controller 
+ * must evict a line from the cache."
+ *
+ * sizeof(Scalar) == sizeof(double) == 8
+ * 8 * 9 == 72
+ * 32 * 2 == 64
+ * 72 - 64 == 8
+ *
+ * So a single matrix fits on three cache lines, given that, we will incur 
+ * a maximum of three cache misses per matrix, a, b, and c. when needing 
+ * to iterate over all elements of each matrix. Once for each portion of the 
+ * matrix which is read in on a single line.
+ *
+ * So, it is clear that passing a matrix by value is over the threshold
+ * for what the ABI can support. (recall) [AAPCS32](https://github.com/ARM-software/abi-aa/blob/main/aapcs32/aapcs32.rst)
+ * section 7.1.2.1 states that a homogenous aggregate with base type of
+ * 64-bit with one to four elements, is a VFP co-processor register candidate.
+ * That is, the structure may be passed in the FPU co-processor registers.
+ * of which there are eight. Given that a 3x3 matrix has nine entries, a single 
+ * matrix is too large to be passed in registers. So, the compiler has little room 
+ * to decompose the matrix into it's constituent elements and pass them 
+ * in registers. 
+ *
+ * We want to pass by pointer. Even still, does it make sense to inline the common 
+ * matrix functions? With access to the implementation, would the compiler 
+ * be able to optimize the implementation of the algorithms which we are building 
+ * atop these fundamentals? Such as the Forward and Inverse Kinematics.
+ * This question bears testing. 
  */
 
 #ifndef LIMNMOCO_CM7_MODULES_LINEAR_ALGEBRA_MAT3X3_H
@@ -44,6 +75,11 @@ typedef struct _Mat3x3 {
 // Begin Public API
 
 /**
+ * @brief Fill a matrix with a single value
+ */
+// void mat3x3_splat(Mat3x3 *m, Scalar s);
+
+/**
  * @brief initializes the given matrix as an identity matrix
  *
  * @note
@@ -52,7 +88,17 @@ typedef struct _Mat3x3 {
  *  | 0  0  1 |
  * 
  */
-void mat3x3_identity(Mat3x3 *m);
+void mat3x3_identity(Mat3x3 *M);
+
+bool mat3x3_equal(Mat3x3 *A, Mat3x3 *B, Scalar near);
+
+/**
+ * @brief Multiplies two matricies
+ *
+ * `c = a * b`
+ */
+void mat3x3_multiply(Mat3x3 *C, Mat3x3 *A, Mat3x3 *B);
+
 
 // End Public API
 
