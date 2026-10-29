@@ -1,11 +1,12 @@
 # LIMNMOCO
 
-Firmware, virtual-crane inverse kinematics, and host-side tests for Limnmoco.
+**LIMNMOCO is LIMNMEDIA's six-axis motion-control crane project for repeatable camera movement in stop-motion animation.** It is being developed to help artists plan and reproduce camera moves with a physical crane.
 
-The [modular firmware architecture plan](docs/modules/README.md) links the module
-discussions and [planned commit sequence](docs/modules/TODO.md).
+This repository contains the Arduino controller firmware, virtual-crane inverse kinematics, and host-side tests—not a finished crane or a production-ready hardware release.
 
-LIMNMOCO is a six-axis physical motion-control crane for stop-motion animation, developed by LIMNMEDIA. This repository contains the Arduino firmware that runs the crane controller and communicates with the motion-control system.
+Repeatable camera motion requires coordinated axes, reliable motor control, and communication between the crane and animation software. The firmware here addresses those technical challenges as part of the larger LIMNMOCO project.
+
+The [modular firmware architecture plan](docs/modules/README.md) links the module discussions and [planned commit sequence](docs/modules/TODO.md).
 
 ## Overview
 
