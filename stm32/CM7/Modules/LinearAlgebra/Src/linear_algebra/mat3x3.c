@@ -23,7 +23,25 @@
 
 #include "linear_algebra/mat3x3.h"
 
+void mat3x3_splat(Mat3x3 *A, Scalar s) {
+    assert(A != NULL);
+    for (uint32_t i = 0; i < 3; ++i) {
+        for (uint32_t j = 0; j < 3; ++j) {
+            A->data[i][j] = s;
+        }
+    }
+}
 
+void mat3x3_assign(Mat3x3 *B, Mat3x3 *A) {
+    assert(A != NULL);
+    assert(B != NULL);
+
+    for (uint32_t i = 0; i < 3; ++i) {
+        for (uint32_t j = 0; j < 3; ++j) {
+            B->data[i][j] = A->data[i][j];
+        }
+    }
+}
 
 void mat3x3_identity(Mat3x3 *m) {
     assert(m != NULL);
@@ -51,7 +69,31 @@ bool mat3x3_equal(Mat3x3 *A, Mat3x3 *B, Scalar near) {
     return true;
 }
 
-void mat3x3_multiply(Mat3x3 *C, Mat3x3 *A, Mat3x3 *B) {
+void mat3x3_add(Mat3x3 *C, Mat3x3 *A, Mat3x3 *B) {
+    assert(A != NULL);
+    assert(B != NULL);
+    assert(C != NULL);
+    
+    for (uint32_t i = 0; i < 3; ++i) {
+        for (uint32_t j = 0; j < 3; ++j) {
+            C->data[i][j] = A->data[i][j] + B->data[i][j];
+        }
+    }
+}
+
+void mat3x3_sub(Mat3x3 *C, Mat3x3 *A, Mat3x3 *B) {
+    assert(A != NULL);
+    assert(B != NULL);
+    assert(C != NULL);
+
+    for (uint32_t i = 0; i < 3; ++i) {
+        for (uint32_t j = 0; j < 3; ++j) {
+            C->data[i][j] = A->data[i][j] - B->data[i][j];
+        }
+    }
+}
+
+void mat3x3_mul(Mat3x3 *C, Mat3x3 *A, Mat3x3 *B) {
     assert(A != NULL);
     assert(B != NULL);
     assert(C != NULL);
@@ -113,6 +155,28 @@ void mat3x3_multiply(Mat3x3 *C, Mat3x3 *A, Mat3x3 *B) {
                 s += A->data[i][k] * B->data[k][j];
             }
             C->data[i][j] = s;
+        }
+    }
+}
+
+void mat3x3_scale(Mat3x3 *C, Mat3x3 *A, Scalar b) {
+    assert(A != NULL);
+    assert(C != NULL);
+
+    for (uint32_t i = 0; i < 3; ++i) {
+        for (uint32_t j = 0; j < 3; ++j) {
+            C->data[i][j] = A->data[i][j] * b;
+        }
+    }
+}
+
+void mat3x3_transpose(Mat3x3 *B, Mat3x3 *A) {
+    assert(A != NULL);
+    assert(B != NULL);
+
+    for (uint32_t i = 0; i < 3; ++i) {
+        for (uint32_t j = 0; j < 3; ++j) {
+            B->data[j][i] = A->data[i][j];
         }
     }
 }

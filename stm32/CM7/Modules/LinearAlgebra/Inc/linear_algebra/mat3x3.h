@@ -77,7 +77,12 @@ typedef struct _Mat3x3 {
 /**
  * @brief Fill a matrix with a single value
  */
-// void mat3x3_splat(Mat3x3 *m, Scalar s);
+void mat3x3_splat(Mat3x3 *m, Scalar s);
+
+/**
+ * @brief Assign matrix A to B
+ */
+void mat3x3_assign(Mat3x3 *B, Mat3x3 *A);
 
 /**
  * @brief initializes the given matrix as an identity matrix
@@ -90,15 +95,47 @@ typedef struct _Mat3x3 {
  */
 void mat3x3_identity(Mat3x3 *M);
 
+/**
+ * @brief compare two matricies for elementwise equality
+ */
 bool mat3x3_equal(Mat3x3 *A, Mat3x3 *B, Scalar near);
+
+/**
+ * @brief addition of two matricies
+ */
+void mat3x3_add(Mat3x3 *C, Mat3x3 *A, Mat3x3 *B);
+
+/**
+ * @brief Subtraction of two matricies
+ */
+void mat3x3_sub(Mat3x3 *C, Mat3x3 *A, Mat3x3 *B);
 
 /**
  * @brief Multiplies two matricies
  *
  * `c = a * b`
  */
-void mat3x3_multiply(Mat3x3 *C, Mat3x3 *A, Mat3x3 *B);
+void mat3x3_mul(Mat3x3 *C, Mat3x3 *A, Mat3x3 *B);
 
+/**
+ * @brief viewing the vector as a column vector
+ * does normal matrix multiplication.
+ */
+// void mat3x3_mul_vec3(Vec3 U, Mat3x3 *A, Vec3 V);
+
+/**
+ * @brief Scale matrix A by Scalar b
+ *
+ * elementwise multiplication by b
+ */
+void mat3x3_scale(Mat3x3 *C, Mat3x3 *A, Scalar b);
+
+/**
+ * @brief Transpose matrix A
+ * 
+ * B[j][i] = A[i][j] for each i < 3, j < 3
+ */
+void mat3x3_transpose(Mat3x3 *B, Mat3x3 *A);
 
 // End Public API
 

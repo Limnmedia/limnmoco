@@ -177,7 +177,7 @@ MunitTest cm7_linear_algebra_vec3_tests[] = {
 };
 
 static Vec3 rand_vec3() {
-    return (Vec3){munit_rand_double(), munit_rand_double(), munit_rand_double()};
+    return vec3(munit_rand_double(), munit_rand_double(), munit_rand_double());
 }
 
 static MunitResult test_cm7_linear_algebra_vec3_init(
@@ -186,7 +186,7 @@ static MunitResult test_cm7_linear_algebra_vec3_init(
     double d0 = munit_rand_double();
     double d1 = munit_rand_double();
     double d2 = munit_rand_double();
-    Vec3 v0 = vec3_init(d0, d1, d2);
+    Vec3 v0 = vec3(d0, d1, d2);
     munit_assert_double_equal(v0.x, d0, 9);
     munit_assert_double_equal(v0.y, d1, 9);
     munit_assert_double_equal(v0.z, d2, 9);
@@ -202,8 +202,8 @@ static MunitResult test_cm7_linear_algebra_vec3_add(
     double b0 = munit_rand_double();
     double b1 = munit_rand_double();
     double b2 = munit_rand_double();
-    Vec3 v1 = {a0, a1, a2};
-    Vec3 v2 = {b0, b1, b2};
+    Vec3 v1 = vec3(a0, a1, a2);
+    Vec3 v2 = vec3(b0, b1, b2);
     Vec3 v0 = vec3_add(v1, v2);
     double c0 = a0 + b0;
     double c1 = a1 + b1;
@@ -250,7 +250,7 @@ static MunitResult test_cm7_linear_algebra_vec3_add_identity(
     [[maybe_unused]] void *data) {
     // V + 0 = V
     Vec3 V = rand_vec3();
-    Vec3 I = {0.0, 0.0, 0.0};
+    Vec3 I = vec3(0.0, 0.0, 0.0);
     Vec3 P = {};
     P = vec3_add(V, I);
     munit_assert_true(vec3_equal(P, V, SCALAR_CLOSE));
@@ -278,9 +278,9 @@ static MunitResult test_cm7_linear_algebra_vec3_sub(
     double b0 = munit_rand_double();
     double b1 = munit_rand_double();
     double b2 = munit_rand_double();
-    Vec3 v0 = {0.0, 0.0, 0.0};
-    Vec3 v1 = {a0, a1, a2};
-    Vec3 v2 = {b0, b1, b2};
+    Vec3 v0 = vec3(0.0, 0.0, 0.0);
+    Vec3 v1 = vec3(a0, a1, a2);
+    Vec3 v2 = vec3(b0, b1, b2);
     v0 = vec3_sub(v1, v2);
     double c0 = a0 - b0;
     double c1 = a1 - b1;
@@ -297,8 +297,8 @@ static MunitResult test_cm7_linear_algebra_vec3_scale(
     double a0 = munit_rand_double();
     double a1 = munit_rand_double();
     double a2 = munit_rand_double();
-    Vec3 v0 = {0.0, 0.0, 0.0};
-    Vec3 v1 = {a0, a1, a2};
+    Vec3 v0 = vec3(0.0, 0.0, 0.0);
+    Vec3 v1 = vec3(a0, a1, a2);
     double b = munit_rand_double();
     v0 = vec3_scale(v1, b);
     double c0 = a0 * b;
@@ -381,8 +381,8 @@ static MunitResult test_cm7_linear_algebra_vec3_dot(
     double b0 = munit_rand_double();
     double b1 = munit_rand_double();
     double b2 = munit_rand_double();
-    Vec3 v0 = {a0, a1, a2};
-    Vec3 v1 = {b0, b1, b2};
+    Vec3 v0 = vec3(a0, a1, a2);
+    Vec3 v1 = vec3(b0, b1, b2);
     double c0 = vec3_dot(v0, v1);
     double d0 = (a0 * b0) + (a1 * b1) + (a2 * b2);
     munit_assert_double_equal(c0, d0, 9);
@@ -456,9 +456,9 @@ static MunitResult test_cm7_linear_algebra_vec3_cross(
     double b0 = munit_rand_double();
     double b1 = munit_rand_double();
     double b2 = munit_rand_double();
-    Vec3 v0 = {0.0, 0.0, 0.0};
-    Vec3 v1 = {a0, a1, a2};
-    Vec3 v2 = {b0, b1, b2};
+    Vec3 v0 = vec3(0.0, 0.0, 0.0);
+    Vec3 v1 = vec3(a0, a1, a2);
+    Vec3 v2 = vec3(b0, b1, b2);
     v0 = vec3_cross(v1, v2);
     double c0 = a1 * b2 - a2 * b1;
     double c1 = a2 * b0 - a0 * b2;
@@ -594,7 +594,7 @@ static MunitResult test_cm7_linear_algebra_vec3_length(
     double a0 = munit_rand_double();
     double a1 = munit_rand_double();
     double a2 = munit_rand_double();
-    Vec3 v0 = {a0, a1, a2};
+    Vec3 v0 = vec3(a0, a1, a2);
     double b0 = vec3_length(v0);
     double c0 = sqrt(a0 * a0 + a1 * a1 + a2 * a2);
     munit_assert_double_equal(b0, c0, 9);
@@ -607,8 +607,8 @@ static MunitResult test_cm7_linear_algebra_vec3_normalize(
     double a0 = munit_rand_double();
     double a1 = munit_rand_double();
     double a2 = munit_rand_double();
-    Vec3 v0 = {a0, a1, a2};
-    Vec3 v1 = {0.0, 0.0, 0.0};
+    Vec3 v0 = vec3(a0, a1, a2);
+    Vec3 v1 = vec3(0.0, 0.0, 0.0);
     v1 = vec3_normalize(v0);
     double l = sqrt(a0 * a0 + a1 * a1 + a2 * a2);
     double b0 = a0 / l;

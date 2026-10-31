@@ -24,7 +24,7 @@
 
 // Public Function Definitions
 
-extern inline Vec3 vec3_init(Scalar x, Scalar y, Scalar z);
+extern inline Vec3 vec3(Scalar x, Scalar y, Scalar z);
 extern inline Vec3 vec3_splat(Scalar x);
 extern inline bool vec3_equal(Vec3 a, Vec3 b, Scalar near);
 extern inline bool vec3_equal_scalar(Vec3 a, Scalar b, Scalar near);

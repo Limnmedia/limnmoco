@@ -340,21 +340,26 @@
  * dot product, cross product, normalization, and length.
  */
 typedef struct _Vec3 {
-    Scalar x;
-    Scalar y;
-    Scalar z;
+    union {
+        struct {
+            Scalar x;
+            Scalar y;
+            Scalar z;
+        };
+        Scalar data[3];
+    };
 } Vec3;
 
 // End Public Typedef
 
 // Public Function Declarations
 
-static inline Vec3 vec3_init(Scalar x, Scalar y, Scalar z) {
-    return (Vec3){x, y, z};
+static inline Vec3 vec3(Scalar x, Scalar y, Scalar z) {
+    return (Vec3){{{x, y, z}}};
 }
 
 static inline Vec3 vec3_splat(Scalar x) {
-    return (Vec3){x, x, x};
+    return vec3(x, x, x);
 }
 
 static inline bool vec3_equal(Vec3 a, Vec3 b, Scalar near) {
@@ -370,15 +375,15 @@ static inline bool vec3_equal_scalar(Vec3 a, Scalar b, Scalar near) {
 }
 
 static inline Vec3 vec3_add(Vec3 a, Vec3 b) {
-    return (Vec3){a.x + b.x, a.y + b.y, a.z + b.z};
+    return vec3(a.x + b.x, a.y + b.y, a.z + b.z);
 }
 
 static inline Vec3 vec3_sub(Vec3 a, Vec3 b) {
-    return (Vec3){a.x - b.x, a.y - b.y, a.z - b.z};
+    return vec3(a.x - b.x, a.y - b.y, a.z - b.z);
 }
 
 static inline Vec3 vec3_scale(Vec3 v, Scalar s) {
-    return (Vec3){v.x * s, v.y * s, v.z * s};
+    return vec3(v.x * s, v.y * s, v.z * s);
 }
 
 static inline Scalar vec3_dot(Vec3 a, Vec3 b) {
@@ -386,9 +391,9 @@ static inline Scalar vec3_dot(Vec3 a, Vec3 b) {
 }
 
 static inline Vec3 vec3_cross(Vec3 a, Vec3 b) {
-    return (Vec3){(a.y * b.z) - (a.z * b.y),
-                  (a.z * b.x) - (a.x * b.z),
-                  (a.x * b.y) - (a.y * b.x)};
+    return vec3((a.y * b.z) - (a.z * b.y),
+                (a.z * b.x) - (a.x * b.z),
+                (a.x * b.y) - (a.y * b.x));
 }
 
 static inline Scalar vec3_length(Vec3 v) {
@@ -398,11 +403,11 @@ static inline Scalar vec3_length(Vec3 v) {
 static inline Vec3 vec3_normalize(Vec3 v) {
     Scalar length = vec3_length(v);
     if (length > 0) {
-        return (Vec3){v.x / length,
-                      v.y / length,
-                      v.z / length};
+        return vec3(v.x / length,
+                    v.y / length,
+                    v.z / length);
     } else {
-        return (Vec3){0.0, 0.0, 0.0};
+        return vec3(0.0, 0.0, 0.0);
     }
 }
 

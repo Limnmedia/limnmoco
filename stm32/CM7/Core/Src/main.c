@@ -79,8 +79,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  Vec3 a = {1.0, 1.0, 1.0};
-  Vec3 b = {1.0, 1.0, 1.0};
+
   /* USER CODE END 1 */
 /* USER CODE BEGIN Boot_Mode_Sequence_0 */
 #if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
@@ -148,7 +147,6 @@ Error_Handler();
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    a = vec3_add(a, b);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
