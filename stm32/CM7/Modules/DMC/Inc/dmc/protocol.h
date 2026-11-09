@@ -172,11 +172,7 @@ inline constexpr uint8_t DMC_MSG_VIRT_JOG_ON_LINE_Z                 = 2; // came
 inline constexpr uint8_t DMC_MSG_VIRT_JOG_ON_LINE_PAN               = 3;
 inline constexpr uint8_t DMC_MSG_VIRT_JOG_ON_LINE_TILT              = 4;
 
-inline constexpr uint32_t DMC_MSG_MAX_LENGTH                        = 2048;
-
-// ensure that these structures are defined without padding. such that their 
-// layout matches what is seen on the wire.
-#pragma pack(push, 1)
+inline constexpr uint32_t DMC_MSG_MAX_LENGTH                        = 1048;
 
 /**
  * Every message has a Header. Additionally, some messages contain a 
@@ -305,28 +301,12 @@ typedef struct _DmcDmxRequest {
 } DmcDmxRequest;
 
 /**
- * @brief Response to a DMX lighting request; the response code reports success or an error.
- */
-typedef struct _DmcDmxResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcDmxResponse;
-
-/**
  * Set the state for general I/O output triggers.
  */
 typedef struct _DmcGioOutRequest {
     DmcHeader header;
     uint32_t  triggers;
 } DmcGioOutRequest;
-
-/**
- * @brief Acknowledgement of a general I/O output trigger state request.
- */
-typedef struct _DmcGioOutResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcGioOutResponse;
 
 /**
  * Request the state for general I/O input triggers. Dragonframe may request the input state with
@@ -336,7 +316,6 @@ typedef struct _DmcGioOutResponse {
  */
 typedef struct _DmcGioInRequest {
     DmcHeader header;
-    uint16_t  response_code;
 } DmcGioInRequest;
 
 /**
@@ -356,20 +335,11 @@ typedef struct _DmcGioCamRequest {
 } DmcGioCamRequest;
 
 /**
- * @brief Acknowledgement of a camera output test request.
- */
-typedef struct _DmcGioCamResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcGioCamResponse;
-
-/**
  * Request the motor (and dmx) status. This is only a status of whether something is
  * moving/adjusting.
  */
 typedef struct _DmcMotorStatusRequest {
     DmcHeader header;
-    uint16_t  response_code;
 } DmcMotorStatusRequest;
 
 /**
@@ -406,14 +376,6 @@ typedef struct _DmcMotorStopRequest {
     uint8_t   motor;
 } DmcMotorStopRequest;
 
-/**
- * @brief Acknowledgement of a request to stop one motor.
- */
-typedef struct _DmcMotorStopResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcMotorStopResponse;
-
 
 /**
  * Instruct the device to stop all motors. The device should decelerate. If the device gets a second
@@ -427,22 +389,12 @@ typedef struct _DmcMotorStopAllRequest {
 } DmcMotorStopAllRequest;
 
 /**
- * @brief Acknowledgement of a request to stop all motors.
- */
-typedef struct _DmcMotorStopAllResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcMotorStopAllResponse;
-
-
-/**
  * Request the motor positions and move ‘time’.
  * The device should send these out, about every 0.10 seconds, if any of the motors are moving,
  * to keep Dragonframe informed of the positions.
  */
 typedef struct _DmcMotorGetPositionRequest {
     DmcHeader header;
-    uint16_t  response_code;
 } DmcMotorGetPositionRequest;
 
 /**
@@ -465,14 +417,6 @@ typedef struct _DmcMotorResetPositionRequest {
     int32_t   position;
 } DmcMotorResetPositionRequest;
 
-/**
- * @brief Acknowledgement of a motor position reset; the reset changes the reported position without moving the motor.
- */
-typedef struct _DmcMotorResetPositionResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcMotorResetPositionResponse;
-
 /** 
  * Instruct the device to jog/inch a motor.
  * A speed of 1 means the device should move very slowly, for precise adjustments.
@@ -488,14 +432,6 @@ typedef struct _DmcMotorJogRequest {
 } DmcMotorJogRequest;
 
 /**
- * @brief Acknowledgement of a motor jog request.
- */
-typedef struct _DmcMotorJogResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcMotorJogResponse;
-
-/**
  * Configure the motor.
  */
 typedef struct _DmcMotorConfigureRequest {
@@ -503,14 +439,6 @@ typedef struct _DmcMotorConfigureRequest {
     uint8_t   motor;
     uint8_t   flags;
 } DmcMotorConfigureRequest;
-
-/**
- * @brief Acknowledgement of a motor configuration request.
- */
-typedef struct _DmcMotorConfigureResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcMotorConfigureResponse;
 
 /**
  * Set the motor speed and acceleration.
@@ -521,14 +449,6 @@ typedef struct _DmcMotorSetSpeedRequest {
     uint32_t  max_velocity;
     uint32_t  max_acceleration;
 } DmcMotorSetSpeedRequest;
-
-/**
- * @brief Acknowledgement of a motor speed and acceleration request.
- */
-typedef struct _DmcMotorSetSpeedResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcMotorSetSpeedResponse;
 
 /**
  * Set the motor software and hardware limits.
@@ -542,14 +462,6 @@ typedef struct _DmcMotorSetLimitsRequest {
     uint32_t  upper_limit;
     uint8_t   hw_set; // this one doesn't make sense, swap high/low????
 } DmcMotorSetLimitsRequest;
-
-/**
- * @brief Acknowledgement of a motor software or hardware limits request.
- */
-typedef struct _DmcMotorSetLimitsResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcMotorSetLimitsResponse;
 
 /**
  * The device can send this when a limit has been hit, or if the device’s “emergency stop” button
@@ -579,14 +491,6 @@ typedef struct _DmcRtUploadMoveBeginRequest {
 } DmcRtUploadMoveBeginRequest;
 
 /**
- * @brief Acknowledgement of the start of a real-time move upload.
- */
-typedef struct _DmcRtUploadMoveBeginResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtUploadMoveBeginResponse;
-
-/**
  * Send a section of axis frame data.
  */
 typedef struct _DmcRtUploadMoveAxisRequest {
@@ -595,14 +499,6 @@ typedef struct _DmcRtUploadMoveAxisRequest {
     uint32_t  start_index;
     uint32_t  positions[];
 } DmcRtUploadMoveAxisRequest;
-
-/**
- * @brief Acknowledgement of a section of real-time axis frame data.
- */
-typedef struct _DmcRtUploadMoveAxisResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtUploadMoveAxisResponse;
 
 /**
  * Send a section of DMX frame data.
@@ -617,16 +513,6 @@ typedef struct _DmcRtUploadMoveDmxRequest {
     uint32_t  start_index;
     uint8_t   light_levels[];
 } DmcRtUploadMoveRequest;
-
-/**
- * @brief Acknowledgement of a section of real-time DMX frame data.
- */
-typedef struct DmcRtUploadMoveDmxResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtUploadMoveDmxResponse;
-
-
 
 /**
  * @brief A frame number and its trigger bit values in a real-time trigger upload.
@@ -649,27 +535,11 @@ typedef struct _DmcRtUploadMoveTriggersRequest {
 } DmcRtUploadMoveTriggersRequest;
 
 /**
- * @brief Acknowledgement of a section of real-time trigger data.
- */
-typedef struct _DmcRtUploadMoveTriggersResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtUploadMoveTriggersResponse;
-
-/**
  * Final message for uploading move data.
  */
 typedef struct _DmcRtUploadMoveEndRequest {
     DmcHeader header;
 } DmcRtUploadMoveEndRequest;
-
-/**
- * @brief Acknowledgement that a real-time move upload has ended.
- */
-typedef struct _DmcRtUploadMoveEndResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtUploadMoveEndResponse;
 
 /**
  * Instructs the device to send all motors (and DMX if applicable) to the uploaded frame position.
@@ -678,14 +548,6 @@ typedef struct _DmcRtPositionFrameRequest {
     DmcHeader header;
     uint32_t  frame;
 } DmcRtPositionFrameRequest;
-
-/**
- * @brief Acknowledgement of a request to move to an uploaded frame position.
- */
-typedef struct _DmcRtPositionFrameResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtPositionFrameResponse;
 
 /**
  * Prepares the device to run a section of the move live.
@@ -706,14 +568,6 @@ typedef struct _DmcRtRunMoveRequest {
     uint16_t  bloop_time;
     uint16_t  flags;
 } DmcRtRunMoveRequest;
-
-/**
- * @brief Acknowledgement of a request to prepare and run a real-time move.
- */
-typedef struct _DmcRtRunMoveResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtRunMoveResponse;
 
 
 /**
@@ -738,14 +592,6 @@ typedef struct _DmcRtShootFrameRequest {
 } DmcRtShootFrameRequest;
 
 /**
- * @brief Acknowledgement of a real-time blur-motion frame capture request.
- */
-typedef struct _DmcRtShootFrameResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtShootFrameResponse;
-
-/**
  * Set up a blur-motion frame capture (alternate version)
  * The sets of motor numbers and positions are optional.
  * Each motor provided will be part of the blur.
@@ -758,14 +604,6 @@ typedef struct _DmcRtShootFrame2Request {
     uint16_t            close_angle;
     ShootFrameMotorBlur motor_blur[MOTOR_COUNT];
 } DmcRtShootFrame2Request;
-
-/**
- * @brief Acknowledgement of the alternate real-time blur-motion frame capture request.
- */
-typedef struct _DmcRtShootFrame2Response {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtShootFrame2Response;
 
 /**
  * After a MSG_RT_RUN_MOVE or MSG_RT_SHOOT_FRAME the device may move the motors
@@ -781,28 +619,12 @@ typedef struct _DmcRtGoRequest {
 } DmcRtGoRequest;
 
 /**
- * @brief DMC protocol structure for DmcRgGoResponse.
- */
-typedef struct _DmcRtGoResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRgGoResponse;
-
-/**
  * After a MSG_RT_RUN_MOVE or MSG_RT_SHOOT_FRAME has finished shooting, the device
  * sends MSG_RT_END to notify Dragonframe that the process is over.
  */
 typedef struct _DmcRtEndRequest {
     DmcHeader header;
 } DmcRtEndRequest;
-
-/**
- * @brief Acknowledgement of a real-time operation completion notification.
- */
-typedef struct _DmcRtEndResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtEndResponse;
 
 /**
  * Jog all motors towards the destination frame.
@@ -815,28 +637,12 @@ typedef struct _DmcRtJogAllRequest {
 } DmcRtJogAllRequest;
 
 /**
- * @brief Acknowledgement of a request to jog all motors to an uploaded destination frame.
- */
-typedef struct _DmcRtJogAllResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtJogAllResponse;
-
-/**
  * If the device supports 'real-time looping' capability, it must support this command.
  * The currently running loop/ping-pong must stop after it reaches the next end point.
  */
 typedef struct _DmcRtStopLoopRequest {
     DmcHeader header;
 } DmcRtStopLoopRequest;
-
-/**
- * @brief Acknowledgement of a request to stop real-time loop or ping-pong playback at its next endpoint.
- */
-typedef struct DmcRtStopLoopResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcRtStopLoopResponse;
 
 /**
  * Configure virtuals.
@@ -933,14 +739,6 @@ typedef struct _DmcVirtConfigRequestSwingPan {
 } DmcVirtConfigRequestSwingPan;
 
 /**
- * @brief Acknowledgement of a virtual axis configuration request.
- */
-typedef struct _DmcVirtConfigResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcVirtConfigResponse;
-
-/**
  * Send the virtual motor to a new position.
  */
 typedef struct _DmcVirtMoveRequest {
@@ -950,28 +748,12 @@ typedef struct _DmcVirtMoveRequest {
 } DmcVirtMoveRequest;
 
 /**
- * @brief Acknowledgement of a request to move a virtual motor to a position.
- */
-typedef struct _DmcVirtMoveResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcVirtMoveResponse;
-
-/**
  * Stop the virtual motor.
  */
 typedef struct _DmcVirtStopRequest {
     DmcHeader header;
     uint8_t   motor;
 } DmcVirtStopRequest;
-
-/**
- * @brief Acknowledgement of a request to stop a virtual motor.
- */
-typedef struct _DmcVirtStopResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcVirtStopResponse;
 
 /**
  * Instruct the device to jog/inch a virtual motor.
@@ -988,14 +770,6 @@ typedef struct _DmcVirtJogRequest {
 } DmcVirtJogRequest;
 
 /**
- * @brief Acknowledgement of a virtual motor jog request.
- */
-typedef struct _DmcVirtJogResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcVirtJogResponse;
-
-/**
  * Instruct the device to jog along the direction of the camera.
  * Speed is -10000->10000, with 1 being the slowest and 10000 being the fastest.
  */
@@ -1004,14 +778,6 @@ typedef struct _DmcVirtJogOnLineRequest {
     uint8_t   axis;
     uint16_t  speed;
 } DmcVirtJogOnLineRequest;
-
-/**
- * @brief Acknowledgement of a request to jog along the camera direction or a specified camera line axis.
- */
-typedef struct _DmcVirtJogOnLineResponse {
-    DmcHeader header;
-    uint16_t  response_code;
-} DmcVirtJogOnLineResponse;
 
 /**
  * Request the virtual motor positions.
@@ -1060,9 +826,60 @@ typedef struct _DmcVirtAimPointResponse {
     uint32_t  aim_z;
 } DmcVirtAimPointResponse;
 
-#pragma pack(pop)
+// #NOTE: The goal with the protocol is to be able to serialize and deserialize messages.
+// we want to do this given a buffer of bytes, such that we are decoupled from how we 
+// receive the buffer of bytes and how we transmit it. This will allow for host-side 
+// testing of the serialization and deserialization logic. The strategy was to use
+// packed structures, as this is how the data is transmitted over the wire. However,
+// this approach introduces the risk of undefined behavior when serializing or
+// deserializing messages directly from the packed structures. It also introduces
+// misaligned access to struct members throughout the codebase. The alternative
+// approach is to use explicit serialization and deserialization functions for each
+// message type. Noting that requests are always incoming, and so are exclusively 
+// deserialized, while responses are always outgoing, and so are exclusively
+// serialized. 
+//
+// A serialization routine is probably going to have a signature like:
+// bool dmc_msg_x_serialize(const DmcX* msg, uint8_t* buffer, uint32_t buffer_size);
+//
+// A deserialization routine is probably going to have a signature like:
+// bool dmc_msg_x_deserialize(DmcX* msg, const uint8_t* buffer, uint32_t buffer_size);
+//
+// a more explicit return type signaling the kind of error may be warranted as well.
+// where X is replaced with the actual type of message.
+//
+// The transport layer can then have a function such as 
+// bool dmc_msg_x_send(const DmcX* msg);
+// 
+// which enqueues the message for transmission by serializing it into the
+// transport layer's transmit queue.
+//
+// The transport layer can then have a function such as
+// bool dmc_msg_x_receive(DmcX* msg);
+//
+// which dequeues a message from the transport layer's receive queue and
+// deserializes it into the provided message structure.
+// This function can be called when a message is actually received, and so we 
+// need some form of signalling mechanism between the transport layer and the 
+// main event loop.
+//
+// So this protocol file can define the message structures and provide 
+// some basic initialization functions for each message type. plus the 
+// serialization and deserialization functions for each message type.
 
+
+//
+bool dmc_msg_ack_serialize(const DmcAck *msg, uint8_t *buffer, uint32_t buffer_size);
+
+// dmc hi response tells dragonframe about the hardware capabilities 
+// of the device, this information is baked in at compile time. And 
+// so can be stored statically, and configured by the build system.
+// as such a separate initialization function is required, so as to 
+// consolidate the initialization logic. 
 void dmc_msg_hi_response_init(DmcHiResponse *msg);
+
+bool dmc_msg_hi_request_deserialize(DmcHiRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+bool dmc_msg_hi_response_serialize(const DmcHiResponse *msg, uint8_t *buffer, uint32_t buffer_size);
 
 #endif // !LIMNMOCO_CM7_MODULE_DMC_PROTOCOL_H
 
