@@ -304,6 +304,9 @@ typedef struct _DmcDmxRequest {
     uint8_t   light_values[];
 } DmcDmxRequest;
 
+/**
+ * @brief Response to a DMX lighting request; the response code reports success or an error.
+ */
 typedef struct _DmcDmxResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -317,6 +320,9 @@ typedef struct _DmcGioOutRequest {
     uint32_t  triggers;
 } DmcGioOutRequest;
 
+/**
+ * @brief Acknowledgement of a general I/O output trigger state request.
+ */
 typedef struct _DmcGioOutResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -333,6 +339,9 @@ typedef struct _DmcGioInRequest {
     uint16_t  response_code;
 } DmcGioInRequest;
 
+/**
+ * @brief Reports the current state of the general I/O input triggers; devices also send this message when inputs change.
+ */
 typedef struct _DmcGioInResponse {
     DmcHeader header;
     uint32_t  triggers;
@@ -346,6 +355,9 @@ typedef struct _DmcGioCamRequest {
     uint32_t  triggers;
 } DmcGioCamRequest;
 
+/**
+ * @brief Acknowledgement of a camera output test request.
+ */
 typedef struct _DmcGioCamResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -360,6 +372,9 @@ typedef struct _DmcMotorStatusRequest {
     uint16_t  response_code;
 } DmcMotorStatusRequest;
 
+/**
+ * @brief Reports whether each motor and the DMX output are currently moving or adjusting.
+ */
 typedef struct _DmcMotorStatusResponse {
     DmcHeader header;
     uint32_t  motor_status;
@@ -375,6 +390,9 @@ typedef struct _DmcMotorMoveRequest {
     int32_t   position;
 } DmcMotorMoveRequest;
 
+/**
+ * @brief Reports the motor status resulting from a motor move request.
+ */
 typedef struct _DmcMotorMoveResponse {
     DmcHeader header;
     uint8_t   motor_status;
@@ -388,6 +406,9 @@ typedef struct _DmcMotorStopRequest {
     uint8_t   motor;
 } DmcMotorStopRequest;
 
+/**
+ * @brief Acknowledgement of a request to stop one motor.
+ */
 typedef struct _DmcMotorStopResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -405,6 +426,9 @@ typedef struct _DmcMotorStopAllRequest {
     uint32_t  flags;
 } DmcMotorStopAllRequest;
 
+/**
+ * @brief Acknowledgement of a request to stop all motors.
+ */
 typedef struct _DmcMotorStopAllResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -421,6 +445,9 @@ typedef struct _DmcMotorGetPositionRequest {
     uint16_t  response_code;
 } DmcMotorGetPositionRequest;
 
+/**
+ * @brief Reports elapsed move time and the current position of each motor.
+ */
 typedef struct _DmcMotorGetPositionResponse {
     DmcHeader header;
     uint32_t  move_time;
@@ -438,6 +465,9 @@ typedef struct _DmcMotorResetPositionRequest {
     int32_t   position;
 } DmcMotorResetPositionRequest;
 
+/**
+ * @brief Acknowledgement of a motor position reset; the reset changes the reported position without moving the motor.
+ */
 typedef struct _DmcMotorResetPositionResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -457,6 +487,9 @@ typedef struct _DmcMotorJogRequest {
     int32_t  destination;
 } DmcMotorJogRequest;
 
+/**
+ * @brief Acknowledgement of a motor jog request.
+ */
 typedef struct _DmcMotorJogResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -471,6 +504,9 @@ typedef struct _DmcMotorConfigureRequest {
     uint8_t   flags;
 } DmcMotorConfigureRequest;
 
+/**
+ * @brief Acknowledgement of a motor configuration request.
+ */
 typedef struct _DmcMotorConfigureResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -486,6 +522,9 @@ typedef struct _DmcMotorSetSpeedRequest {
     uint32_t  max_acceleration;
 } DmcMotorSetSpeedRequest;
 
+/**
+ * @brief Acknowledgement of a motor speed and acceleration request.
+ */
 typedef struct _DmcMotorSetSpeedResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -504,6 +543,9 @@ typedef struct _DmcMotorSetLimitsRequest {
     uint8_t   hw_set; // this one doesn't make sense, swap high/low????
 } DmcMotorSetLimitsRequest;
 
+/**
+ * @brief Acknowledgement of a motor software or hardware limits request.
+ */
 typedef struct _DmcMotorSetLimitsResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -518,6 +560,9 @@ typedef struct _DmcMotorHardStopRequest {
     uint16_t  response_code;
 } DmcMotorHardStopRequest;
 
+/**
+ * @brief Acknowledgement of a hard-stop notification.
+ */
 typedef struct _DmcMotorHardStopResponse {
     DmcHeader header;
     uint8_t   reason;
@@ -533,6 +578,9 @@ typedef struct _DmcRtUploadMoveBeginRequest {
     uint32_t  end_frame;
 } DmcRtUploadMoveBeginRequest;
 
+/**
+ * @brief Acknowledgement of the start of a real-time move upload.
+ */
 typedef struct _DmcRtUploadMoveBeginResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -548,6 +596,9 @@ typedef struct _DmcRtUploadMoveAxisRequest {
     uint32_t  positions[];
 } DmcRtUploadMoveAxisRequest;
 
+/**
+ * @brief Acknowledgement of a section of real-time axis frame data.
+ */
 typedef struct _DmcRtUploadMoveAxisResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -567,6 +618,9 @@ typedef struct _DmcRtUploadMoveDmxRequest {
     uint8_t   light_levels[];
 } DmcRtUploadMoveRequest;
 
+/**
+ * @brief Acknowledgement of a section of real-time DMX frame data.
+ */
 typedef struct DmcRtUploadMoveDmxResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -574,6 +628,9 @@ typedef struct DmcRtUploadMoveDmxResponse {
 
 
 
+/**
+ * @brief A frame number and its trigger bit values in a real-time trigger upload.
+ */
 struct MoveFrameValue {
     uint32_t frame;
     uint32_t values;
@@ -591,6 +648,9 @@ typedef struct _DmcRtUploadMoveTriggersRequest {
     MoveFrameValue move_frame_values[];
 } DmcRtUploadMoveTriggersRequest;
 
+/**
+ * @brief Acknowledgement of a section of real-time trigger data.
+ */
 typedef struct _DmcRtUploadMoveTriggersResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -603,6 +663,9 @@ typedef struct _DmcRtUploadMoveEndRequest {
     DmcHeader header;
 } DmcRtUploadMoveEndRequest;
 
+/**
+ * @brief Acknowledgement that a real-time move upload has ended.
+ */
 typedef struct _DmcRtUploadMoveEndResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -616,6 +679,9 @@ typedef struct _DmcRtPositionFrameRequest {
     uint32_t  frame;
 } DmcRtPositionFrameRequest;
 
+/**
+ * @brief Acknowledgement of a request to move to an uploaded frame position.
+ */
 typedef struct _DmcRtPositionFrameResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -641,12 +707,18 @@ typedef struct _DmcRtRunMoveRequest {
     uint16_t  flags;
 } DmcRtRunMoveRequest;
 
+/**
+ * @brief Acknowledgement of a request to prepare and run a real-time move.
+ */
 typedef struct _DmcRtRunMoveResponse {
     DmcHeader header;
     uint16_t  response_code;
 } DmcRtRunMoveResponse;
 
 
+/**
+ * @brief Motor number and the two positions used to define its blur movement during a shot.
+ */
 struct ShootFrameMotorBlur {
     uint8_t  motor;
     uint32_t position_A;
@@ -665,6 +737,9 @@ typedef struct _DmcRtShootFrameRequest {
     ShootFrameMotorBlur motor_blur[MOTOR_COUNT];
 } DmcRtShootFrameRequest;
 
+/**
+ * @brief Acknowledgement of a real-time blur-motion frame capture request.
+ */
 typedef struct _DmcRtShootFrameResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -684,6 +759,9 @@ typedef struct _DmcRtShootFrame2Request {
     ShootFrameMotorBlur motor_blur[MOTOR_COUNT];
 } DmcRtShootFrame2Request;
 
+/**
+ * @brief Acknowledgement of the alternate real-time blur-motion frame capture request.
+ */
 typedef struct _DmcRtShootFrame2Response {
     DmcHeader header;
     uint16_t  response_code;
@@ -702,6 +780,9 @@ typedef struct _DmcRtGoRequest {
     DmcHeader header;
 } DmcRtGoRequest;
 
+/**
+ * @brief DMC protocol structure for DmcRgGoResponse.
+ */
 typedef struct _DmcRtGoResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -715,6 +796,9 @@ typedef struct _DmcRtEndRequest {
     DmcHeader header;
 } DmcRtEndRequest;
 
+/**
+ * @brief Acknowledgement of a real-time operation completion notification.
+ */
 typedef struct _DmcRtEndResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -730,6 +814,9 @@ typedef struct _DmcRtJogAllRequest {
     uint32_t  destination;
 } DmcRtJogAllRequest;
 
+/**
+ * @brief Acknowledgement of a request to jog all motors to an uploaded destination frame.
+ */
 typedef struct _DmcRtJogAllResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -743,6 +830,9 @@ typedef struct _DmcRtStopLoopRequest {
     DmcHeader header;
 } DmcRtStopLoopRequest;
 
+/**
+ * @brief Acknowledgement of a request to stop real-time loop or ping-pong playback at its next endpoint.
+ */
 typedef struct DmcRtStopLoopResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -750,6 +840,11 @@ typedef struct DmcRtStopLoopResponse {
 
 /**
  * Configure virtuals.
+ *
+ *   Section  |   Size   |  Description
+ *------------|----------|------------------------------
+ *    TYPE    |   BYTE   | 0=none, 1=boom-swing-track, 2=swing-pan, 3=y-swing-track, 4=x-y-z
+ *    DATA    |  depends | Depends on type
  */
 typedef struct _DmcVirtConfigRequest {
     DmcHeader header;
@@ -757,6 +852,37 @@ typedef struct _DmcVirtConfigRequest {
     uint8_t   data[];
 } DmcVirtConfigRequest;
 
+/**
+ * @brief Configures virtual boom, swing, track, pan, tilt, and roll axes, including boom geometry and compensation data.
+ *
+ * Section     |      Size     |     Description
+ *-------------|---------------|-----------------
+ * BOOM motor  |      DWORD    |     BOOM motor (up/down)
+ * BOOM spu    |      DWORD    |     BOOM steps per unit
+ * BOOM pos    |      DWORD    |     BOOM position (in units) * 100000
+ * SWING motor |      DWORD    |     SWING motor (up/down)
+ * SWING spu   |      DWORD    |     SWING steps per unit
+ * SWING pos   |      DWORD    |     SWING position (in units) * 100000
+ * TRACK motor |      DWORD    |     TRACK motor (up/down)
+ * TRACK spu   |      DWORD    |     TRACK steps per unit
+ * TRACK pos   |      DWORD    |     TRACK position (in units) * 100000
+ * PAN motor   |      DWORD    |     PAN motor (up/down)
+ * PAN spu     |      DWORD    |     PAN steps per unit
+ * PAN pos     |      DWORD    |     PAN position (in units) * 100000
+ * TILT motor  |      DWORD    |     TILT motor (up/down)
+ * TILT spu    |      DWORD    |     TILT steps per unit
+ * TILT pos    |      DWORD    |     TILT position (in units) * 100000
+ * ROLL motor  |      DWORD    |     ROLL motor (up/down)
+ * ROLL spu    |      DWORD    |     ROLL steps per unit
+ * ROLL pos    |      DWORD    |     ROLL position (in units) * 100000
+ * BOOM LENGTH |      DWORD    |     Boom length * 1000
+ * BOOM EXT    |      DWORD    |     Boom extension length * 1000
+ * NODAL OFF X |      DWORD    |     Nodal offset for x * 1000
+ * NODAL OFF Y |      DWORD    |     Nodal offset for y * 1000
+ * NODAL OFF Z |      DWORD    |     Nodal offset for z * 1000
+ * Boom Compensation Table | DWORD * 121 | Optional Boom Compensation Data. Position of Boom arm at -60, -59, … 0, 1, 2, … 59, 60 degrees
+ * SAFE DISTANCE |      DWORD    |     Safe distance * 1000 (optional)
+ */
 typedef struct _DmcVirtConfigRequestBoomSwingTrack {
     DmcHeader    header;
     uint8_t      type;
@@ -787,6 +913,16 @@ typedef struct _DmcVirtConfigRequestBoomSwingTrack {
     uint32_t     safe_distance;
 } DmcVirtConfigRequestBoomSwingTrack;
 
+/**
+ * @brief Configures the virtual swing and pan axes.
+ *
+ * Section     | Size  | Description
+ * ---         | ---   | ---
+ * SWING motor | DWORD | SWING motor (up/down)
+ * SWING spu   | DWORD | SWING steps per unit
+ * PAN motor   | DWORD | PAN motor (up/down)
+ * PAN spu     | DWORD | PAN steps per unit
+ */
 typedef struct _DmcVirtConfigRequestSwingPan {
     DmcHeader header;
     uint8_t   type;
@@ -796,6 +932,9 @@ typedef struct _DmcVirtConfigRequestSwingPan {
     uint32_t  pan_spu;
 } DmcVirtConfigRequestSwingPan;
 
+/**
+ * @brief Acknowledgement of a virtual axis configuration request.
+ */
 typedef struct _DmcVirtConfigResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -810,6 +949,9 @@ typedef struct _DmcVirtMoveRequest {
     float     position;
 } DmcVirtMoveRequest;
 
+/**
+ * @brief Acknowledgement of a request to move a virtual motor to a position.
+ */
 typedef struct _DmcVirtMoveResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -823,6 +965,9 @@ typedef struct _DmcVirtStopRequest {
     uint8_t   motor;
 } DmcVirtStopRequest;
 
+/**
+ * @brief Acknowledgement of a request to stop a virtual motor.
+ */
 typedef struct _DmcVirtStopResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -842,6 +987,9 @@ typedef struct _DmcVirtJogRequest {
     int32_t   destination; // step position
 } DmcVirtJogRequest;
 
+/**
+ * @brief Acknowledgement of a virtual motor jog request.
+ */
 typedef struct _DmcVirtJogResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -857,6 +1005,9 @@ typedef struct _DmcVirtJogOnLineRequest {
     uint16_t  speed;
 } DmcVirtJogOnLineRequest;
 
+/**
+ * @brief Acknowledgement of a request to jog along the camera direction or a specified camera line axis.
+ */
 typedef struct _DmcVirtJogOnLineResponse {
     DmcHeader header;
     uint16_t  response_code;
@@ -869,6 +1020,9 @@ typedef struct _DmcVirtGetPositionRequest {
     DmcHeader header;
 } DmcVirtGetPositionRequest;
 
+/**
+ * @brief Reports the current virtual motor positions and aim point coordinates.
+ */
 typedef struct _DmcVirtGetPositionResponse {
     DmcHeader    header;
     uint32_t     track;
@@ -895,6 +1049,9 @@ typedef struct _DmcVirtAimPointRequest {
     uint32_t  aim_z;
 } DmcVirtAimPointRequest;
 
+/**
+ * @brief Acknowledges or reports the configured aim point enable state and coordinates.
+ */
 typedef struct _DmcVirtAimPointResponse {
     DmcHeader header;
     uint8_t   enable;
