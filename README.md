@@ -46,7 +46,7 @@ Track → Swing → Boom → Pan → Tilt → Roll
 
 The firmware is designed for an Arduino GIGA R1 and is divided between its M7 main core and M4 co-processor. The controller firmware provides eight motor channels plus one camera channel. That controller capacity is separate from the six-axis physical description of the LIMNMOCO crane; this repository does not define an axis-to-channel mapping.
 
-## Project Status
+## Firmware scope
 
 This repository is primarily a firmware source repository. It contains the M7 and M4 Arduino sketches, motion calculations, DMC message handling, hardware configuration, and a DMC protocol reference PDF.
 
