@@ -76,7 +76,7 @@ The firmware source is based on the original `dmc-lite` sketch by Dyami Caliri a
 The source headers identify the following copyright notices:
 
 - Copyright 2023 by DZED Systems LLC
-- Copyright 2026 by Limnmedia LLC
+- Copyright 2026 by LIMNMEDIA LLC
 
 This attribution describes the source provenance of the firmware and DMC implementation. It is separate from the repository license described below.
 
@@ -151,7 +151,7 @@ The repository's DMC protocol reference is available at [`docs/DMC-Protocol-2024
 
 This repository is distributed under the BSD 3-Clause License. See [`LICENSE`](LICENSE) for the complete license text.
 
-The firmware source acknowledges the original `dmc-lite` sketch by Dyami Caliri at DZED Systems, Inc. / Dragonframe and records that the original code is used with permission from the original author. Copyright notices for DZED Systems LLC and Limnmedia LLC are preserved in the source headers and summarized above.
+The firmware source acknowledges the original `dmc-lite` sketch by Dyami Caliri at DZED Systems, Inc. / Dragonframe and records that the original code is used with permission from the original author. Copyright notices for DZED Systems LLC and LIMNMEDIA LLC are preserved in the source headers and summarized above.
 ## CMake Tests and Firmware Checks
 
 CMake 3.16+ and a C++17 compiler build and run the host-side suites. CMake also
