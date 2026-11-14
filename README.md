@@ -1,6 +1,6 @@
 # LIMNMOCO
 
-**LIMNMOCO is LIMNMEDIA's six-axis motion-control crane project for repeatable camera movement in stop-motion animation, miniature cinematography, visual effects, and virtual production.**
+**Virtual Axis Support for Dragonframe Stop Motion.**
 
 ## Supports Virtuals — in active development
 
