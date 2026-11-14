@@ -1,17 +1,40 @@
 # LIMNMOCO
 
-**LIMNMOCO is LIMNMEDIA's six-axis motion-control crane project for repeatable camera movement in stop-motion animation.**
+**LIMNMOCO is LIMNMEDIA's six-axis motion-control crane project for repeatable camera movement in stop-motion animation, miniature cinematography, visual effects, and virtual production.**
 
-## Supports Virtuals.
+## Supports Virtuals — in active development
 
-LIMNMOCO firmware is a Limnmedia-developed motion-control implementation based on Dragonframe's original `dmc-lite` firmware, used with permission and extended for the Arduino GIGA R1, the six-axis LIMNMOCO crane, and the open hardware/software system, including virtual-axis workflows.
- It is being developed to help artists plan and reproduce camera moves with a physical crane.
+Plan virtual camera motion, translate it toward a physical crane, and work toward repeatable camera movement on a real stage.
 
-This repository contains the Arduino controller firmware, virtual-crane inverse kinematics, and host-side tests—not a finished crane or a production-ready hardware release.
+LIMNMOCO is an open motion-control hardware and software project built around an Arduino GIGA R1. The system combines:
 
-Repeatable camera motion requires coordinated axes, reliable motor control, and communication between the crane and animation software. The firmware here addresses those technical challenges as part of the larger LIMNMOCO project.
+- A six-axis physical camera crane
+- Arduino M7 and M4 controller firmware
+- DMC message handling and virtual-axis workflows
+- Virtual-crane inverse kinematics
+- Motor limits, move upload, and playback research
+- Host-side tests and verification tools
+- An open development process for artists, engineers, and researchers
 
-The [modular firmware architecture plan](docs/modules/README.md) links the module discussions and [planned commit sequence](docs/modules/TODO.md).
+> **DMC-derived · Extended by LIMNMEDIA**
+
+The LIMNMOCO firmware is based on Dragonframe's original `dmc-lite` firmware, used with permission from the original author, and extended for the Arduino GIGA R1, the six-axis LIMNMOCO crane, and LIMNMEDIA's open hardware/software development. The project includes DMC virtual-axis capability work, but virtual-axis functionality remains under active development and must be verified on the intended hardware.
+
+### Why LIMNMOCO?
+
+LIMNMOCO is being developed for filmmakers who want to:
+
+- Design and test camera moves before committing to the physical stage
+- Connect virtual camera planning with real crane movement
+- Repeat or recover camera moves in stop-motion production
+- Explore open motion-control firmware instead of relying only on closed systems
+- Study the relationship between camera geometry, crane mechanics, and authored motion
+
+### Project status
+
+This is an active firmware and research project. The repository is **not yet a finished crane product or production-ready hardware release**. Hardware availability, pricing, supported configurations, and release timing will be published separately when verified.
+
+**Keywords:** stop-motion camera crane, six-axis motion control, open-source motion control, Arduino GIGA R1, DMC firmware, virtual axes, virtual crane, inverse kinematics, repeatable camera movement, miniature cinematography, visual effects camera control, virtual production camera planning, LIMNMEDIA.
 
 ## Overview
 
