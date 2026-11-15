@@ -41,4 +41,8 @@ target_sources(${LIBRARY_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/dmc/protocol.c
 )
 
+target_link_libraries(${LIBRARY_NAME} PRIVATE 
+    limnmoco_config
+)
 
+set_property(GLOBAL APPEND PROPERTY LIMNMOCO_MODULES ${LIBRARY_NAME})

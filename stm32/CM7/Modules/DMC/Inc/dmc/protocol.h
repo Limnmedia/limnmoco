@@ -30,109 +30,115 @@
 #define LIMNMOCO_CM7_MODULE_DMC_PROTOCOL_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <stddef.h>
 
+#include "config/config.h"
+
 // DMC message type field options
-inline constexpr uint16_t DMC_MSG_HI                                = 0x0001;
-inline constexpr uint16_t DMC_MSG_DMX                               = 0x0020;
-inline constexpr uint16_t DMC_MSG_GIO_OUT                           = 0x0021;
-inline constexpr uint16_t DMC_MSG_GIO_IN                            = 0x0022;
-inline constexpr uint16_t DMC_MSG_GIO_CAM                           = 0x0023;
-inline constexpr uint16_t DMC_MSG_MOTOR_STATUS                      = 0x0030;
-inline constexpr uint16_t DMC_MSG_MOTOR_MOVE                        = 0x0031;
-inline constexpr uint16_t DMC_MSG_MOTOR_STOP                        = 0x0032;
-inline constexpr uint16_t DMC_MSG_MOTOR_STOP_ALL                    = 0x0033;
-inline constexpr uint16_t DMC_MSG_MOTOR_GET_POSITION                = 0x0034;
-inline constexpr uint16_t DMC_MSG_MOTOR_RESET_POSITION              = 0x0035;
-inline constexpr uint16_t DMC_MSG_MOTOR_JOG                         = 0x0036;
-inline constexpr uint16_t DMC_MSG_MOTOR_CONFIGURE                   = 0x0037;
-inline constexpr uint16_t DMC_MSG_MOTOR_SET_SPEED                   = 0x0038;
-inline constexpr uint16_t DMC_MSG_MOTOR_SET_LIMITS                  = 0x0039;
-inline constexpr uint16_t DMC_MSG_MOTOR_HARD_STOP                   = 0x003A;
-inline constexpr uint16_t DMC_MSG_RT_UPLOAD_MOVE_BEGIN              = 0x0100;
-inline constexpr uint16_t DMC_MSG_RT_UPLOAD_MOVE_AXIS               = 0x0101;
-inline constexpr uint16_t DMC_MSG_RT_UPLOAD_MOVE_DMX                = 0x0102;
-inline constexpr uint16_t DMC_MSG_RT_UPLOAD_MOVE_END                = 0x0103;
-inline constexpr uint16_t DMC_MSG_RT_UPLOAD_MOVE_TRIGGERS           = 0x0104;
-inline constexpr uint16_t DMC_MSG_RT_POSITION_FRAME                 = 0x0110;
-inline constexpr uint16_t DMC_MSG_RT_RUN_MOVE                       = 0x0111;
-inline constexpr uint16_t DMC_MSG_RT_SHOOT_FRAME                    = 0x0112;
-inline constexpr uint16_t DMC_MSG_RT_SHOOT_FRAME2                   = 0x0115;
-inline constexpr uint16_t DMC_MSG_RT_GO                             = 0x0113;
-inline constexpr uint16_t DMC_MSG_RT_END                            = 0x0114;
-inline constexpr uint16_t DMC_MSG_RT_STOP_LOOP                      = 0x0116;
-inline constexpr uint16_t DMC_MSG_RT_JOG_ALL                        = 0x0120;
-inline constexpr uint16_t DMC_MSG_VIRT_CONFIG                       = 0x0200;
-inline constexpr uint16_t DMC_MSG_VIRT_MOVE                         = 0x0201;
-inline constexpr uint16_t DMC_MSG_VIRT_STOP                         = 0x0202;
-inline constexpr uint16_t DMC_MSG_VIRT_JOG                          = 0x0203;
-inline constexpr uint16_t DMC_MSG_VIRT_GET_POSITION                 = 0x0205;
-inline constexpr uint16_t DMC_MSG_VIRT_JOG_ON_LINE                  = 0x0206;
-inline constexpr uint16_t DMC_MSG_VIRT_AIM_POINT                    = 0x0207;
-inline constexpr uint16_t DMC_MSG_FAN_CONTROL                       = 0x0300; // @note: not in the manual.
+#define DMC_MSG_HI                                0x0001
+#define DMC_MSG_DMX                               0x0020
+#define DMC_MSG_GIO_OUT                           0x0021
+#define DMC_MSG_GIO_IN                            0x0022
+#define DMC_MSG_GIO_CAM                           0x0023
+#define DMC_MSG_MOTOR_STATUS                      0x0030
+#define DMC_MSG_MOTOR_MOVE                        0x0031
+#define DMC_MSG_MOTOR_STOP                        0x0032
+#define DMC_MSG_MOTOR_STOP_ALL                    0x0033
+#define DMC_MSG_MOTOR_GET_POSITION                0x0034
+#define DMC_MSG_MOTOR_RESET_POSITION              0x0035
+#define DMC_MSG_MOTOR_JOG                         0x0036
+#define DMC_MSG_MOTOR_CONFIGURE                   0x0037
+#define DMC_MSG_MOTOR_SET_SPEED                   0x0038
+#define DMC_MSG_MOTOR_SET_LIMITS                  0x0039
+#define DMC_MSG_MOTOR_HARD_STOP                   0x003A
+#define DMC_MSG_RT_UPLOAD_MOVE_BEGIN              0x0100
+#define DMC_MSG_RT_UPLOAD_MOVE_AXIS               0x0101
+#define DMC_MSG_RT_UPLOAD_MOVE_DMX                0x0102
+#define DMC_MSG_RT_UPLOAD_MOVE_END                0x0103
+#define DMC_MSG_RT_UPLOAD_MOVE_TRIGGERS           0x0104
+#define DMC_MSG_RT_POSITION_FRAME                 0x0110
+#define DMC_MSG_RT_RUN_MOVE                       0x0111
+#define DMC_MSG_RT_SHOOT_FRAME                    0x0112
+#define DMC_MSG_RT_SHOOT_FRAME2                   0x0115
+#define DMC_MSG_RT_GO                             0x0113
+#define DMC_MSG_RT_END                            0x0114
+#define DMC_MSG_RT_STOP_LOOP                      0x0116
+#define DMC_MSG_RT_JOG_ALL                        0x0120
+#define DMC_MSG_VIRT_CONFIG                       0x0200
+#define DMC_MSG_VIRT_MOVE                         0x0201
+#define DMC_MSG_VIRT_STOP                         0x0202
+#define DMC_MSG_VIRT_JOG                          0x0203
+#define DMC_MSG_VIRT_GET_POSITION                 0x0205
+#define DMC_MSG_VIRT_JOG_ON_LINE                  0x0206
+#define DMC_MSG_VIRT_AIM_POINT                    0x0207
+
+// @note: not in the manual.
+#define DMC_MSG_FAN_CONTROL                       0x0300 
 
 // DMC message type response codes
-inline constexpr uint16_t DMC_ACK_OK                                = 0x0010;
-inline constexpr uint16_t DMC_ACK_ERR_CHECKSUM                      = 0x0011;
-inline constexpr uint16_t DMC_ACK_ERR_MOVING                        = 0x0012;
-inline constexpr uint16_t DMC_ACK_ERR_UNSUPPORTED                   = 0x0013;
-inline constexpr uint16_t DMC_ACK_ERR_RANGE                         = 0x0014;
-inline constexpr uint16_t DMC_ACK_ERR_GENERAL                       = 0x0015;
-inline constexpr uint16_t DMC_ACK_ERR_NOT_IN_POSITION               = 0x0016;
-inline constexpr uint16_t DMC_ACK_ERR_PREROLL                       = 0x0017;
-inline constexpr uint16_t DMC_ACK_ERR_POSTROLL                      = 0x0018;
-inline constexpr uint16_t DMC_ACK_ERR_AIM_COD                       = 0x0019;
-inline constexpr uint16_t DMC_ACK_ERR_SOFT_UP                       = 0x0020;
-inline constexpr uint16_t DMC_ACK_ERR_SOFT_LOW                      = 0x0021;
-inline constexpr uint16_t DMC_ACK_ERR_HARD_UP                       = 0x0022;
-inline constexpr uint16_t DMC_ACK_ERR_HARD_LOW                      = 0x0023;
+#define DMC_ACK_OK                                0x0010
+#define DMC_ACK_ERR_CHECKSUM                      0x0011
+#define DMC_ACK_ERR_MOVING                        0x0012
+#define DMC_ACK_ERR_UNSUPPORTED                   0x0013
+#define DMC_ACK_ERR_RANGE                         0x0014
+#define DMC_ACK_ERR_GENERAL                       0x0015
+#define DMC_ACK_ERR_NOT_IN_POSITION               0x0016
+#define DMC_ACK_ERR_PREROLL                       0x0017
+#define DMC_ACK_ERR_POSTROLL                      0x0018
+#define DMC_ACK_ERR_AIM_COD                       0x0019
+#define DMC_ACK_ERR_SOFT_UP                       0x0020
+#define DMC_ACK_ERR_SOFT_LOW                      0x0021
+#define DMC_ACK_ERR_HARD_UP                       0x0022
+#define DMC_ACK_ERR_HARD_LOW                      0x0023
 
 // DMC device capabilities
-inline constexpr uint32_t DMC_CAP_REAL_TIME                         = 0x0001;
-inline constexpr uint32_t DMC_CAP_GO_MOTION                         = 0x0002;
-inline constexpr uint32_t DMC_CAP_VIRTUAL_BOOM_SWING_TRACK          = 0x0004;
-inline constexpr uint32_t DMC_CAP_VIRTUAL_SWING_PAN                 = 0x0008;
-inline constexpr uint32_t DMC_CAP_VIRTUAL_Y_SWING_TRACK             = 0x0010;
-inline constexpr uint32_t DMC_CAP_VIRTUAL_X_Y_Z                     = 0x0020;
-inline constexpr uint32_t DMC_CAP_OBJECT_TRACKING                   = 0x0040;
-inline constexpr uint32_t DMC_CAP_GO_MOTION2                        = 0x0080;
-inline constexpr uint32_t DMC_CAP_COUPLE_MOTORS                     = 0x0100;
-inline constexpr uint32_t DMC_CAP_REAL_TIME_LOOP                    = 0x0200;
-inline constexpr uint32_t DMC_CAP_REAL_TIME_CAMERA                  = 0x0400;
+#define DMC_CAP_REAL_TIME                         0x0001
+#define DMC_CAP_GO_MOTION                         0x0002
+#define DMC_CAP_VIRTUAL_BOOM_SWING_TRACK          0x0004
+#define DMC_CAP_VIRTUAL_SWING_PAN                 0x0008
+#define DMC_CAP_VIRTUAL_Y_SWING_TRACK             0x0010
+#define DMC_CAP_VIRTUAL_X_Y_Z                     0x0020
+#define DMC_CAP_OBJECT_TRACKING                   0x0040
+#define DMC_CAP_GO_MOTION2                        0x0080
+#define DMC_CAP_COUPLE_MOTORS                     0x0100
+#define DMC_CAP_REAL_TIME_LOOP                    0x0200
+#define DMC_CAP_REAL_TIME_CAMERA                  0x0400
 
 // DMC motor configuration flags
-inline constexpr uint8_t DMC_MOTOR_CONFIG_ENABLED                   = 0x01;
-inline constexpr uint8_t DMC_MOTOR_CONFIG_BLUR                      = 0x02;
-inline constexpr uint8_t DMC_MOTOR_CONFIG_VIRT                      = 0x04; // this axis is used IN virtuals
-inline constexpr uint8_t DMC_MOTOR_CONFIG_LIVE_CONTROL              = 0x08;
-inline constexpr uint8_t DMC_MOTOR_CONFIG_COUPLE                    = 0x10;
-inline constexpr uint8_t DMC_MOTOR_CONFIG_COUPLE_R                  = 0x20;
+#define DMC_MOTOR_CONFIG_ENABLED                   0x01
+#define DMC_MOTOR_CONFIG_BLUR                      0x02
+// this axis is used IN virtuals
+#define DMC_MOTOR_CONFIG_VIRT                      0x04
+#define DMC_MOTOR_CONFIG_LIVE_CONTROL              0x08
+#define DMC_MOTOR_CONFIG_COUPLE                    0x10
+#define DMC_MOTOR_CONFIG_COUPLE_R                  0x20
 
 // DMC GIO Camera Flags
-inline constexpr uint32_t DMC_GIO_CAM_SHUTTER_FLAG                  = 0x0001;
-inline constexpr uint32_t DMC_GIO_CAM_METER_FLAG                    = 0x0002;
+#define DMC_GIO_CAM_SHUTTER_FLAG                  0x0001
+#define DMC_GIO_CAM_METER_FLAG                    0x0002
 
 // DMC real-time playback flags
-inline constexpr uint16_t DMC_RT_PLAYBACK_PING_PONG                 = 0x0001;
-inline constexpr uint16_t DMC_RT_PLAYBACK_LOOP                      = 0x0002;
-inline constexpr uint16_t DMC_RT_CAMERA_VIDEO                       = 0x0010;
-inline constexpr uint16_t DMC_RT_CAMERA_STILLS                      = 0x0020;
+#define DMC_RT_PLAYBACK_PING_PONG                 0x0001
+#define DMC_RT_PLAYBACK_LOOP                      0x0002
+#define DMC_RT_CAMERA_VIDEO                       0x0010
+#define DMC_RT_CAMERA_STILLS                      0x0020
 
 
 // DMC virtuals support flags
-inline constexpr uint8_t DMC_VIRT_TYPE_NONE                         = 0x00;
-inline constexpr uint8_t DMC_VIRT_TYPE_BOOM_SWING_TRACK             = 0x01;
-inline constexpr uint8_t DMC_VIRT_TYPE_SWING_PAN                    = 0x02;
-inline constexpr uint8_t DMC_VIRT_TYPE_Y_SWING_TRACK                = 0x04;
-inline constexpr uint8_t DMC_VIRT_TYPE_X_Y_Z                        = 0x08;
+#define DMC_VIRT_TYPE_NONE                         0x00
+#define DMC_VIRT_TYPE_BOOM_SWING_TRACK             0x01
+#define DMC_VIRT_TYPE_SWING_PAN                    0x02
+#define DMC_VIRT_TYPE_Y_SWING_TRACK                0x04
+#define DMC_VIRT_TYPE_X_Y_Z                        0x08
 
 // DMC Virtual Motor Numbers
-inline constexpr uint8_t DMC_VIRT_TRACK                             = 0x01;
-inline constexpr uint8_t DMC_VIRT_EW                                = 0x02;
-inline constexpr uint8_t DMC_VIRT_NS                                = 0x03;
-inline constexpr uint8_t DMC_VIRT_PAN                               = 0x04;
-inline constexpr uint8_t DMC_VIRT_TILT                              = 0x05;
-inline constexpr uint8_t DMC_VIRT_ROLL                              = 0x06;
+#define DMC_VIRT_TRACK                             0x01
+#define DMC_VIRT_EW                                0x02
+#define DMC_VIRT_NS                                0x03
+#define DMC_VIRT_PAN                               0x04
+#define DMC_VIRT_TILT                              0x05
+#define DMC_VIRT_ROLL                              0x06
 
 // The boom compensation table is physically an array of stepper 
 // motor step positions corresponding to the angles from 
@@ -140,39 +146,44 @@ inline constexpr uint8_t DMC_VIRT_ROLL                              = 0x06;
 // details:
 // Using Dragonframe 2025 (https://www.dragonframe.com/download/Using%20Dragonframe%202025.pdf)
 //  chapter 16 section "Virtual Axis Configuration with DMC"
-inline constexpr uint8_t DMC_NUM_BOOM_COMPENSATION_ANGLES           = 121;
+#define DMC_NUM_BOOM_COMPENSATION_ANGLES           121
 
-inline constexpr uint16_t DMC_MSG_FLAG_ACK                          = 0x8000;
+#define DMC_MSG_FLAG_ACK                          0x8000
 
 // jog
-inline constexpr uint16_t DMC_MSG_MOTOR_JOG_MIN_VELOCITY            = 1;
-inline constexpr uint16_t DMC_MSG_MOTOR_JOG_MAX_VELOCITY            = 10000;
+#define DMC_MSG_MOTOR_JOG_MIN_VELOCITY            1
+#define DMC_MSG_MOTOR_JOG_MAX_VELOCITY            10000
 
 // hard stop reasons
-inline constexpr uint8_t DMC_MSG_HARD_STOP_REASON_GENERAL           = 0;
-inline constexpr uint8_t DMC_MSG_HARD_STOP_REASON_UPPER             = 1;
-inline constexpr uint8_t DMC_MSG_HARD_STOP_REASON_LOWER             = 2;
-inline constexpr uint8_t DMC_MSG_HARD_STOP_REASON_EXCEPTION         = 100;
+#define DMC_MSG_HARD_STOP_REASON_GENERAL           0
+#define DMC_MSG_HARD_STOP_REASON_UPPER             1
+#define DMC_MSG_HARD_STOP_REASON_LOWER             2
+#define DMC_MSG_HARD_STOP_REASON_EXCEPTION         100
 
 // rt run-move
-inline constexpr uint16_t DMC_MSG_RT_RUN_MOVE_FLAGS_PING_PONG       = 0x01;
-inline constexpr uint16_t DMC_MSG_RT_RUN_MOVE_FLAGS_LOOP            = 0x02;
-inline constexpr uint32_t DMC_MSG_RT_SCALE_RUN_MOVE_FPS             = 1000;
-inline constexpr uint16_t DMC_MSG_RT_SCALE_SHOOT_FRAME_BLUR_PERCENT = 10;
-inline constexpr uint32_t DMC_MSG_RT_SCALE_JOG_ALL_FPS              = 1000;
+#define DMC_MSG_RT_RUN_MOVE_FLAGS_PING_PONG       0x01
+#define DMC_MSG_RT_RUN_MOVE_FLAGS_LOOP            0x02
+#define DMC_MSG_RT_SCALE_RUN_MOVE_FPS             1000
+#define DMC_MSG_RT_SCALE_SHOOT_FRAME_BLUR_PERCENT 10
+#define DMC_MSG_RT_SCALE_JOG_ALL_FPS              1000
 
 // virtuals
-inline constexpr uint32_t DMC_MSG_VIRT_CONFIG_SCALE_POSITION        = 100000;
-inline constexpr uint32_t DMC_MSG_VIRT_CONFIG_SCALE_LENGTH          = 1000;
-inline constexpr uint16_t DMC_MSG_VIRT_JOG_SPEED_INCHING            = 1;
-inline constexpr uint16_t DMC_MSG_VIRT_JOG_SPEED_MAX                = 10000;
-inline constexpr uint8_t DMC_MSG_VIRT_JOG_ON_LINE_X                 = 0;
-inline constexpr uint8_t DMC_MSG_VIRT_JOG_ON_LINE_Y                 = 1;
-inline constexpr uint8_t DMC_MSG_VIRT_JOG_ON_LINE_Z                 = 2; // camera line
-inline constexpr uint8_t DMC_MSG_VIRT_JOG_ON_LINE_PAN               = 3;
-inline constexpr uint8_t DMC_MSG_VIRT_JOG_ON_LINE_TILT              = 4;
+#define DMC_MSG_VIRT_CONFIG_SCALE_POSITION        100000
+#define DMC_MSG_VIRT_CONFIG_SCALE_LENGTH          1000
+#define DMC_MSG_VIRT_JOG_SPEED_INCHING            1
+#define DMC_MSG_VIRT_JOG_SPEED_MAX                10000
+#define DMC_MSG_VIRT_JOG_ON_LINE_X                0
+#define DMC_MSG_VIRT_JOG_ON_LINE_Y                1
+// camera line
+#define DMC_MSG_VIRT_JOG_ON_LINE_Z                2 
+#define DMC_MSG_VIRT_JOG_ON_LINE_PAN              3
+#define DMC_MSG_VIRT_JOG_ON_LINE_TILT             4
 
-inline constexpr uint32_t DMC_MSG_MAX_LENGTH                        = 1048;
+#define DMC_MSG_MAX_LENGTH                        1048
+
+#define LIMNMOCO_CAPABILITIES (DMC_CAP_COUPLE_MOTORS \
+                             | DMC_CAP_VIRTUAL_BOOM_SWING_TRACK \
+                             | DMC_CAP_VIRTUAL_SWING_PAN)
 
 /**
  * Every message has a Header. Additionally, some messages contain a 
@@ -403,7 +414,7 @@ typedef struct _DmcMotorGetPositionRequest {
 typedef struct _DmcMotorGetPositionResponse {
     DmcHeader header;
     uint32_t  move_time;
-    int32_t   motor_positions[MOTOR_COUNT];
+    int32_t   motor_positions[LIMNMOCO_MOTOR_COUNT];
 } DmcMotorGetPositionResponse;
 
 /**
@@ -517,10 +528,10 @@ typedef struct _DmcRtUploadMoveDmxRequest {
 /**
  * @brief A frame number and its trigger bit values in a real-time trigger upload.
  */
-struct MoveFrameValue {
+typedef struct _MoveFrameValue {
     uint32_t frame;
     uint32_t values;
-};
+} MoveFrameValue;
 
 /**
  * Introduced in Protocol: 2
@@ -573,11 +584,11 @@ typedef struct _DmcRtRunMoveRequest {
 /**
  * @brief Motor number and the two positions used to define its blur movement during a shot.
  */
-struct ShootFrameMotorBlur {
+typedef struct _ShootFrameMotorBlur {
     uint8_t  motor;
     uint32_t position_A;
     uint32_t position_B;
-};
+} ShootFrameMotorBlur;
 
 /** 
  * Set up a blur-motion frame capture
@@ -588,7 +599,7 @@ typedef struct _DmcRtShootFrameRequest {
     uint8_t             direction;
     uint32_t            exposure_time;
     uint16_t            blur_percent;
-    ShootFrameMotorBlur motor_blur[MOTOR_COUNT];
+    ShootFrameMotorBlur motor_blur[LIMNMOCO_MOTOR_COUNT];
 } DmcRtShootFrameRequest;
 
 /**
@@ -602,7 +613,7 @@ typedef struct _DmcRtShootFrame2Request {
     uint32_t            exposure_time;
     uint16_t            open_angle;
     uint16_t            close_angle;
-    ShootFrameMotorBlur motor_blur[MOTOR_COUNT];
+    ShootFrameMotorBlur motor_blur[LIMNMOCO_MOTOR_COUNT];
 } DmcRtShootFrame2Request;
 
 /**
@@ -715,7 +726,7 @@ typedef struct _DmcVirtConfigRequestBoomSwingTrack {
     uint32_t     nodal_offset_x;
     uint32_t     nodal_offset_y;
     uint32_t     nodal_offset_z;
-    uint32_t     boom_compensation[DMC_BOOM_COMPENSATION_ANGLES];
+    uint32_t     boom_compensation[DMC_NUM_BOOM_COMPENSATION_ANGLES];
     uint32_t     safe_distance;
 } DmcVirtConfigRequestBoomSwingTrack;
 
@@ -866,20 +877,140 @@ typedef struct _DmcVirtAimPointResponse {
 // So this protocol file can define the message structures and provide 
 // some basic initialization functions for each message type. plus the 
 // serialization and deserialization functions for each message type.
-
-
 //
-bool dmc_msg_ack_serialize(const DmcAck *msg, uint8_t *buffer, uint32_t buffer_size);
+// a variable length struct acting as a record of the specific message has a few 
+// points to consider when interacting with serialization and deserialization.
+// when serializing, the size of the given record is held within the structure
+// itself, so the caller must ensure that the structure is allocated with enough
+// space to hold all of the variable data. Then, the buffer size check makes sense
+// in the serialize routine, since the required size is known.
+// when deserializing, the required buffer size is not known until the header
+// has been deserialized, so the caller of the function cannot call the function
+// safely until the header has been deserialized. This means that we need to 
+// handle deserializing variable length messages in two steps: first deserialize
+// the header, then allocate the message structure with enough space for the
+// variable data before deserializing the remainder.
+//
+// given that we want to avoid dynamic memory allocations if at all possbile.
+// we may wish to allocate a buffer large enough to hold the largest possible
+// message. or a queue of these buffers, and have the system pass around a pointer
+// to the active message when handling each message. How can that work in C?
+// if we allocate an array of uint8_t, we can cast a pointer to the beginning
+// of the array to the message type, Then we know that structure has enough space
+// for its flexible array member. even when statically allocated.
 
-// dmc hi response tells dragonframe about the hardware capabilities 
-// of the device, this information is baked in at compile time. And 
-// so can be stored statically, and configured by the build system.
-// as such a separate initialization function is required, so as to 
-// consolidate the initialization logic. 
+/**
+ * @brief Convert between DMC wire messages and their corresponding structures.
+ *
+ * @param buffer_size Number of bytes available in the input or output wire buffer.
+ * The checksum is handled by the transport layer and is not included in these codecs.
+ * @note For requests with flexible array members, allocate at least
+ * sizeof(the request structure) plus the trailing payload length for @p msg.
+ */
+
+uint8_t *dmc_msg_header_serialize(const DmcHeader *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_header_deserialize(DmcHeader *msg, const uint8_t *buffer, uint32_t buffer_size);
+
+uint8_t *dmc_msg_ack_serialize(const DmcAck *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_ack_deserialize(DmcAck *msg, const uint8_t *buffer, uint32_t buffer_size);
+
+uint8_t *dmc_msg_hi_request_serialize(const DmcHiRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_hi_request_deserialize(DmcHiRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+
+uint8_t *dmc_msg_hi_response_serialize(const DmcHiResponse *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_hi_response_deserialize(DmcHiResponse *msg, const uint8_t *buffer, uint32_t buffer_size);
+
+uint8_t *dmc_msg_dmx_request_serialize(const DmcDmxRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_dmx_request_deserialize(DmcDmxRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+
+uint8_t *dmc_msg_gio_out_request_serialize(const DmcGioOutRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_gio_out_request_deserialize(DmcGioOutRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_gio_in_request_serialize(const DmcGioInRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_gio_in_request_deserialize(DmcGioInRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_gio_in_response_serialize(const DmcGioInResponse *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_gio_in_response_deserialize(DmcGioInResponse *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_gio_cam_request_serialize(const DmcGioCamRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_gio_cam_request_deserialize(DmcGioCamRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_status_request_serialize(const DmcMotorStatusRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_status_request_deserialize(DmcMotorStatusRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_status_response_serialize(const DmcMotorStatusResponse *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_status_response_deserialize(DmcMotorStatusResponse *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_move_request_serialize(const DmcMotorMoveRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_move_request_deserialize(DmcMotorMoveRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_move_response_serialize(const DmcMotorMoveResponse *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_move_response_deserialize(DmcMotorMoveResponse *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_stop_request_serialize(const DmcMotorStopRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_stop_request_deserialize(DmcMotorStopRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_stop_all_request_serialize(const DmcMotorStopAllRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_stop_all_request_deserialize(DmcMotorStopAllRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_get_position_request_serialize(const DmcMotorGetPositionRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_get_position_request_deserialize(DmcMotorGetPositionRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_get_position_response_serialize(const DmcMotorGetPositionResponse *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_get_position_response_deserialize(DmcMotorGetPositionResponse *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_reset_position_request_serialize(const DmcMotorResetPositionRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_reset_position_request_deserialize(DmcMotorResetPositionRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_jog_request_serialize(const DmcMotorJogRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_jog_request_deserialize(DmcMotorJogRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_configure_request_serialize(const DmcMotorConfigureRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_configure_request_deserialize(DmcMotorConfigureRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_set_speed_request_serialize(const DmcMotorSetSpeedRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_set_speed_request_deserialize(DmcMotorSetSpeedRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_set_limits_request_serialize(const DmcMotorSetLimitsRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_set_limits_request_deserialize(DmcMotorSetLimitsRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_hard_stop_request_serialize(const DmcMotorHardStopRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_hard_stop_request_deserialize(DmcMotorHardStopRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_motor_hard_stop_response_serialize(const DmcMotorHardStopResponse *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_motor_hard_stop_response_deserialize(DmcMotorHardStopResponse *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_upload_move_begin_request_serialize(const DmcRtUploadMoveBeginRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_upload_move_begin_request_deserialize(DmcRtUploadMoveBeginRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_upload_move_axis_request_serialize(const DmcRtUploadMoveAxisRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_upload_move_axis_request_deserialize(DmcRtUploadMoveAxisRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_upload_move_request_serialize(const DmcRtUploadMoveRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_upload_move_request_deserialize(DmcRtUploadMoveRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_upload_move_triggers_request_serialize(const DmcRtUploadMoveTriggersRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_upload_move_triggers_request_deserialize(DmcRtUploadMoveTriggersRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_upload_move_end_request_serialize(const DmcRtUploadMoveEndRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_upload_move_end_request_deserialize(DmcRtUploadMoveEndRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_position_frame_request_serialize(const DmcRtPositionFrameRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_position_frame_request_deserialize(DmcRtPositionFrameRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_run_move_request_serialize(const DmcRtRunMoveRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_run_move_request_deserialize(DmcRtRunMoveRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_shoot_frame_request_serialize(const DmcRtShootFrameRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_shoot_frame_request_deserialize(DmcRtShootFrameRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_shoot_frame2_request_serialize(const DmcRtShootFrame2Request *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_shoot_frame2_request_deserialize(DmcRtShootFrame2Request *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_go_request_serialize(const DmcRtGoRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_go_request_deserialize(DmcRtGoRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_end_request_serialize(const DmcRtEndRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_end_request_deserialize(DmcRtEndRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_jog_all_request_serialize(const DmcRtJogAllRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_jog_all_request_deserialize(DmcRtJogAllRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_rt_stop_loop_request_serialize(const DmcRtStopLoopRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_rt_stop_loop_request_deserialize(DmcRtStopLoopRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_config_request_serialize(const DmcVirtConfigRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_config_request_deserialize(DmcVirtConfigRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_config_request_boom_swing_track_serialize(const DmcVirtConfigRequestBoomSwingTrack *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_config_request_boom_swing_track_deserialize(DmcVirtConfigRequestBoomSwingTrack *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_config_request_swing_pan_serialize(const DmcVirtConfigRequestSwingPan *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_config_request_swing_pan_deserialize(DmcVirtConfigRequestSwingPan *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_move_request_serialize(const DmcVirtMoveRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_move_request_deserialize(DmcVirtMoveRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_stop_request_serialize(const DmcVirtStopRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_stop_request_deserialize(DmcVirtStopRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_jog_request_serialize(const DmcVirtJogRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_jog_request_deserialize(DmcVirtJogRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_jog_on_line_request_serialize(const DmcVirtJogOnLineRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_jog_on_line_request_deserialize(DmcVirtJogOnLineRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_get_position_request_serialize(const DmcVirtGetPositionRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_get_position_request_deserialize(DmcVirtGetPositionRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_get_position_response_serialize(const DmcVirtGetPositionResponse *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_get_position_response_deserialize(DmcVirtGetPositionResponse *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_aim_point_request_serialize(const DmcVirtAimPointRequest *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_aim_point_request_deserialize(DmcVirtAimPointRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
+uint8_t *dmc_msg_virt_aim_point_response_serialize(const DmcVirtAimPointResponse *msg, uint8_t *buffer, uint32_t buffer_size);
+const uint8_t *dmc_msg_virt_aim_point_response_deserialize(DmcVirtAimPointResponse *msg, const uint8_t *buffer, uint32_t buffer_size);
+
+// Initializes the compile-time device information in a DMC HI response.
+void dmc_msg_header_init(DmcHeader *msg, uint32_t id, uint16_t type, uint16_t length);
 void dmc_msg_hi_response_init(DmcHiResponse *msg);
-
-bool dmc_msg_hi_request_deserialize(DmcHiRequest *msg, const uint8_t *buffer, uint32_t buffer_size);
-bool dmc_msg_hi_response_serialize(const DmcHiResponse *msg, uint8_t *buffer, uint32_t buffer_size);
-
 #endif // !LIMNMOCO_CM7_MODULE_DMC_PROTOCOL_H
-

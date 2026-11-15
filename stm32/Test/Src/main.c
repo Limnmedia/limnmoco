@@ -16,6 +16,7 @@
 
 #include "test/linear_algebra/vec3.h"
 #include "test/linear_algebra/mat3x3.h"
+#include "test/dmc/protocol.h"
 
 static MunitSuite suites[] = {
 {"/cm7/linear_algebra",
@@ -25,8 +26,15 @@ static MunitSuite suites[] = {
         MUNIT_SUITE_OPTION_NONE
     },
     {
-        "cm7/linear_algebra",
+        "/cm7/linear_algebra",
         cm7_linear_algebra_mat3x3_tests,
+        NULL,
+        1,
+        MUNIT_SUITE_OPTION_NONE
+    },
+    {
+        "/cm7/dmc/protocol",
+        cm7_dmc_protocol_tests,
         NULL,
         1,
         MUNIT_SUITE_OPTION_NONE
